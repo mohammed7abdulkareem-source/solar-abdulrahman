@@ -1,1 +1,13 @@
-{"name":"طاقة شمسية - عبدالرحمن كروب","short_name":"طاقة شمسية","start_url":"/","display":"standalone","background_color":"#f3f6f4","theme_color":"#17663f","lang":"ar","dir":"rtl"}
+{
+  "name":"عبدالرحمن سولار",
+  "short_name":"عبدالرحمن سولار",
+  "description":"إدارة مبيعات ومشتريات ومخزون فرع الطاقة الشمسية",
+  "start_url":"/",
+  "scope":"/",
+  "display":"standalone",
+  "background_color":"#eef6f9",
+  "theme_color":"#0b8f82",
+  "lang":"ar",
+  "dir":"rtl",
+  "icons":[{"src":"/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]
+}
