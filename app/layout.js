@@ -1,3 +1,5 @@
 import './globals.css';
-export const metadata={title:'طاقة شمسية | عبدالرحمن كروب',description:'حسابات فرع الطاقة الشمسية',manifest:'/manifest.webmanifest'};
-export default function Layout({children}){return <html lang="ar" dir="rtl"><body>{children}</body></html>}
+import PWARegister from './pwa-register';
+export const metadata={title:'عبدالرحمن سولار',description:'إدارة فرع الطاقة الشمسية',manifest:'/manifest.webmanifest',themeColor:'#0b8f82',icons:{icon:'/icon.svg',apple:'/icon.svg'}};
+export const viewport={width:'device-width',initialScale:1,viewportFit:'cover',themeColor:'#0b8f82'};
+export default function Layout({children}){return <html lang="ar" dir="rtl"><body>{children}<PWARegister/></body></html>}
