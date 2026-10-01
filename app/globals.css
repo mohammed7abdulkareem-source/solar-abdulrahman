@@ -21,3 +21,4 @@ main{padding-bottom:36px}
  .menuGrid .menuIcon{width:50px!important;height:50px!important;border-radius:16px!important}
  .menuGrid button span:last-child{font-size:13px!important}
 }
+.updateDownloads{display:grid;gap:12px;margin-top:18px}.updateDownloads a,.updateDownloads button{display:flex;align-items:center;justify-content:center;text-decoration:none;border:0;border-radius:16px;padding:16px;background:linear-gradient(145deg,#159e91,#08786f);color:#fff;font-weight:bold;font-size:16px;box-shadow:0 5px 0 #06635c}.updateDownloads a:first-child{background:linear-gradient(145deg,#246887,#174b65);box-shadow:0 5px 0 #10394d}.updateNote{display:block;margin-top:16px;color:#71838d;line-height:1.7}
