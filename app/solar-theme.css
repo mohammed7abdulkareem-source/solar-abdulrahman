@@ -1,0 +1,53 @@
+/* Solar V3.1.1 — lightweight raised surfaces, no external assets. */
+@media screen {
+  :root { --ink:#183c44; --muted:#526d73; --line:#d5e4e3; --accent:#087e73; }
+  body { background:radial-gradient(ellipse at 95% 0,#e0f0e9 0,transparent 48%),linear-gradient(150deg,#f8faf7,#edf3f3); }
+  main { padding-top:max(16px,env(safe-area-inset-top)); }
+  .home .brand { position:relative;overflow:hidden;background:linear-gradient(125deg,#113e48 0%,#096d68 65%,#149182 100%)!important;border:1px solid #ffffff70!important;box-shadow:inset 0 1px 0 #ffffff55,0 6px 0 #0b4d49,0 15px 28px #124b4826!important;padding:28px 22px!important; }
+  .home .brand:after { content:'';position:absolute;width:160px;height:160px;border:24px solid #ffffff08;border-radius:50%;left:-55px;bottom:-90px;pointer-events:none; }
+  .home .brandIcon,.loginLogo { flex-shrink:0;background:linear-gradient(145deg,#ffe8a1,#e9ac35)!important;color:#624313!important;border:1px solid #fff0b6!important;box-shadow:inset 0 2px 1px #fff8,0 5px 0 #ab7521,0 10px 18px #0002!important; }
+  .homeAccountBar { margin-bottom:6px;gap:10px; }
+  .homeAccountBar>span { color:#305e60;font-weight:700; }
+  .homeAccountBar button { background:#ffffffc9!important;border:1px solid var(--line)!important;border-radius:12px!important;padding:9px 12px!important; }
+  .home .miniStats { margin:22px 0 8px!important; }
+  .home .miniStats>div { background:linear-gradient(120deg,#fff,#f5fbf8)!important;border:1px solid #d4e6df!important;border-inline-start:5px solid #1b9a7d!important;box-shadow:inset 0 1px 0 #fff,0 4px 0 #d7e4df,0 9px 18px #1d51420b!important; }
+  .miniStats b { margin-top:7px;font-size:clamp(22px,5vw,28px)!important;overflow-wrap:anywhere; }
+  .dashboardHeading { margin-top:27px; }
+  .releaseBadge { background:linear-gradient(145deg,#fff3ce,#f5df9c);color:#735019;border:1px solid #e4ce95;box-shadow:0 2px 0 #ddc992;border-radius:9px;white-space:nowrap; }
+  .menuSearch { min-height:50px;box-shadow:inset 0 2px 4px #234b4408,0 2px 0 #fff;margin-bottom:22px; }
+  .home .menuGrid,.groupGrid { gap:18px 14px!important; }
+  .home .menuGrid>button,.groupGrid>button { --tile:#4e7780;background:linear-gradient(155deg,#fff 35%,#eef5f4)!important;border:1px solid #fff!important;outline:1px solid #dce7e4;border-radius:22px!important;min-height:142px!important;box-shadow:inset 0 2px 0 #fff,0 6px 0 #c9dcd6,0 12px 20px #234c4212!important;transition:transform .15s ease,box-shadow .15s ease; }
+  .home .menuGrid>button:before { background:linear-gradient(125deg,#fff8,transparent 55%); }
+  .home .menuGrid>button b,.groupGrid>button b { color:#203f48;line-height:1.6;font-size:15px!important; }
+  .home .menuIcon,.groupGrid .menuIcon { width:54px!important;height:54px!important;border-radius:17px!important;transform:rotate(-4deg);border:1px solid #ffffff65;box-shadow:inset 0 2px 2px #ffffff70,0 5px 0 #0002,0 9px 12px #00000018!important; }
+  .menuIcon svg { transform:rotate(4deg); }
+  .home .menuGrid>button:active,.groupGrid>button:active { transform:translateY(4px);box-shadow:inset 0 1px 0 #fff,0 2px 0 #c9dcd6,0 5px 10px #234c4212!important; }
+  .card,.form,.invoiceLine,.installationCard,.userPermissionCard,.partyCard,.receiptPanel { background:linear-gradient(145deg,#fff,#f7faf9)!important;border:1px solid #dce7e3!important;box-shadow:inset 0 1px 0 #fff,0 3px 0 #e0e9e5,0 9px 20px #173e5109!important;border-radius:20px!important; }
+  .top { background:#f2f7f4f2;border-radius:0 0 17px 17px;gap:12px; }
+  .top button { box-shadow:0 3px 0 #c4d8d0,0 6px 10px #34564b10; }
+  .invoiceActions .saveInvoice,.primaryWide { background:linear-gradient(145deg,#149b89,#08786e)!important;box-shadow:inset 0 1px 0 #ffffff50,0 5px 0 #075c53,0 9px 16px #08786e20!important; }
+  .grandTotal,.cashHero,.statementBalance { background:linear-gradient(125deg,#143f4b,#086f68);box-shadow:inset 0 1px 0 #ffffff40,0 5px 0 #103f43,0 12px 20px #123e4520; }
+  .savedInvoiceActions,.editActions { flex-wrap:wrap;row-gap:10px; }
+  .savedInvoiceActions button,.rowActions button,.partyActions button { min-height:44px; }
+  .loginPage { background:radial-gradient(ellipse at 15% 10%,#cfebe1,transparent 60%),linear-gradient(145deg,#f8faf6,#e9f1ef)!important; }
+  .loginCard { background:linear-gradient(145deg,#fff,#f4f9f6)!important;box-shadow:inset 0 1px 0 #fff,0 7px 0 #d0e0d8,0 22px 48px #244f4820!important;border:1px solid #fff!important; }
+  .loginCard h1 { line-height:1.7;color:#184b4b; }
+  .loginCard button { background:linear-gradient(145deg,#159c89,#08776d)!important;box-shadow:0 4px 0 #075d54!important; }
+  .groupSheet { background:#f4f8f5;border:1px solid #fff;box-shadow:0 -12px 50px #123f4426; }
+  .version { color:#56716d;margin-top:12px;line-height:1.8; }
+  button:disabled { transform:none!important;filter:saturate(.4); }
+  @media(hover:hover) and (prefers-reduced-motion:no-preference) {
+    .home .menuGrid>button:hover,.groupGrid>button:hover { transform:translateY(-3px);box-shadow:inset 0 1px 0 #fff,0 9px 0 #c9dcd6,0 17px 24px #234c421c!important; }
+  }
+  @media(max-width:560px) {
+    .home .brand { padding:23px 16px!important;gap:12px; }
+    .home .brand h1 { font-size:clamp(22px,6vw,30px)!important; }
+    .home .brand p { font-size:11px!important; }
+    .home .menuGrid { gap:17px 12px!important; }
+    .home .menuGrid>button { min-height:137px!important;padding:16px 8px!important; }
+    .home .menuGrid>button b { font-size:14px!important; }
+    .home .menuIcon { width:51px!important;height:51px!important; }
+    .dashboardHeading h2 { font-size:20px!important; }
+  }
+  @media(prefers-reduced-motion:reduce) { .home .menuGrid>button,.groupGrid>button { transition:none!important;transform:none!important; } }
+}
