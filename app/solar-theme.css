@@ -14,7 +14,6 @@
   .miniStats b { margin-top:7px;font-size:clamp(22px,5vw,28px)!important;overflow-wrap:anywhere; }
   .dashboardHeading { margin-top:27px; }
   .releaseBadge { background:linear-gradient(145deg,#fff3ce,#f5df9c);color:#735019;border:1px solid #e4ce95;box-shadow:0 2px 0 #ddc992;border-radius:9px;white-space:nowrap; }
-  .menuSearch { min-height:50px;box-shadow:inset 0 2px 4px #234b4408,0 2px 0 #fff;margin-bottom:22px; }
   .home .menuGrid,.groupGrid { gap:18px 14px!important; }
   .home .menuGrid>button,.groupGrid>button { --tile:#4e7780;background:linear-gradient(155deg,#fff 35%,#eef5f4)!important;border:1px solid #fff!important;outline:1px solid #dce7e4;border-radius:22px!important;min-height:142px!important;box-shadow:inset 0 2px 0 #fff,0 6px 0 #c9dcd6,0 12px 20px #234c4212!important;transition:transform .15s ease,box-shadow .15s ease; }
   .home .menuGrid>button:before { background:linear-gradient(125deg,#fff8,transparent 55%); }
