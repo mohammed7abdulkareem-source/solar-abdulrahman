@@ -4,8 +4,8 @@ import {supabase} from './supabase';
 const stages=[['pending','موعد محدد'],['in_progress','جاري التنصيب'],['completed','مراجعة التقرير'],['closed','ملف مغلق']];
 const fmt=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const dateText=value=>value?new Date(value).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad',dateStyle:'short',timeStyle:'short'}):'';
-export default function InstallationWorkflow({profile,onChanged}){
- const [jobs,setJobs]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[status,setStatus]=useState('open'),[query,setQuery]=useState(''),[busy,setBusy]=useState(null),[message,setMessage]=useState('');
+export default function InstallationWorkflow({profile,onChanged,selectedJob=''}){
+ const [jobs,setJobs]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[status,setStatus]=useState(selectedJob?'all':'open'),[query,setQuery]=useState(selectedJob),[busy,setBusy]=useState(null),[message,setMessage]=useState('');
  const engineer=profile?.user_type==='installer';
  async function refresh(){const {data,error}=await supabase.rpc('solar_installation_jobs');if(error)throw error;setJobs(data||[]);}
  useEffect(()=>{let live=true;supabase.rpc('solar_installation_jobs').then(({data,error})=>{if(!live)return;if(error)setError('تعذر تحميل المهام. اضغط تحديث للمحاولة مجدداً.');else setJobs(data||[]);setLoading(false)});return()=>{live=false}},[]);

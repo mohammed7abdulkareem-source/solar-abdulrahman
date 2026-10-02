@@ -1,4 +1,4 @@
-# عبدالرحمن سولار — V3.2
+# عبدالرحمن سولار — V3.3
 
 Next.js / Supabase. Main branch deploys through the existing Vercel integration.
 
@@ -10,6 +10,21 @@ npm run dev
 npm run build
 node --test tests/*.test.mjs
 ```
+
+## Push notifications (V3.3)
+
+- Assignment of a system invoice to an engineer creates a notification for that engineer.
+- A transition from in_progress to completed creates a notification for transactions.created_by (the invoice creator), independently of the cashbox owner.
+- Each person must click “تفعيل إشعارات الموبايل” and grant browser permission on their device. The UI includes an explicit self-test, device opt-out and a private inbox.
+- Opening a notification navigates to the installation file. Staff with system permission can view their own files; financial approval still requires installations permission.
+- Push payloads contain generic task messages, no customer names, prices or cashbox balances. Service-worker account binding blocks messages for another account; logout clears the binding, closes visible notifications and unsubscribes.
+- Database triggers create a durable per-device outbox. pg_net wakes the Edge Function after commit, and pg_cron retries due deliveries every minute with a lease, bounded exponential backoff and a maximum of five attempts. Expired subscriptions are removed.
+- VAPID keys and the random worker token are stored in Supabase Vault under solar_push_vapid_public, solar_push_vapid_private and solar_push_worker_token. They are not committed to this repository.
+- Deploy supabase/functions/solar-push with JWT verification disabled: its body requires the private worker token using constant-time comparison. Worker configuration/claim/finish RPCs are executable only by service_role. No user token can invoke the dispatcher.
+- The private delivery table deliberately has no client RLS policies. Only trusted worker RPCs access it.
+- Run tests/push-rollback.sql to validate routing, private inbox access, queue leasing and retries without sending a notification or retaining test records.
+- Verification: hosted worker authentication and encryption self-test succeeded. Local browser tests covered activation, test request, real service-worker display using synthetic payloads, task navigation and opt-out. Receipt on a physical phone requires that device's permission and subscription.
+- Mobile OS notification settings, connectivity, and browser background restrictions still control final display; provider acceptance is not proof a person read the message.
 
 ## This update (V3.2)
 
