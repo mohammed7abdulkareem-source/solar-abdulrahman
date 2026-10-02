@@ -11,6 +11,13 @@ const mapSupplier=r=>({id:r.id,name:r.name,phone:r.phone||''});
 const mapTx=(r,items=[])=>({id:r.id,kind:r.kind,party:r.party_name||'',partyId:r.party_id,createdBy:r.created_by||null,installerId:r.installer_id||null,installDate:r.install_date||'',installTime:r.install_time||'',customerPhone:r.customer_phone||'',customerAddress:r.customer_address||'',installationStatus:r.installation_status||'none',installationCompletedAt:r.installation_completed_at||null,installationClosedAt:r.installation_closed_at||null,installationExpenses:Number(r.installation_expenses||0),installationExpenseNotes:r.installation_expense_notes||'',cashboxUserId:r.cashbox_user_id||null,capitalEffect:!!r.capital_effect,total:Number(r.total||0),subtotal:Number(r.subtotal||0),expenses:Number(r.expenses||0),cost:Number(r.cost||0),profit:Number(r.profit||0),cash:!!r.cash,notes:r.notes||'',mode:r.payment_mode||'',date:r.created_at,items:items.filter(i=>i.transaction_id===r.id).map(i=>({id:i.product_id,name:i.product_name,brand:i.brand_name||'',category:i.category||'',qty:Number(i.qty||0),price:Number(i.price||0),cost:Number(i.cost||0),landedCost:Number(i.landed_cost||0)}))});
 
 export async function loadCloud(){
+ const {data:sessionData,error:sessionError}=await supabase.auth.getSession();
+ if(sessionError)throw sessionError;
+ if(!sessionData.session)return {brands:[],products:[],customers:[],suppliers:[],tx:[]};
+ const {data:profile,error:profileError}=await supabase.from('profiles').select('active,user_type').eq('id',sessionData.session.user.id).single();
+ if(profileError)throw profileError;
+ if(!profile.active||profile.user_type==='installer')return {brands:[],products:[],customers:[],suppliers:[],tx:[]};
+
  const [b,p,c,s,t,ti]=await Promise.all([
   supabase.from('brands').select('*').order('id'),
   supabase.from('products').select('*,brands(name)').order('id'),
