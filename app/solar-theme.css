@@ -43,9 +43,14 @@
   .systemSale .scheduleToggle span,.systemSale .scheduleToggle small { display:block; }
   .systemSale .scheduleToggle small { margin-top:4px;color:#637c74;font-size:11px; }
   .systemSale .optionalSchedule { padding:12px;border-radius:16px;background:#fff8e7;border:1px solid #eadbb4; }
-  .systemSale .systemCostLine { grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+  .systemSale .systemCostLine { grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:8px; }
   .systemSale .systemCostLine span { display:grid;gap:5px;padding:10px;border-radius:11px;background:#edf6f2;color:#557069;font-size:11px; }
   .systemSale .systemCostLine b { color:#17584e;font-size:14px; }
+  .systemSale .systemCostLine .availableCost { background:#fff5d9;color:#775a1d; }
+  .systemSale .systemCostLine .availableCost b { color:#8b6412; }
+  .systemSale .quantityOver { border-color:#e19a8e!important;background:#fff8f6!important; }
+  .systemSale .quantityWarning { grid-column:1/-1;padding:8px 10px;border-radius:10px;background:#ffe7e2;color:#9d392e;font-weight:700; }
+  @media(max-width:500px) { .systemSale .systemCostLine { grid-template-columns:1fr 1fr; }.systemSale .systemCostLine .availableCost { grid-column:1/-1; } }
   .systemSale .systemTotals b { font-size:15px; }
   button:disabled { transform:none!important;filter:saturate(.4); }
   @media(hover:hover) and (prefers-reduced-motion:no-preference) {
