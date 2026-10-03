@@ -34,6 +34,19 @@
   .loginCard button { background:linear-gradient(145deg,#159c89,#08776d)!important;box-shadow:0 4px 0 #075d54!important; }
   .groupSheet { background:#f4f8f5;border:1px solid #fff;box-shadow:0 -12px 50px #123f4426; }
   .version { color:#56716d;margin-top:12px;line-height:1.8; }
+  .systemSale .requiredField { display:grid;gap:7px;padding:12px;border:1px solid #d7e4df;border-radius:16px;background:#f5f9f7; }
+  .systemSale .requiredField>span { display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#365f58; }
+  .systemSale .requiredField>span b { padding:4px 8px;border-radius:20px;background:#ffe9e4;color:#9c3c31;font-size:10px; }
+  .systemSale .requiredField small { color:#a0463b;font-size:11px;line-height:1.7; }
+  .systemSale .scheduleToggle { display:flex;align-items:center;gap:11px;padding:13px;border:1px solid #cfe1da;border-radius:16px;background:#edf7f2;box-shadow:0 3px 0 #d4e4de; }
+  .systemSale .scheduleToggle input { width:23px;height:23px;flex:none;accent-color:#0a8876; }
+  .systemSale .scheduleToggle span,.systemSale .scheduleToggle small { display:block; }
+  .systemSale .scheduleToggle small { margin-top:4px;color:#637c74;font-size:11px; }
+  .systemSale .optionalSchedule { padding:12px;border-radius:16px;background:#fff8e7;border:1px solid #eadbb4; }
+  .systemSale .systemCostLine { grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px; }
+  .systemSale .systemCostLine span { display:grid;gap:5px;padding:10px;border-radius:11px;background:#edf6f2;color:#557069;font-size:11px; }
+  .systemSale .systemCostLine b { color:#17584e;font-size:14px; }
+  .systemSale .systemTotals b { font-size:15px; }
   button:disabled { transform:none!important;filter:saturate(.4); }
   @media(hover:hover) and (prefers-reduced-motion:no-preference) {
     .home .menuGrid>button:hover,.groupGrid>button:hover { transform:translateY(-3px);box-shadow:inset 0 1px 0 #fff,0 9px 0 #c9dcd6,0 17px 24px #234c421c!important; }
