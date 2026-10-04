@@ -3,6 +3,8 @@ import {useEffect,useState} from 'react';
 import {supabase} from './supabase';
 import {salesDocument,statusLabel,formatMoney} from './sales-document.mjs';
 import {deleteSale} from './delete-sale';
+import {receiptQuery} from './supplier-utils.mjs';
+import {normalizeSearch} from './party-search-utils.mjs';
 
 export default function SalesHistory({a4,openA4,saveA4,onFollow,onChanged}){
  const [deleting,setDeleting]=useState(null),[message,setMessage]=useState('');
@@ -18,8 +20,8 @@ export default function SalesHistory({a4,openA4,saveA4,onFollow,onChanged}){
  const change=(setter,value)=>{setter(value);setOffset(0)};
  const doc=(row,customer)=>{const d=salesDocument(row,customer);return a4(d.title,d.body,d.total,d.subtitle)};
  return <section className="salesArchive">
-  <form className="card form" onSubmit={e=>{e.preventDefault();change(setSearch,query.trim());setRefresh(n=>n+1)}}>
-   <label>بحث بالزبون أو رقم الفاتورة<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="اسم الزبون / رقم الفاتورة"/></label>
+  <form className="card form" onSubmit={e=>{e.preventDefault();const q=normalizeSearch(query);change(setSearch,/^[#\d,٬\s]+$/.test(q)?receiptQuery(q):query.trim());setRefresh(n=>n+1)}}>
+   <label>بحث برقم الوصل أو اسم الزبون<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="رقم الوصل / اسم الزبون"/></label>
    <div className="archiveFilters"><label>نوع البيع<select value={kind} onChange={e=>{change(setKind,e.target.value);setStatus('')}}><option value="">الجملة والمنظومات</option><option value="sale">بيع جملة</option><option value="system">بيع منظومات</option></select></label>
    <label>حالة التنصيب<select value={status} disabled={kind==='sale'} onChange={e=>change(setStatus,e.target.value)}><option value="">جميع الحالات</option>{Object.entries(statusLabel).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label></div>
    <div className="dateRange"><label>من<input type="date" value={from} onChange={e=>change(setFrom,e.target.value)}/></label><label>إلى<input type="date" min={from||undefined} value={to} onChange={e=>change(setTo,e.target.value)}/></label></div>
