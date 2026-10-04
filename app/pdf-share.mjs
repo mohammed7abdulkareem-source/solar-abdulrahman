@@ -70,7 +70,7 @@ export async function createPdf(html){
   const height=Math.ceil(Math.max(sheet.scrollHeight,sheet.getBoundingClientRect().height));if(!height)throw new Error('المستند فارغ');
   const body=sheet.cloneNode(true);body.height=height;
   const images=[];
-  for(let top=0;top<height;top+=CSS_PAGE_HEIGHT){const pageHeight=Math.min(CSS_PAGE_HEIGHT,height-top);images.push(await jpegPage(doc,body,styles,top,pageHeight));}
+  for(let top=0;top<height;top+=CSS_PAGE_HEIGHT){const pageHeight=CSS_PAGE_HEIGHT;images.push(await jpegPage(doc,body,styles,top,pageHeight));}
   return makePdfObjects(images);
  }finally{frame.remove();}
 }
@@ -83,4 +83,8 @@ export async function sharePdf(title,html){
  }
  const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.style.display='none';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
  return 'downloaded';
+}
+
+export async function downloadPdf(title,html){
+ const blob=await createPdf(html),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=pdfFilename(title);document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
 }

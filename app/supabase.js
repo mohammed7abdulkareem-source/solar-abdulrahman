@@ -27,7 +27,7 @@ export async function loadCloud(){
  if(!sessionData.session)return {brands:[],products:[],customers:[],suppliers:[],tx:[]};
  const {data:profile,error:profileError}=await supabase.from('profiles').select('active,user_type').eq('id',sessionData.session.user.id).single();
  if(profileError)throw profileError;
- if(!profile.active||profile.user_type==='installer')return {brands:[],products:[],customers:[],suppliers:[],tx:[]};
+ if(!profile.active||['installer','warehouse'].includes(profile.user_type))return {brands:[],products:[],customers:[],suppliers:[],tx:[]};
 
  const [b,p,c,s,t,ti,ce]=await Promise.all([
   allRows('brands'),

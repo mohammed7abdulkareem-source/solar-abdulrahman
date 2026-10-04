@@ -11,5 +11,6 @@ test('notification opens the cash request, installation task and rejects another
  const click=async data=>{let done;handlers.notificationclick({notification:{data,close(){}},waitUntil:p=>done=p});await done};
  await click({userId:uid,transferId:transfer});assert.equal(new URL(opened[0]).searchParams.get('section'),'cashTransfers');assert.equal(new URL(opened[0]).searchParams.get('transfer'),transfer);
  await click({userId:uid,jobId:42});assert.equal(new URL(opened[1]).searchParams.get('job'),'42');
- await click({userId:'another-account',jobId:43});assert.equal(opened.length,2);
+ await click({userId:uid,jobId:44,event:'warehouse_new'});assert.equal(new URL(opened[2]).searchParams.get('section'),'warehouse');assert.equal(new URL(opened[2]).searchParams.get('job'),'44');
+ await click({userId:'another-account',jobId:43});assert.equal(opened.length,3);
 });

@@ -1,6 +1,7 @@
 export const cashOwner = row => row.cashboxUserId || row.createdBy || null;
+export const isWarehouse = profile => profile?.user_type === 'warehouse';
 export const isEngineer = profile => profile?.user_type === 'installer';
-export const isAdministrator = profile => !!profile?.active && !!profile?.is_admin && !isEngineer(profile);
+export const isAdministrator = profile => !!profile?.active && !!profile?.is_admin && !isEngineer(profile) && !isWarehouse(profile);
 export function cashRowsFor(rows, userId, all = false) {
   return rows.filter(row => row.cash && (all || (!!userId && cashOwner(row) === userId)));
 }
@@ -12,6 +13,7 @@ export function canOpenPage(profile, page) {
   if (!profile?.active) return false;
   if (page === 'home') return true;
   if (isEngineer(profile)) return page === 'installations';
+  if (isWarehouse(profile)) return ['warehouse','stock','stockMovement'].includes(page);
   if (isAdministrator(profile)) return true;
   if (['users','updates'].includes(page)) return false;
   if (page === 'cashTransfers') return !!(profile.permissions?.cashTransferSend || profile.permissions?.financeReceive);
