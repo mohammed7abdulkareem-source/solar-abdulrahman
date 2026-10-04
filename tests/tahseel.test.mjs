@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newQuote,calculateQuote,quoteDocument,normalizeNumber} from '../app/tahseel-utils.mjs';
 import {canOpenPage} from '../app/access-utils.mjs';
-const complete=()=>({...newQuote(),panel:{id:1,name:'لوح 600W',cost:'100000'},battery:{id:2,name:'بطارية 15 كيلو',cost:'2000000'},inverter:{id:3,name:'انفيرتر 6kW',cost:'500000'}});
+const complete=()=>({...newQuote(),day:'15',night:'15',batteryCapacity:'15',panel:{id:1,name:'لوح 600W',cost:'100000'},battery:{id:2,name:'بطارية 15 كيلو',cost:'2000000'},inverter:{id:3,name:'انفيرتر 6kW',cost:'500000'}});
 test('15×15: 7 panels, one battery, 465,000 expenses; 5% includes all costs',()=>{
  const q=calculateQuote(complete());
  assert.deepEqual([q.panelQty,q.batteryQty,q.materialsTotal,q.expensesTotal,q.cost,q.markup,q.price],[7,1,3200000,465000,3665000,183250,3848250]);
@@ -40,4 +40,22 @@ test('quote permissions exclude engineers/warehouse/inactive and respect explici
  assert.equal(canOpenPage({...p,permissions:{tahseel:true}},'tahseel'),true);
  for(const user_type of ['installer','warehouse'])assert.equal(canOpenPage({...p,user_type,is_admin:true},'tahseel'),false);
  assert.equal(canOpenPage({...p,active:false},'tahseel'),false);
+});
+
+test('new quotations start with empty day, night and capacity',()=>{
+ const f=newQuote();assert.equal(f.day,'');assert.equal(f.night,'');assert.equal(f.batteryCapacity,'');assert.ok(calculateQuote(f).errors.length);
+});
+test('all shop battery combinations and rounding use the selected capacity',()=>{
+ for(const [night,batteryCapacity,qty] of [[5,5,1],[7.5,7.5,1],[20,10,2],[50,25,2],[30,30,1],[30,15,2],[45,15,3],[16,7.5,3]]){
+  const q=calculateQuote({...complete(),night:String(night),batteryCapacity:String(batteryCapacity)});
+  assert.equal(q.batteryQty,qty);assert.equal(q.materials[1].total,qty*2000000);assert.deepEqual(q.errors,[]);
+ }
+});
+test('capacity must be selected for night demand; zero night needs no battery',()=>{
+ for(const batteryCapacity of ['', '0','-5','12','Infinity'])assert.ok(calculateQuote({...complete(),batteryCapacity}).errors.length);
+ assert.deepEqual(calculateQuote({...complete(),night:'0',batteryCapacity:'',battery:null}).errors,[]);
+});
+test('legacy drafts retain their 15-kilo calculation and new drafts retain capacity on reload',()=>{
+ const old={...complete(),schema:1};delete old.batteryCapacity;assert.equal(calculateQuote(old).price,3848250);
+ const f=JSON.parse(JSON.stringify({...complete(),night:'50',batteryCapacity:'25'}));assert.equal(calculateQuote(f).batteryQty,2);assert.ok(quoteDocument(f).includes('بطارية 25 كيلو'));
 });
