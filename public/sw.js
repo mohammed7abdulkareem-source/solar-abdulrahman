@@ -1,4 +1,4 @@
-const CACHE='abdulrahman-solar-v3-11';
+const CACHE='abdulrahman-solar-v3-12';
 const CORE=['/manifest.webmanifest','/icon.svg'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('abdulrahman-solar-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))});
@@ -35,17 +35,18 @@ self.addEventListener('push',event=>{
   if(!data?.userId||await pushIdentity()!==data.userId)return;
   await self.registration.showNotification(data.title||'عبدالرحمن سولار',{
    body:data.body||'لديك تحديث جديد في البرنامج',icon:'/icon.svg',badge:'/icon.svg',
-   tag:'solar-'+data.id,lang:'ar',dir:'rtl',data:{jobId:data.jobId,userId:data.userId},renotify:false
+   tag:'solar-'+data.id,lang:'ar',dir:'rtl',data:{jobId:data.jobId,userId:data.userId,transferId:data.transferId},renotify:false
   });
  })());
 });
 self.addEventListener('notificationclick',event=>{
  event.notification.close();
  event.waitUntil((async()=>{
-  const {jobId,userId}=event.notification.data||{};
+  const {jobId,userId,transferId}=event.notification.data||{};
   if(await pushIdentity()!==userId)return;
   const url=new URL('/',self.location.origin);
-  if(jobId&&/^-?\d+$/.test(String(jobId))){url.searchParams.set('section','installations');url.searchParams.set('job',String(jobId));}
+  if(transferId&&/^[0-9a-f-]{36}$/i.test(transferId)){url.searchParams.set('section','cashTransfers');url.searchParams.set('transfer',transferId);}
+  else if(jobId&&/^-?\d+$/.test(String(jobId))){url.searchParams.set('section','installations');url.searchParams.set('job',String(jobId));}
   const windows=await self.clients.matchAll({type:'window',includeUncontrolled:true});
   const existing=windows.find(w=>new URL(w.url).origin===self.location.origin);
   if(existing){await existing.navigate(url.href);return existing.focus()}
