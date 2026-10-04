@@ -32,22 +32,21 @@ function renderPage(doc,body,styles,top,height,width){
  root.setAttribute('width',String(width));root.setAttribute('height',String(height));root.setAttribute('viewBox','0 0 '+width+' '+height);
  const background=svg.createElementNS(SVG_NS,'rect');background.setAttribute('width','100%');background.setAttribute('height','100%');background.setAttribute('fill','#fff');root.appendChild(background);
  const foreign=svg.createElementNS(SVG_NS,'foreignObject');foreign.setAttribute('width',String(width));foreign.setAttribute('height',String(height));root.appendChild(foreign);
- const container=svg.createElementNS(XHTML_NS,'div');container.setAttribute('xmlns',XHTML_NS);container.setAttribute('style','width:'+width+'px;height:'+body.height+'px;overflow:visible;transform:translateY(-'+top+'px);transform-origin:top left;background:#fff;color:#17364b;font-family:Tahoma,Arial,sans-serif;');foreign.appendChild(container);
+ const container=svg.createElementNS(XHTML_NS,'div');container.setAttribute('xmlns',XHTML_NS);container.setAttribute('dir',doc.documentElement.dir||'rtl');container.setAttribute('style','width:'+width+'px;height:'+body.height+'px;overflow:visible;transform:translateY(-'+top+'px);transform-origin:top left;padding:38px 0;box-sizing:border-box;background:#fff;color:#17364b;font-family:Tahoma,Arial,sans-serif;');foreign.appendChild(container);
  for(const css of styles){const style=svg.createElementNS(XHTML_NS,'style');style.textContent=css.textContent||'';container.appendChild(style);}
- const cloned=svg.importNode(body,true);cloned.setAttribute('xmlns',XHTML_NS);cloned.style.width=width+'px';cloned.style.minHeight='0';container.appendChild(cloned);
+ const cloned=svg.importNode(body,true);cloned.setAttribute('xmlns',XHTML_NS);cloned.style.setProperty('width','190mm','important');cloned.setAttribute('dir',doc.documentElement.dir||'rtl');cloned.style.minHeight='0';container.appendChild(cloned);
  return new Blob([new XMLSerializer().serializeToString(svg)],{type:'image/svg+xml;charset=utf-8'});
 }
 
 async function jpegPage(doc,body,styles,top,height){
- const markup=renderPage(doc,body,styles,top,height,CSS_PAGE_WIDTH),url=URL.createObjectURL(markup);
- try{
+ // Use an inline SVG data URL: Chromium taints canvas when a foreignObject SVG is loaded from a blob URL.
+ const markup=renderPage(doc,body,styles,top,height,CSS_PAGE_WIDTH),url='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(await markup.text());
   const image=new Image();image.src=url;await image.decode();
   const canvas=document.createElement('canvas');canvas.width=Math.round(CSS_PAGE_WIDTH*RASTER_SCALE);canvas.height=Math.round(height*RASTER_SCALE);
   const context=canvas.getContext('2d',{alpha:false});if(!context)throw new Error('تعذر تجهيز صورة صفحة PDF');
   context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,0,canvas.width,canvas.height);
   const jpg=await new Promise((resolve,reject)=>canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('تعذر تحويل الصفحة إلى PDF')),'image/jpeg',0.9));
   return {width:canvas.width,height:canvas.height,bytes:new Uint8Array(await jpg.arrayBuffer())};
- }finally{URL.revokeObjectURL(url);}
 }
 
 function pdfFilename(name){const safe=String(name||'مستند').replace(/[\\/:*?"<>|\r\n]+/g,'-').slice(0,90)||'مستند';return (safe.toLowerCase().endsWith('.pdf')?safe:safe+'.pdf');}
@@ -67,7 +66,7 @@ export async function createPdf(html){
   doc.documentElement.style.cssText+=';width:794px!important;min-height:0!important;overflow:visible!important;background:#fff!important';
   doc.body.style.cssText+=';width:794px!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;background:#fff!important';
   const styles=[...doc.head.querySelectorAll('style')];
-  const height=Math.ceil(Math.max(sheet.scrollHeight,sheet.getBoundingClientRect().height));if(!height)throw new Error('المستند فارغ');
+  const height=Math.ceil(Math.max(sheet.scrollHeight,sheet.getBoundingClientRect().height)+76);if(height<=76)throw new Error('المستند فارغ');
   const body=sheet.cloneNode(true);body.height=height;
   const images=[];
   for(let top=0;top<height;top+=CSS_PAGE_HEIGHT){const pageHeight=CSS_PAGE_HEIGHT;images.push(await jpegPage(doc,body,styles,top,pageHeight));}
