@@ -14,7 +14,8 @@ export function canOpenPage(profile, page) {
   if (isEngineer(profile)) return page === 'installations';
   if (isAdministrator(profile)) return true;
   if (['users','updates'].includes(page)) return false;
-  if (page === 'installations') return !!(profile.permissions?.installations || profile.permissions?.system);
+  if (page === 'installations') return !!(profile.permissions?.installations || profile.permissions?.installationsAll || profile.permissions?.system);
+  if (page === 'salesHistory') return !!(profile.permissions?.salesHistory || profile.permissions?.sale || profile.permissions?.system || profile.permissions?.installations || profile.permissions?.installationsAll);
   return !!profile.permissions?.[page];
 }
 export const canSeeCash = profile => !isEngineer(profile) && canOpenPage(profile,'cash');
