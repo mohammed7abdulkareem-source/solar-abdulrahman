@@ -5,6 +5,17 @@ const url='https://afxxaafsuscwyjzrnagc.supabase.co';
 const key='sb_publishable_NWfk9al_gjcSnI6NBQX6GA_CGiQ2-Jy';
 export const supabase=createClient(url,key);
 
+// Financial totals and customer search must not stop at the API's 1,000-row cap.
+async function allRows(table,select='*',order='id'){
+ const rows=[];
+ for(let offset=0;;offset+=1000){
+  const result=await supabase.from(table).select(select).order(order).range(offset,offset+999);
+  if(result.error)return result;
+  rows.push(...result.data);
+  if(result.data.length<1000)return {data:rows,error:null};
+ }
+}
+
 const mapProduct=r=>({id:r.id,code:r.code,name:r.name,brand:r.brands?.name||'',brandId:r.brand_id,category:r.category||'',qty:Number(r.qty||0),cost:Number(r.cost||0)});
 const mapCustomer=r=>({id:r.id,name:r.name,phone:r.phone||'',customerType:r.customer_type==='wholesale'?'جملة - بيع جملة':'مفرد - منظومات',ownerId:r.owner_id||null});
 const mapSupplier=r=>({id:r.id,name:r.name,phone:r.phone||''});
@@ -18,16 +29,18 @@ export async function loadCloud(){
  if(profileError)throw profileError;
  if(!profile.active||profile.user_type==='installer')return {brands:[],products:[],customers:[],suppliers:[],tx:[]};
 
- const [b,p,c,s,t,ti]=await Promise.all([
-  supabase.from('brands').select('*').order('id'),
-  supabase.from('products').select('*,brands(name)').order('id'),
-  supabase.from('customers').select('*').order('id'),
-  supabase.from('suppliers').select('*').order('id'),
-  supabase.from('transactions').select('*').order('created_at'),
-  supabase.from('transaction_items').select('*').order('id')
+ const [b,p,c,s,t,ti,ce]=await Promise.all([
+  allRows('brands'),
+  allRows('products','*,brands(name)'),
+  allRows('customers'),
+  allRows('suppliers'),
+  allRows('transactions'),
+  allRows('transaction_items'),
+  allRows('solar_cash_entries')
  ]);
- for(const x of [b,p,c,s,t,ti])if(x.error)throw x.error;
- return {brands:b.data.map(x=>({id:x.id,name:x.name})),products:p.data.map(mapProduct),customers:c.data.map(mapCustomer),suppliers:s.data.map(mapSupplier),tx:t.data.map(x=>mapTx(x,ti.data))};
+ for(const x of [b,p,c,s,t,ti,ce])if(x.error)throw x.error;
+ const entries=ce.data.map(r=>({id:'cash:'+r.id,systemCash:true,kind:r.entry_type,cash:true,cashDelta:Number(r.delta),total:Math.abs(Number(r.delta)),cashboxUserId:r.owner_id,createdBy:r.owner_id,notes:r.notes||'',date:r.created_at,jobId:r.job_id}));
+ return {brands:b.data.map(x=>({id:x.id,name:x.name})),products:p.data.map(mapProduct),customers:c.data.map(mapCustomer),suppliers:s.data.map(mapSupplier),tx:[...t.data.map(x=>mapTx(x,ti.data)),...entries].sort((a,b)=>new Date(a.date)-new Date(b.date))};
 }
 let pendingSaves=[];
 let saveQueue=Promise.resolve();
@@ -50,7 +63,7 @@ export function saveCloud(k,next,previous){
 async function buildChanges(k,next,previous){
  const changes=[];const replace=async(table,rows,removed=[])=>{changes.push({table,rows,removed})};
  if(!Array.isArray(previous))throw new Error('Missing save baseline');
- const {changed:v,removed}=changedRows(previous,next);
+ const {changed:v,removed}=changedRows(previous.filter(x=>!x.systemCash),next.filter(x=>!x.systemCash));
  if(!v.length&&!removed.length)return changes;
  if(k==='solar_brands'){await replace('brands',v.map(x=>({id:x.id,name:x.name})),removed);return changes}
  if(k==='solar_customers'){await replace('customers',v.map(x=>({id:x.id,name:x.name,phone:x.phone||null,customer_type:String(x.customerType||'').includes('جملة')?'wholesale':'system',owner_id:x.ownerId||null})),removed);return changes}

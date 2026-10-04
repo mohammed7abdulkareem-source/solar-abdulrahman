@@ -6,6 +6,8 @@ select set_config('solar_test.admin',(select id::text from public.profiles where
 select set_config('solar_test.staff',(select id::text from public.profiles where active and not is_admin and user_type='admin_staff' order by created_at limit 1),true);
 select set_config('solar_test.other',(select id::text from public.profiles where active and not is_admin and user_type='admin_staff' and id<>current_setting('solar_test.staff')::uuid order by created_at limit 1),true);
 update public.profiles set permissions=permissions||'{"installations":true,"installationsAll":false}'::jsonb where id=current_setting('solar_test.staff')::uuid;
+-- V3.11: the admin recloser must fund the additional approved expense.
+insert into public.transactions(id,kind,cash,total,created_by,cashbox_user_id) values(-910010,'cash_income',true,1000,current_setting('solar_test.admin')::uuid,current_setting('solar_test.admin')::uuid);
 insert into public.transactions(id,kind,cash,total,cost,created_by,cashbox_user_id,installer_id,installation_status)
 values
 (-910001,'cash_income',true,500,0,current_setting('solar_test.admin')::uuid,current_setting('solar_test.staff')::uuid,null,'none'),
