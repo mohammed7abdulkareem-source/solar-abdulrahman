@@ -3,7 +3,7 @@ import {useEffect,useState} from 'react';
 import {supabase} from './supabase';
 import {salesDocument,statusLabel,formatMoney} from './sales-document.mjs';
 import {deleteSale} from './delete-sale';
-import {receiptQuery} from './supplier-utils.mjs';
+import {receiptQuery,receiptNumber} from './supplier-utils.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 
 export default function SalesHistory({a4,openA4,saveA4,onFollow,onChanged}){
@@ -30,10 +30,10 @@ export default function SalesHistory({a4,openA4,saveA4,onFollow,onChanged}){
   {error&&<div className="workflowError" role="alert">{error}</div>}{message&&<div className="workflowSuccess" role="status">{message}</div>}
   {loading?<div className="empty">جاري تحميل المبيعات…</div>:<><p className="archiveCount">{formatMoney(result.count)} فاتورة ضمن صلاحياتك</p>
   {!result.rows.length?<div className="empty">لا توجد مبيعات ضمن هذا الاختيار</div>:result.rows.map(row=><article className="card archiveInvoice" key={row.id}>
-   <header><div><small>{row.kind==='system'?'بيع منظومة':'بيع جملة'} · #{row.id}</small><h3>{row.party_name||'زبون نقدي'}</h3><small>{new Date(row.created_at).toLocaleDateString('ar-IQ',{timeZone:'Asia/Baghdad'})} · {row.creatorName||'—'}</small></div><b>{formatMoney(row.total)} د.ع</b></header>
+   <header><div><small>{row.kind==='system'?'بيع منظومة':'بيع جملة'} · #{receiptNumber(row)}</small><h3>{row.party_name||'زبون نقدي'}</h3><small>{new Date(row.created_at).toLocaleDateString('ar-IQ',{timeZone:'Asia/Baghdad'})} · {row.creatorName||'—'}</small></div><b>{formatMoney(row.total)} د.ع</b></header>
    {row.kind==='system'&&<p className="archiveStatus">{statusLabel[row.installation_status]||'غير محدد'} · المهندس: {row.installerName||'غير محدد'}</p>}
    <details><summary>تفاصيل المواد ({row.items.length})</summary>{row.items.map((item,i)=><div className="archiveLine" key={i}><span>{item.product_name}<small>{[item.brand_name,item.category].filter(Boolean).join(' · ')}</small></span><b>× {formatMoney(item.qty)}</b></div>)}</details>
-   <div className="receiptCopies"><button onClick={()=>openA4(doc(row,true))}>معاينة وصل الزبون</button><button onClick={()=>openA4(doc(row,false))}>معاينة الوصل المخزني</button><button onClick={()=>saveA4(doc(row,true),'وصل-زبون-'+row.id)}>حفظ PDF / طباعة الزبون</button><button onClick={()=>saveA4(doc(row,false),'وصل-مخزني-'+row.id)}>حفظ PDF / طباعة المخزن</button></div>
+   <div className="receiptCopies"><button onClick={()=>openA4(doc(row,true))}>معاينة وصل الزبون</button><button onClick={()=>openA4(doc(row,false))}>معاينة الوصل المخزني</button><button onClick={()=>saveA4(doc(row,true),'وصل-زبون-'+receiptNumber(row))}>حفظ PDF / طباعة الزبون</button><button onClick={()=>saveA4(doc(row,false),'وصل-مخزني-'+receiptNumber(row))}>حفظ PDF / طباعة المخزن</button></div>
    {row.kind==='system'&&onFollow&&<button className="workflowSecondary archiveFollow" onClick={()=>onFollow(String(row.id))}>متابعة ملف التنصيب</button>}
    {row.canDelete&&<button className="dangerMini archiveDelete" disabled={deleting!==null} onClick={()=>remove(row)}>{deleting===row.id?'جاري مراجعة الحذف…':'حذف الوصل'}</button>}
   </article>)}

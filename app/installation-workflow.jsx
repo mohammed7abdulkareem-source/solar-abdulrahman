@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {supabase} from './supabase';
+import {receiptNumber} from './supplier-utils.mjs';
 const stages=[['pending','موعد محدد'],['in_progress','جاري التنصيب'],['completed','مراجعة التقرير'],['closed','ملف مغلق']];
 const fmt=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const rawMoney=value=>String(value??'').replace(/,/g,'').trim();
@@ -24,7 +25,7 @@ export default function InstallationWorkflow({profile,onChanged,selectedJob=''})
   finally{setBusy(null)}
  }
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Baghdad',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
- const visible=jobs.filter(j=>(status==='all'||(status==='open'?j.installationStatus!=='closed':j.installationStatus===status))&&(!query||[j.party,j.customerPhone,j.customerAddress,j.installerName,String(j.id)].join(' ').includes(query.trim())));
+ const visible=jobs.filter(j=>(status==='all'||(status==='open'?j.installationStatus!=='closed':j.installationStatus===status))&&(!query||[j.party,j.customerPhone,j.customerAddress,j.installerName,String(j.receiptNo),...(selectedJob?[String(j.id)]:[])].join(' ').includes(query.trim())));
  return <div className="workflow">
   <div className="workflowHero"><div><small>متابعة التنفيذ خطوة بخطوة</small><h2>{engineer?'مهامي الميدانية':'إدارة التنصيبات'}</h2><p>{engineer?'موعدك، موادك، وتقرير إنجازك بمكان واحد':'متابعة المهندس، مراجعة التقرير، ثم اعتماد الكلفة النهائية'}</p></div><span aria-hidden="true">☀</span></div>
   <div className="workflowStats"><div><b>{jobs.filter(j=>j.installDate===today&&j.installationStatus!=='closed').length}</b><span>مواعيد اليوم</span></div><div><b>{jobs.filter(j=>j.installationStatus==='in_progress').length}</b><span>قيد التنفيذ</span></div><div><b>{jobs.filter(j=>j.installationStatus==='completed').length}</b><span>بانتظار المراجعة</span></div></div>
@@ -38,7 +39,7 @@ function JobCard({job,engineer,busy,change}){
  const index=stages.findIndex(([s])=>s===job.installationStatus),report=job.installationReport||{};
  const phone=String(job.customerPhone||'').replace(/[^+0-9]/g,'');
  return <article className="workflowJob">
-  <header><div><small>ملف #{String(job.id).slice(-6)}</small><h3>{job.party||'عميل منظومة'}</h3></div><span className={'workflowStatus '+job.installationStatus}>{stages[index]?.[1]||job.installationStatus}</span></header>
+  <header><div><small>ملف #{receiptNumber(job)}</small><h3>{job.party||'عميل منظومة'}</h3></div><span className={'workflowStatus '+job.installationStatus}>{stages[index]?.[1]||job.installationStatus}</span></header>
   <ol className="workflowSteps" aria-label="مراحل التنصيب">{stages.map(([stage,label],i)=><li key={stage} className={i<=index?'reached':''} aria-current={i===index?'step':undefined}><span>{i<index?'✓':i+1}</span><small>{label}</small></li>)}</ol>
   <div className="jobDetails"><div><small>موعد التنصيب</small><b>{job.installDate||'لم يحدد'} • {job.installTime?.slice(0,5)||'الوقت غير محدد'}</b></div><div><small>مهندس التنصيب</small><b>{job.installerName||'غير مسند'}</b></div><div className="jobAddress"><small>العنوان</small><b>{job.customerAddress||'العنوان غير محدد'}</b></div></div>
   <div className="jobContact">{phone?<a href={'tel:'+phone}>اتصال بالزبون · {job.customerPhone}</a>:<span>رقم الهاتف غير متوفر</span>}</div>

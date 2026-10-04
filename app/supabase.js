@@ -19,7 +19,7 @@ async function allRows(table,select='*',order='id'){
 const mapProduct=r=>({id:r.id,code:r.code,name:r.name,brand:r.brands?.name||'',brandId:r.brand_id,category:r.category||'',qty:Number(r.qty||0),cost:Number(r.cost||0)});
 const mapCustomer=r=>({id:r.id,name:r.name,phone:r.phone||'',customerType:r.customer_type==='wholesale'?'جملة - بيع جملة':'مفرد - منظومات',ownerId:r.owner_id||null});
 const mapSupplier=r=>({id:r.id,name:r.name,phone:r.phone||''});
-const mapTx=(r,items=[])=>({id:r.id,kind:r.kind,party:r.party_name||'',partyId:r.party_id,createdBy:r.created_by||null,installerId:r.installer_id||null,installDate:r.install_date||'',installTime:r.install_time||'',customerPhone:r.customer_phone||'',customerAddress:r.customer_address||'',installationStatus:r.installation_status||'none',installationCompletedAt:r.installation_completed_at||null,installationClosedAt:r.installation_closed_at||null,installationExpenses:Number(r.installation_expenses||0),installationExpenseNotes:r.installation_expense_notes||'',cashboxUserId:r.cashbox_user_id||null,capitalEffect:!!r.capital_effect,total:Number(r.total||0),subtotal:Number(r.subtotal||0),expenses:Number(r.expenses||0),cost:Number(r.cost||0),profit:Number(r.profit||0),cash:!!r.cash,notes:r.notes||'',mode:r.payment_mode||'',date:r.created_at,items:items.filter(i=>i.transaction_id===r.id).map(i=>({id:i.product_id,name:i.product_name,brand:i.brand_name||'',category:i.category||'',qty:Number(i.qty||0),price:Number(i.price||0),cost:Number(i.cost||0),landedCost:Number(i.landed_cost||0)}))});
+const mapTx=(r,items=[])=>({id:r.id,receiptNo:r.receipt_no,kind:r.kind,party:r.party_name||'',partyId:r.party_id,createdBy:r.created_by||null,installerId:r.installer_id||null,installDate:r.install_date||'',installTime:r.install_time||'',customerPhone:r.customer_phone||'',customerAddress:r.customer_address||'',installationStatus:r.installation_status||'none',installationCompletedAt:r.installation_completed_at||null,installationClosedAt:r.installation_closed_at||null,installationExpenses:Number(r.installation_expenses||0),installationExpenseNotes:r.installation_expense_notes||'',cashboxUserId:r.cashbox_user_id||null,capitalEffect:!!r.capital_effect,total:Number(r.total||0),subtotal:Number(r.subtotal||0),expenses:Number(r.expenses||0),cost:Number(r.cost||0),profit:Number(r.profit||0),cash:!!r.cash,notes:r.notes||'',mode:r.payment_mode||'',date:r.created_at,items:items.filter(i=>i.transaction_id===r.id).map(i=>({id:i.product_id,name:i.product_name,brand:i.brand_name||'',category:i.category||'',qty:Number(i.qty||0),price:Number(i.price||0),cost:Number(i.cost||0),landedCost:Number(i.landed_cost||0)}))});
 
 export async function loadCloud(){
  const {data:sessionData,error:sessionError}=await supabase.auth.getSession();
@@ -52,8 +52,9 @@ export function saveCloud(k,next,previous){
    const batch=pendingSaves;pendingSaves=[];
    const run=async()=>{
     try{const changes=(await Promise.all(batch.map(job=>job.prepare()))).flat();
-     if(changes.length){const {error}=await supabase.rpc('solar_save_rows_v31',{changes});if(error)throw error}
-     batch.forEach(job=>job.resolve());
+     let receipts=[];
+     if(changes.length){const {data,error}=await supabase.rpc('solar_save_rows_with_receipts',{changes});if(error)throw error;receipts=data||[]}
+     batch.forEach(job=>job.resolve(receipts));
     }catch(error){batch.forEach(job=>job.reject(error))}
    };
    saveQueue=saveQueue.then(run,run);
