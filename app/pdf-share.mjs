@@ -51,6 +51,25 @@ async function jpegPage(doc,body,styles,top,height){
 
 function pdfFilename(name){const safe=String(name||'مستند').replace(/[\\/:*?"<>|\r\n]+/g,'-').slice(0,90)||'مستند';return (safe.toLowerCase().endsWith('.pdf')?safe:safe+'.pdf');}
 
+// Opt-in account reports repeat headings and keep complete rows on each page.
+function reportPages(sheet,doc){
+ const table=sheet.querySelector('table[data-pdf-paginate]');if(!table)return null;
+ const rows=[...table.tBodies[0].rows],template=sheet.cloneNode(true);
+ template.querySelector('tbody').replaceChildren();
+ const total=template.querySelector('.total');total?.remove();
+ const pages=[];
+ const addPage=()=>{const page=template.cloneNode(true);doc.body.appendChild(page);pages.push(page);return page};
+ let page=addPage(),body=page.querySelector('tbody');
+ for(const row of rows){
+  const copy=row.cloneNode(true);body.appendChild(copy);
+  if(page.getBoundingClientRect().height>CSS_PAGE_HEIGHT-176&&body.rows.length>1){copy.remove();page=addPage();body=page.querySelector('tbody');body.appendChild(copy);}
+  if(page.getBoundingClientRect().height>CSS_PAGE_HEIGHT-176)throw new Error('أحد صفوف التقرير طويل جداً لصفحة PDF');
+ }
+ if(total)page.insertBefore(total,page.querySelector('.foot'));
+ pages.forEach((p,i)=>{const foot=p.querySelector('.foot');if(foot)foot.textContent+=' • صفحة '+(i+1)+' من '+pages.length;});
+ return pages;
+}
+
 export async function createPdf(html){
  if(typeof document==='undefined')throw new Error('إنشاء PDF متاح من داخل البرنامج');
  const frame=document.createElement('iframe');frame.setAttribute('aria-hidden','true');frame.title='تجهيز ملف PDF';
@@ -66,6 +85,12 @@ export async function createPdf(html){
   doc.documentElement.style.cssText+=';width:794px!important;min-height:0!important;overflow:visible!important;background:#fff!important';
   doc.body.style.cssText+=';width:794px!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;background:#fff!important';
   const styles=[...doc.head.querySelectorAll('style')];
+  const reports=reportPages(sheet,doc);
+  if(reports){
+   const images=[];
+   for(const page of reports){const body=page.cloneNode(true);body.height=CSS_PAGE_HEIGHT;images.push(await jpegPage(doc,body,styles,0,CSS_PAGE_HEIGHT));}
+   return makePdfObjects(images);
+  }
   const height=Math.ceil(Math.max(sheet.scrollHeight,sheet.getBoundingClientRect().height)+76);if(height<=76)throw new Error('المستند فارغ');
   const body=sheet.cloneNode(true);body.height=height;
   const images=[];
