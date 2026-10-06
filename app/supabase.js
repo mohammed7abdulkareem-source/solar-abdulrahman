@@ -5,6 +5,19 @@ const url='https://afxxaafsuscwyjzrnagc.supabase.co';
 const key='sb_publishable_NWfk9al_gjcSnI6NBQX6GA_CGiQ2-Jy';
 export const supabase=createClient(url,key);
 
+// Verify in an isolated, non-persistent session. The reset endpoint repeats this
+// check server-side when executing, after the user's final confirmation.
+export async function verifyResetPassword(password){
+ const {data:current,error:currentError}=await supabase.auth.getUser();
+ if(currentError||!current?.user?.email)throw new Error('تعذر التحقق من الحساب. سجّل الدخول مجدداً.');
+ const verifier=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storageKey:'solar-reset-password-check'}});
+ try{
+  const {data,error}=await verifier.auth.signInWithPassword({email:current.user.email,password});
+  if(error||data?.user?.id!==current.user.id)throw new Error('الباسورد غير صحيح أو تعذر التحقق منه. لم يتم تصفير أي بيانات.');
+ }finally{await verifier.auth.signOut({scope:'local'}).catch(()=>{});}
+}
+
+
 // Financial totals and customer search must not stop at the API's 1,000-row cap.
 async function allRows(table,select='*',order='id'){
  const rows=[];

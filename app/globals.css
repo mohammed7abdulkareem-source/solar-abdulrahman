@@ -52,3 +52,8 @@ main{padding-bottom:max(28px,env(safe-area-inset-bottom));max-width:900px}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 
 .stockRow{grid-template-columns:minmax(0,1.4fr) minmax(0,.5fr) minmax(0,1fr) minmax(0,1.1fr)!important;padding:12px 8px;gap:6px}.stockTable{box-shadow:none!important}.stockRow>span{line-height:1.8}.stockRow.head b{font-size:11px}
+
+/* Consistent, readable figures and grid lines in inventory/account views. */
+.stockRow:not(.head)>span,.statementRow:not(.head)>b,.statementRow:not(.head)>strong,.warehouseNumbers b{color:#000;font-weight:800}
+.stockRow,.statementRow{border-bottom:1px solid #b8c5d0}
+.stockRow>*+*,.statementRow>*+*{border-inline-start:1px solid #cbd5df;padding-inline-start:8px}

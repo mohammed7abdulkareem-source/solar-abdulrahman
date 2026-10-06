@@ -51,27 +51,48 @@ async function jpegPage(doc,body,styles,top,height){
 
 function pdfFilename(name){const safe=String(name||'مستند').replace(/[\\/:*?"<>|\r\n]+/g,'-').slice(0,90)||'مستند';return (safe.toLowerCase().endsWith('.pdf')?safe:safe+'.pdf');}
 
-// Opt-in account reports repeat headings and keep complete rows on each page.
-function reportPages(sheet,doc){
- const table=sheet.querySelector('table[data-pdf-paginate]');if(!table)return null;
- const rows=[...table.tBodies[0].rows],template=sheet.cloneNode(true);
- template.querySelector('tbody').replaceChildren();
- const endings=[...template.querySelectorAll('[data-pdf-end]')];endings.forEach(el=>el.remove());
- const total=template.querySelector('.total');total?.remove();
- const pages=[];
- const addPage=()=>{const page=template.cloneNode(true);doc.body.appendChild(page);pages.push(page);return page};
- let page=addPage(),body=page.querySelector('tbody');
- for(const row of rows){
-  const copy=row.cloneNode(true);body.appendChild(copy);
-  if(page.getBoundingClientRect().height>CSS_PAGE_HEIGHT-176&&body.rows.length>1){copy.remove();page=addPage();body=page.querySelector('tbody');body.appendChild(copy);}
-  if(page.getBoundingClientRect().height>CSS_PAGE_HEIGHT-176)throw new Error('أحد صفوف التقرير طويل جداً لصفحة PDF');
- }
- if(endings.length){
-  const ending=doc.createElement('div');ending.append(...endings);if(total)ending.append(total);page.insertBefore(ending,page.querySelector('.foot'));
-  if(page.getBoundingClientRect().height>CSS_PAGE_HEIGHT-76){ending.remove();page=addPage();page.querySelector('table[data-pdf-paginate]')?.remove();page.insertBefore(ending,page.querySelector('.foot'));}
-  if(page.getBoundingClientRect().height>CSS_PAGE_HEIGHT-76)throw new Error('ملاحظات المستند طويلة جداً لصفحة PDF');
- }else if(total)page.insertBefore(total,page.querySelector('.foot'));
- pages.forEach((p,i)=>{const foot=p.querySelector('.foot');if(foot)foot.textContent+=' • صفحة '+(i+1)+' من '+pages.length;});
+// Lay out every document before rasterizing. Tables flow by complete rows,
+// repeating their headings; wrappers and multiple tables retain document order.
+export function reportPages(sheet,doc){
+ const header=sheet.querySelector(':scope > .head'),footer=sheet.querySelector(':scope > .foot');
+ const pages=[];let page,containers;
+ const limit=CSS_PAGE_HEIGHT-156; // physical margins plus a footer allowance
+ const addPage=()=>{page=sheet.cloneNode(false);page.removeAttribute('id');if(header)page.append(header.cloneNode(true));doc.body.append(page);pages.push(page);containers=new Map();};
+ const parentFor=ancestors=>{let parent=page;for(const source of ancestors){let copy=containers.get(source);if(!copy){copy=source.cloneNode(false);copy.removeAttribute('id');parent.append(copy);containers.set(source,copy)}parent=copy}return parent};
+ const fits=()=>page.getBoundingClientRect().height<=limit;
+ const hasContent=()=>page.textContent!== (header?.textContent||'');
+ const removeEmpty=()=>{for(const [source,copy] of [...containers].reverse()){if(!copy.textContent.trim()&&!copy.querySelector('img,svg')){copy.remove();containers.delete(source)}}};
+ const appendBlock=(source,ancestors)=>{
+  const hadContent=hasContent(),copy=source.cloneNode(true);parentFor(ancestors).append(copy);
+  if(fits())return;
+  copy.remove();removeEmpty();if(hadContent)addPage();parentFor(ancestors).append(copy);
+  if(!fits()){
+   copy.remove();removeEmpty();
+   // Long notes may span pages, while invoice rows always remain intact.
+   if(source.nodeType===1&&source.matches('.notes,[data-pdf-end]')&&source.textContent.trim()){
+    const words=source.textContent.trim().split(/\s+/);let part=source.cloneNode(false);parentFor(ancestors).append(part);
+    for(const word of words){const before=part.textContent;part.textContent+=(before?' ':'')+word;if(!fits()){part.textContent=before;if(!before)throw new Error('تعذر تنسيق الملاحظات على صفحة PDF');addPage();part=source.cloneNode(false);part.textContent=word;parentFor(ancestors).append(part)}}
+   }else throw new Error('أحد أجزاء المستند أطول من صفحة PDF. اختصر النص ثم حاول مجدداً.');
+  }
+ };
+ const flow=(source,ancestors=[])=>{
+  if(source===header||source===footer||source.nodeType===1&&source.matches('style,script'))return;
+  if(source.nodeType===3&&!source.textContent.trim())return;
+  if(source.nodeType===1&&source.tagName==='TABLE'){
+   const makeTable=()=>{const copy=source.cloneNode(false);for(const child of source.children)if(['CAPTION','COLGROUP','THEAD'].includes(child.tagName))copy.append(child.cloneNode(true));const body=doc.createElement('tbody');copy.append(body);parentFor(ancestors).append(copy);containers.set(source,copy);return {copy,body}};
+   const rows=[...source.tBodies].flatMap(body=>[...body.rows]);let current=makeTable();
+   if(!rows.length){if(!fits()){current.copy.remove();removeEmpty();addPage();current=makeTable()}return}
+   for(const row of rows){const copy=row.cloneNode(true);current.body.append(copy);if(!fits()){
+    copy.remove();if(!current.body.rows.length)current.copy.remove();removeEmpty();addPage();current=makeTable();current.body.append(copy);
+    if(!fits())throw new Error('أحد صفوف التقرير طويل جداً لصفحة PDF. اختصر وصف المادة.');
+   }}
+   if(source.tFoot){const foot=source.tFoot.cloneNode(true);current.copy.append(foot);if(!fits()){foot.remove();addPage();current=makeTable();current.copy.append(foot);if(!fits())throw new Error('ملخص الجدول أطول من صفحة PDF');}}
+  }else if(source.nodeType===1&&source.querySelector('table')){
+   for(const child of source.childNodes)flow(child,[...ancestors,source]);
+  }else appendBlock(source,ancestors);
+ };
+ addPage();for(const child of sheet.childNodes)flow(child);
+ pages.forEach((p,i)=>{const foot=footer?footer.cloneNode(true):doc.createElement('div');foot.className='foot';foot.textContent+=(foot.textContent?' • ':'')+'صفحة '+(i+1)+' من '+pages.length;p.append(foot)});
  return pages;
 }
 
@@ -89,17 +110,9 @@ export async function createPdfDocument(html){
   sheet.style.setProperty('width','190mm','important');sheet.style.setProperty('max-width','none','important');sheet.style.setProperty('min-height','0','important');sheet.style.setProperty('margin','0 auto','important');sheet.style.setProperty('padding','0','important');
   doc.documentElement.style.cssText+=';width:794px!important;min-height:0!important;overflow:visible!important;background:#fff!important';
   doc.body.style.cssText+=';width:794px!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;background:#fff!important';
-  const styles=[...doc.head.querySelectorAll('style')];
-  const reports=reportPages(sheet,doc);
-  if(reports){
-   const images=[];
-   for(const page of reports){const body=page.cloneNode(true);body.height=CSS_PAGE_HEIGHT;images.push(await jpegPage(doc,body,styles,0,CSS_PAGE_HEIGHT));}
-   return {blob:makePdfObjects(images),pages:images};
-  }
-  const height=Math.ceil(Math.max(sheet.scrollHeight,sheet.getBoundingClientRect().height)+76);if(height<=76)throw new Error('المستند فارغ');
-  const body=sheet.cloneNode(true);body.height=height;
-  const images=[];
-  for(let top=0;top<height;top+=CSS_PAGE_HEIGHT){const pageHeight=CSS_PAGE_HEIGHT;images.push(await jpegPage(doc,body,styles,top,pageHeight));}
+  const styles=[...doc.querySelectorAll('style')];
+  const reports=reportPages(sheet,doc),images=[];
+  for(const page of reports){const body=page.cloneNode(true);body.height=CSS_PAGE_HEIGHT;images.push(await jpegPage(doc,body,styles,0,CSS_PAGE_HEIGHT));}
   return {blob:makePdfObjects(images),pages:images};
  }finally{frame.remove();}
 }

@@ -3,8 +3,8 @@ import {useEffect,useRef} from 'react';
 import {normalizeSearch} from './party-search-utils.mjs';
 import {moneyInput} from './supplier-utils.mjs';
 const number=value=>Number(value||0).toLocaleString('en-US',{maximumFractionDigits:2});
-export function InvoiceShell({title,children,saving=false,editing=null}){
- return <section className="invoiceWorkspace" aria-label={title}><header className="deskHeader"><div><small>عبدالرحمن سولار / المبيعات والمشتريات</small><h1>{title}</h1></div><div className="deskHeaderMeta"><span>{editing?'تعديل فاتورة #'+editing.number:'فاتورة جديدة'}</span><time>{new Date(editing?.date||Date.now()).toLocaleDateString('en-GB')}</time><span>الدينار العراقي · IQD</span></div></header><fieldset className="deskForm" disabled={saving}>{children}</fieldset></section>;
+export function InvoiceShell({title,children,saving=false,editing=null,className=''}){
+ return <section className={'invoiceWorkspace '+className} aria-label={title}><header className="deskHeader"><div><small>عبدالرحمن سولار / المبيعات والمشتريات</small><h1>{title}</h1></div><div className="deskHeaderMeta"><span>{editing?'تعديل فاتورة #'+editing.number:'فاتورة جديدة'}</span><time>{new Date(editing?.date||Date.now()).toLocaleDateString('en-GB')}</time><span>الدينار العراقي · IQD</span></div></header><fieldset className="deskForm" disabled={saving}>{children}</fieldset></section>;
 }
 export function InvoiceField({label,children,className=''}){return <div className={'deskField '+className}><div className="deskLabel">{label}</div>{children}</div>}
 export function InvoiceCatalog({products,items,query,onQuery,onAdd}){
