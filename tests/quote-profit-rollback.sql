@@ -1,0 +1,68 @@
+begin;
+do $$declare actor uuid; other_actor uuid; f jsonb; expected numeric; begin
+ select id into actor from public.profiles where active and user_type='admin_staff' and not is_admin order by created_at limit 1;
+ select id into other_actor from public.profiles where active and id<>actor order by created_at limit 1;
+ if actor is null or other_actor is null then raise exception 'Two profiles required';end if;
+ perform set_config('quote_test.actor',actor::text,true);perform set_config('quote_test.other',other_actor::text,true);perform set_config('quote_test.id',gen_random_uuid()::text,true);
+ update public.profiles set permissions=permissions||'{"tahseel":true,"tahseelFull":false}' where id=actor;
+ f:=jsonb_build_object('day','15','night','15','batteryCapacity','15','markupPercent','0','perPanel','0','expenses','{}'::jsonb);
+ f:=f||jsonb_build_object('panel',(select jsonb_build_object('id',id,'cost','1') from public.products where cost>0 and category ~* 'ألواح|الواح|panel' limit 1),'battery',(select jsonb_build_object('id',id,'cost','1') from public.products where cost>0 and category ~* 'بطاري|batter' limit 1),'inverter',(select jsonb_build_object('id',id,'cost','1') from public.products where cost>0 and category ~* 'انفيرتر|إنفيرتر|inverter|all in one' limit 1));
+ expected:=465000+(select cost*7 from public.products where id=(f->'panel'->>'id')::bigint)+(select cost from public.products where id=(f->'battery'->>'id')::bigint)+(select cost from public.products where id=(f->'inverter'->>'id')::bigint);
+ if expected is null then raise exception 'Products required';end if;
+ perform set_config('quote_test.expected',(expected+round(expected*.15,2))::text,true);perform set_config('quote_test.payload',f::text,true);
+end $$;
+set local role authenticated;
+do $$declare result jsonb; saved jsonb; affected integer; begin
+ perform set_config('request.jwt.claim.sub',current_setting('quote_test.actor'),true);
+ result:=public.solar_limited_quote('preview',current_setting('quote_test.payload')::jsonb);
+ if jsonb_array_length(result->'errors')<>0 or (result->>'price')::numeric<>current_setting('quote_test.expected')::numeric then raise exception 'FAIL trusted pricing %',result;end if;
+ if result::text ~ 'unitCost|expensesTotal|materialsTotal|"cost"' then raise exception 'FAIL cost disclosure';end if;
+ saved:=public.solar_limited_quote('save',current_setting('quote_test.payload')::jsonb,current_setting('quote_test.id')::uuid);
+ if saved->'payload' ? 'expenses' or saved->'payload'->'panel' ? 'cost' then raise exception 'FAIL saved disclosure';end if;
+ if exists(select 1 from public.solar_quotes) then raise exception 'FAIL direct read';end if;
+ begin insert into public.solar_quotes(id,user_id,payload) values(gen_random_uuid(),auth.uid(),'{}');raise exception 'FAIL direct write';exception when insufficient_privilege then null;end;
+ saved:=public.solar_limited_quote('save',current_setting('quote_test.payload')::jsonb,current_setting('quote_test.id')::uuid,1);
+ if (saved->>'revision')::int<>2 then raise exception 'FAIL revision';end if;
+ begin perform public.solar_limited_quote('save','{}',current_setting('quote_test.id')::uuid,1);raise exception 'FAIL stale revision';exception when raise_exception then if sqlerrm='FAIL stale revision' then raise;end if;end;
+ result:=public.solar_limited_quote('list');if not exists(select 1 from jsonb_array_elements(result) r where r->>'id'=current_setting('quote_test.id')) then raise exception 'FAIL missing draft';end if;
+end $$;
+reset role;
+update public.profiles set permissions=permissions||'{"tahseel":true,"tahseelFull":true}' where id=current_setting('quote_test.other')::uuid;
+set local role authenticated;
+do $$begin
+ perform set_config('request.jwt.claim.sub',current_setting('quote_test.other'),true);
+ begin perform public.solar_limited_quote('delete','{}',current_setting('quote_test.id')::uuid,2);raise exception 'FAIL other delete';exception when raise_exception then if sqlerrm='FAIL other delete' then raise;end if;end;
+ if exists(select 1 from public.solar_quotes where id=current_setting('quote_test.id')::uuid) then raise exception 'FAIL other direct read';end if;
+end $$;
+reset role;
+update public.profiles set permissions=permissions||'{"tahseelFull":true}' where id=current_setting('quote_test.actor')::uuid;
+set local role authenticated;
+do $$begin
+ perform set_config('request.jwt.claim.sub',current_setting('quote_test.actor'),true);
+ if not exists(select 1 from public.solar_quotes where id=current_setting('quote_test.id')::uuid and payload->>'markupPercent'='15' and payload->>'perPanel'='30000') then raise exception 'FAIL full access or server rules';end if;
+ update public.solar_quotes set payload=payload||'{"markupPercent":"12.5"}' where id=current_setting('quote_test.id')::uuid;
+end $$;
+reset role;
+update public.profiles set permissions=permissions||'{"tahseel":false,"tahseelFull":true}' where id=current_setting('quote_test.actor')::uuid;
+set local role authenticated;
+do $$begin
+ begin perform public.solar_limited_quote('list');raise exception 'FAIL denied access';exception when insufficient_privilege then null;end;
+end $$;
+reset role;
+update public.profiles set permissions=permissions||'{"tahseel":true}',user_type='warehouse' where id=current_setting('quote_test.actor')::uuid;
+set local role authenticated;
+do $$begin begin perform public.solar_limited_quote('list');raise exception 'FAIL warehouse';exception when insufficient_privilege then null;end;end $$;
+reset role;
+update public.profiles set user_type='installer' where id=current_setting('quote_test.actor')::uuid;
+set local role authenticated;
+do $$begin begin perform public.solar_limited_quote('list');raise exception 'FAIL installer';exception when insufficient_privilege then null;end;end $$;
+reset role;
+update public.profiles set user_type='admin_staff',active=false where id=current_setting('quote_test.actor')::uuid;
+set local role authenticated;
+do $$begin begin perform public.solar_limited_quote('list');raise exception 'FAIL inactive';exception when insufficient_privilege then null;end;end $$;
+reset role;
+set local role anon;
+do $$begin begin perform public.solar_limited_quote('list');raise exception 'FAIL anon';exception when insufficient_privilege then null;end;end $$;
+reset role;
+select 'PASS: fixed 15%, trusted costs/expenses, hidden cost fields, RLS, revisions, ownership and roles' as result;
+rollback;

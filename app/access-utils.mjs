@@ -23,3 +23,5 @@ export function canOpenPage(profile, page) {
   return !!profile.permissions?.[page];
 }
 export const canSeeCash = profile => !isEngineer(profile) && canOpenPage(profile,'cash');
+
+export const canManageQuotes = profile => canOpenPage(profile,'tahseel') && (isAdministrator(profile) || profile.permissions?.tahseelFull === true);

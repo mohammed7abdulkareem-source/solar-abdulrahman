@@ -8,7 +8,7 @@ do $$declare actor uuid; other_actor uuid; begin
  perform set_config('quote_test.other',other_actor::text,true);
  perform set_config('quote_test.id',gen_random_uuid()::text,true);
  perform set_config('quote_test.other_id',gen_random_uuid()::text,true);
- update public.profiles set permissions=coalesce(permissions,'{}')||'{"tahseel":true}' where id=actor;
+ update public.profiles set permissions=coalesce(permissions,'{}')||'{"tahseel":true,"tahseelFull":true}' where id=actor;
  insert into public.solar_quotes(id,user_id,payload) values(current_setting('quote_test.other_id')::uuid,other_actor,'{"private":"other"}');
 end $$;
 set local role authenticated;
@@ -43,15 +43,15 @@ do $$begin
  exception when insufficient_privilege then null;end;
 end $$;
 reset role;
-update public.profiles set user_type='warehouse',permissions='{"tahseel":true}' where id=current_setting('quote_test.actor')::uuid;
+update public.profiles set user_type='warehouse',permissions='{"tahseel":true,"tahseelFull":true}' where id=current_setting('quote_test.actor')::uuid;
 set local role authenticated;
 do $$begin if exists(select 1 from public.solar_quotes) then raise exception 'FAIL warehouse leak';end if;end $$;
 reset role;
-update public.profiles set user_type='installer',permissions='{"tahseel":true}' where id=current_setting('quote_test.actor')::uuid;
+update public.profiles set user_type='installer',permissions='{"tahseel":true,"tahseelFull":true}' where id=current_setting('quote_test.actor')::uuid;
 set local role authenticated;
 do $$begin if exists(select 1 from public.solar_quotes) then raise exception 'FAIL installer leak';end if;end $$;
 reset role;
-update public.profiles set user_type='admin_staff',active=false,permissions='{"tahseel":true}' where id=current_setting('quote_test.actor')::uuid;
+update public.profiles set user_type='admin_staff',active=false,permissions='{"tahseel":true,"tahseelFull":true}' where id=current_setting('quote_test.actor')::uuid;
 set local role authenticated;
 do $$begin if exists(select 1 from public.solar_quotes) then raise exception 'FAIL inactive leak';end if;end $$;
 reset role;

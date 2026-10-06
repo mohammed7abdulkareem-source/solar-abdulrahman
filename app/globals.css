@@ -57,3 +57,5 @@ main{padding-bottom:max(28px,env(safe-area-inset-bottom));max-width:900px}
 .stockRow:not(.head)>span,.statementRow:not(.head)>b,.statementRow:not(.head)>strong,.warehouseNumbers b{color:#000;font-weight:800}
 .stockRow,.statementRow{border-bottom:1px solid #b8c5d0}
 .stockRow>*+*,.statementRow>*+*{border-inline-start:1px solid #cbd5df;padding-inline-start:8px}
+
+.reportTopActions,.balanceActions,.warehouseWorkspace>.warehouseActions{margin:0 0 14px!important;display:flex;flex-wrap:wrap;gap:8px}.reportTopActions button{flex:1;min-width:90px}.quoteRatePresets{display:flex;gap:8px;margin-top:10px}.quoteRatePresets button{border:1px solid #a4bfd0;background:#edf6fc;color:#154b6e;border-radius:8px;padding:8px 20px;font-weight:800}.quoteDocumentTools{margin:12px 0}.quoteDocumentTools .quoteActions{margin:8px 0}@media(max-width:600px){.reportTopActions button,.balanceActions button,.warehouseActions button{font-size:13px;min-height:42px;padding:9px}}

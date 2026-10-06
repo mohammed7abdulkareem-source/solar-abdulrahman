@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newQuote,calculateQuote,quoteDocument,normalizeNumber} from '../app/tahseel-utils.mjs';
-import {canOpenPage} from '../app/access-utils.mjs';
+import {canOpenPage,canManageQuotes} from '../app/access-utils.mjs';
 const complete=()=>({...newQuote(),day:'15',night:'15',batteryCapacity:'15',panel:{id:1,name:'لوح 600W',cost:'100000'},battery:{id:2,name:'بطارية 15 كيلو',cost:'2000000'},inverter:{id:3,name:'انفيرتر 6kW',cost:'500000'}});
 test('15×15: 7 panels, one battery, 465,000 expenses; 5% includes all costs',()=>{
  const q=calculateQuote(complete());
@@ -58,4 +58,16 @@ test('capacity must be selected for night demand; zero night needs no battery',(
 test('legacy drafts retain their 15-kilo calculation and new drafts retain capacity on reload',()=>{
  const old={...complete(),schema:1};delete old.batteryCapacity;assert.equal(calculateQuote(old).price,3848250);
  const f=JSON.parse(JSON.stringify({...complete(),night:'50',batteryCapacity:'25'}));assert.equal(calculateQuote(f).batteryQty,2);assert.ok(quoteDocument(f).includes('بطارية 25 كيلو'));
+});
+
+test('profit percentage supports presets, custom values, zero and legacy 5%',()=>{
+ for(const rate of [0,5,10,12.5,15]){const form={...complete(),markupPercent:String(rate)},q=calculateQuote(form);assert.equal(q.price,3665000+Math.round(3665000*rate)/100);assert.deepEqual(q.errors,[]);assert.match(quoteDocument(form,true),new RegExp('إضافة '+rate+'%'));}
+ const old=complete();delete old.markupPercent;assert.equal(calculateQuote(old).markupPercent,5);
+ for(const rate of ['',-1,'NaN',Infinity,1001])assert.ok(calculateQuote({...complete(),markupPercent:rate}).errors.length);
+});
+test('full quote access is separate, explicit and excludes denied or special roles',()=>{
+ const p={active:true,user_type:'admin_staff',permissions:{tahseel:true}};assert.equal(canManageQuotes(p),false);
+ assert.equal(canManageQuotes({...p,permissions:{tahseel:true,tahseelFull:true}}),true);
+ assert.equal(canManageQuotes({...p,is_admin:true}),true);
+ for(const changes of [{active:false},{user_type:'warehouse'},{user_type:'installer'},{permissions:{tahseel:false,tahseelFull:true}}])assert.equal(canManageQuotes({...p,is_admin:false,permissions:{tahseel:true,tahseelFull:true},...changes}),false);
 });

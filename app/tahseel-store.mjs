@@ -23,3 +23,13 @@ export function quoteStore(client) {
     },
   };
 }
+
+export function limitedQuoteStore(client){
+ const call=async(action,args={})=>{const {data,error}=await client.rpc('solar_limited_quote',{action,...args});if(error)throw new Error(error.message||'تعذر احتساب العرض. حاول مجدداً.');return data};
+ return {
+  preview:payload=>call('preview',{quote_payload:payload}),
+  async list(){const rows=[];for(let offset=0;;offset+=100){const page=await call('list',{page_offset:offset});rows.push(...page);if(page.length<100)return rows}},
+  save:({id,revision,payload})=>call('save',{quote_id:id,expected_revision:revision||null,quote_payload:payload}),
+  remove:row=>call('delete',{quote_id:row.id,expected_revision:row.revision}),
+ };
+}
