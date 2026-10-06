@@ -3,6 +3,7 @@ import './solar-theme.css';
 import './workflow.css';
 import './compact-theme.css';
 import './warehouse.css';
+import './stock-movements.css';
 import './tahseel.css';
 import './data-reset.css';
 import './party-balances.css';
