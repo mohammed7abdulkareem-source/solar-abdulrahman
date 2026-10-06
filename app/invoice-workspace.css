@@ -62,3 +62,5 @@ main.invoicePage{max-width:1360px;padding:16px 24px 40px}.invoicePage .top{margi
 }
 
 .historyItem .deskSavedSummary{display:flex;align-items:center;gap:12px;flex-wrap:wrap;text-align:right;padding:12px!important;background:#f3f7fc;border:1px solid #ccd9e6;border-radius:6px;color:#18314c}.historyItem .deskSavedIdentity{display:flex;flex:1;min-width:180px;flex-direction:column;gap:5px}.historyItem .deskSavedIdentity>b{font-size:14px;color:#075f9d}.historyItem .deskSavedIdentity>span{font-size:13px;color:#18314c;font-weight:600;overflow-wrap:anywhere}.deskSavedSummary time{font-size:12px;color:#61758b}.deskSavedSummary>strong{font-size:14px;white-space:nowrap}
+
+.deskMaterial>b,.deskProduct>span>b,.deskMaterial .deskProductIdentity,.deskProduct .deskProductIdentity{color:#000;font-weight:800}.deskMaterial .deskProductIdentity,.deskProduct .deskProductIdentity{font-size:12px;line-height:1.5}.deskProduct:disabled{opacity:1;filter:none}.deskMaterial .deskLanded{color:#304c66;font-size:11px}
