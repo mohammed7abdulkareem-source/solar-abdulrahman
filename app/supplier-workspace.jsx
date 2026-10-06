@@ -6,7 +6,7 @@ import {receiptNumber,money,moneyInput,supplierLedger,supplierLabel,supplierDocu
 
 function ReceiptActions({row,a4,openA4,saveA4,shareA4}){
  const doc=()=>{const d=supplierDocument(row);return a4(d.title,d.body,d.total,d.subtitle)};
- return <div className="compactActions"><button type="button" onClick={()=>openA4(doc())}>معاينة الوصل</button><button type="button" onClick={()=>saveA4(doc(),'وصل-مورد-'+receiptNumber(row))}>حفظ PDF / طباعة</button><button type="button" onClick={()=>shareA4('وصل-مورد-'+receiptNumber(row),'المورد: '+row.party+'\nرقم الوصل: '+receiptNumber(row)+'\nالمبلغ: '+money(row.total)+' د.ع',doc())}>مشاركة</button></div>;
+ return <div className="compactActions"><button type="button" onClick={()=>openA4(doc())}>معاينة الوصل</button><button type="button" onClick={()=>saveA4(doc(),'وصل-مورد-'+receiptNumber(row))}>حفظ PDF</button><button type="button" onClick={()=>shareA4('وصل-مورد-'+receiptNumber(row),'المورد: '+row.party+'\nرقم الوصل: '+receiptNumber(row)+'\nالمبلغ: '+money(row.total)+' د.ع',doc())}>مشاركة</button></div>;
 }
 
 export function SupplierPayment({suppliers,tx,balance,onChanged,initial=null,initialParty='',onCancel,...documents}){
@@ -68,7 +68,7 @@ export function SupplierStatement({suppliers,tx,canPay,canEditPurchase,onChanged
   </div>
   {error&&<div className="workflowError" role="alert">{error}</div>}
   {supplier&&<><div className="financeTiles"><div className="financeBlue"><small>مشتريات الفترة</small><b>{money(purchases)} د.ع</b></div><div className="financeRed"><small>المدفوع للمورد بالفترة</small><b>{money(payments)} د.ع</b></div><div className="financeTeal"><small>الرصيد الافتتاحي</small><b>{money(ledger.opening)} د.ع</b></div><div className="financeGreen"><small>الرصيد بنهاية الفترة</small><b>{money(ledger.balance)} د.ع</b></div></div>
-   <div className="compactActions"><button onClick={()=>documents.openA4(statementHtml())}>معاينة الكشف</button><button onClick={()=>documents.saveA4(statementHtml(),'كشف-مورد-'+party)}>حفظ PDF / طباعة</button><button onClick={()=>documents.shareA4('كشف-مورد-'+party,'كشف حساب '+party+'\nالرصيد: '+money(ledger.balance)+' د.ع',statementHtml())}>مشاركة الكشف</button></div>
+   <div className="compactActions"><button onClick={()=>documents.openA4(statementHtml())}>معاينة الكشف</button><button onClick={()=>documents.saveA4(statementHtml(),'كشف-مورد-'+party)}>حفظ PDF</button><button onClick={()=>documents.shareA4('كشف-مورد-'+party,'كشف حساب '+party+'\nالرصيد: '+money(ledger.balance)+' د.ع',statementHtml())}>مشاركة الكشف</button></div>
    <p className="mutedNote">الحركات ضمن صلاحياتك. الرصيد يشمل جميع حركات الفترة حتى عند تصفية النتائج.</p>
    {!rows.length?<div className="empty">لا توجد حركات مطابقة</div>:rows.map(t=><article className="card supplierMovement" key={t.id}><header><b>{supplierLabel(t)}</b><small>{new Date(t.date).toLocaleDateString('ar-IQ',{timeZone:'Asia/Baghdad'})}</small></header><span className="receiptNumber">رقم الوصل: <bdi>#{receiptNumber(t)}</bdi></span><div className="movementAmounts"><div><small>المبلغ</small><b className={t.kind==='supplier_payment'?'amountRed':'amountBlue'}>{money(t.total)} د.ع</b></div><div><small>الرصيد بعد الحركة</small><b>{money(t.balance)} د.ع</b></div></div>{t.notes&&<p>{t.notes}</p>}<ReceiptActions row={t} {...documents}/>{(t.kind==='supplier_payment'?canPay:canEditPurchase)&&<button className="editMovement" disabled={loading!==null} onClick={()=>edit(t)}>{loading===t.id?'جاري الفتح…':'تعديل الحركة'}</button>}</article>)}
   </>}

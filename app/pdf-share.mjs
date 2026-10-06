@@ -56,6 +56,7 @@ function reportPages(sheet,doc){
  const table=sheet.querySelector('table[data-pdf-paginate]');if(!table)return null;
  const rows=[...table.tBodies[0].rows],template=sheet.cloneNode(true);
  template.querySelector('tbody').replaceChildren();
+ const endings=[...template.querySelectorAll('[data-pdf-end]')];endings.forEach(el=>el.remove());
  const total=template.querySelector('.total');total?.remove();
  const pages=[];
  const addPage=()=>{const page=template.cloneNode(true);doc.body.appendChild(page);pages.push(page);return page};
@@ -65,12 +66,16 @@ function reportPages(sheet,doc){
   if(page.getBoundingClientRect().height>CSS_PAGE_HEIGHT-176&&body.rows.length>1){copy.remove();page=addPage();body=page.querySelector('tbody');body.appendChild(copy);}
   if(page.getBoundingClientRect().height>CSS_PAGE_HEIGHT-176)throw new Error('أحد صفوف التقرير طويل جداً لصفحة PDF');
  }
- if(total)page.insertBefore(total,page.querySelector('.foot'));
+ if(endings.length){
+  const ending=doc.createElement('div');ending.append(...endings);if(total)ending.append(total);page.insertBefore(ending,page.querySelector('.foot'));
+  if(page.getBoundingClientRect().height>CSS_PAGE_HEIGHT-76){ending.remove();page=addPage();page.querySelector('table[data-pdf-paginate]')?.remove();page.insertBefore(ending,page.querySelector('.foot'));}
+  if(page.getBoundingClientRect().height>CSS_PAGE_HEIGHT-76)throw new Error('ملاحظات المستند طويلة جداً لصفحة PDF');
+ }else if(total)page.insertBefore(total,page.querySelector('.foot'));
  pages.forEach((p,i)=>{const foot=p.querySelector('.foot');if(foot)foot.textContent+=' • صفحة '+(i+1)+' من '+pages.length;});
  return pages;
 }
 
-export async function createPdf(html){
+export async function createPdfDocument(html){
  if(typeof document==='undefined')throw new Error('إنشاء PDF متاح من داخل البرنامج');
  const frame=document.createElement('iframe');frame.setAttribute('aria-hidden','true');frame.title='تجهيز ملف PDF';
  Object.assign(frame.style,{position:'fixed',left:'-10000px',top:'0',width:CSS_PAGE_WIDTH+'px',height:CSS_PAGE_HEIGHT+'px',border:'0',visibility:'hidden'});
@@ -89,15 +94,17 @@ export async function createPdf(html){
   if(reports){
    const images=[];
    for(const page of reports){const body=page.cloneNode(true);body.height=CSS_PAGE_HEIGHT;images.push(await jpegPage(doc,body,styles,0,CSS_PAGE_HEIGHT));}
-   return makePdfObjects(images);
+   return {blob:makePdfObjects(images),pages:images};
   }
   const height=Math.ceil(Math.max(sheet.scrollHeight,sheet.getBoundingClientRect().height)+76);if(height<=76)throw new Error('المستند فارغ');
   const body=sheet.cloneNode(true);body.height=height;
   const images=[];
   for(let top=0;top<height;top+=CSS_PAGE_HEIGHT){const pageHeight=CSS_PAGE_HEIGHT;images.push(await jpegPage(doc,body,styles,top,pageHeight));}
-  return makePdfObjects(images);
+  return {blob:makePdfObjects(images),pages:images};
  }finally{frame.remove();}
 }
+
+export async function createPdf(html){return (await createPdfDocument(html)).blob;}
 
 export async function sharePdf(title,html){
  const filename=pdfFilename(title),blob=await createPdf(html),file=new File([blob],filename,{type:'application/pdf'});

@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
-export const APP_VERSION='3.24.0';
+export const APP_VERSION='3.25.0';
 export default function AppUpdate(){
  const [busy,setBusy]=useState(false),[available,setAvailable]=useState(false),[error,setError]=useState('');
  useEffect(()=>{let live=true;const check=()=>{if(document.visibilityState!=='visible')return;fetch('/version.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(v=>{if(live&&v?.version)setAvailable(v.version!==APP_VERSION)}).catch(()=>{})};check();window.addEventListener('focus',check);return()=>{live=false;window.removeEventListener('focus',check)}},[]);
