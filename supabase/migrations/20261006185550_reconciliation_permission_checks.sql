@@ -1,0 +1,2 @@
+-- Missing JSON permissions must fail closed (SQL NULL is not false).
+do $$declare definition text; signature text;begin foreach signature in array array['solar_private.reconcile(text,uuid,jsonb)','solar_private.customer_statement(bigint)'] loop select pg_get_functiondef(signature::regprocedure) into definition; definition:=regexp_replace(definition,'p.permissions->>''([A-Za-z]+)''=''true''','coalesce(p.permissions->>''\1'',''false'')=''true''','g'); definition:=replace(definition,'c.owner_id=p.id','coalesce(c.owner_id=p.id,false)'); execute definition; end loop;end $$;

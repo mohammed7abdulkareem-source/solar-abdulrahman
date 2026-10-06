@@ -7,6 +7,7 @@ import './tahseel.css';
 import './data-reset.css';
 import './party-balances.css';
 import './invoice-workspace.css';
+import './reconciliation.css';
 import PWARegister from './pwa-register';
 export const metadata={title:'عبدالرحمن سولار',description:'إدارة فرع الطاقة الشمسية',manifest:'/manifest.webmanifest',icons:{icon:'/icon.svg',apple:'/icon.svg'}};
 export const viewport={width:'device-width',initialScale:1,viewportFit:'cover',themeColor:'#1c254b'};

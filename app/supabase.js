@@ -84,7 +84,7 @@ async function buildChanges(k,next,previous){
  if(k==='solar_suppliers'){await replace('suppliers',v.map(x=>({id:x.id,name:x.name,phone:x.phone||null})),removed);return changes}
  if(k==='solar_products'){
   const result=await supabase.from('brands').select('*');if(result.error)throw result.error;const brands=result.data||[];
-  await replace('products',v.map(x=>({id:x.id,code:String(x.code),name:x.name,brand_id:brands.find(b=>b.name===x.brand)?.id||null,category:x.category||null,qty:+x.qty||0,cost:+x.cost||0})),removed);return changes
+  await replace('products',v.map(x=>({id:x.id,code:String(x.code),name:x.name,brand_id:brands.find(b=>b.name===x.brand)?.id||null,category:x.category||null,...(!previous.some(p=>p.id===x.id)||Number(previous.find(p=>p.id===x.id)?.qty)!==Number(x.qty)?{qty:+x.qty||0}:{}),...(!previous.some(p=>p.id===x.id)||Number(previous.find(p=>p.id===x.id)?.cost)!==Number(x.cost)?{cost:+x.cost||0}:{})})),removed);return changes
  }
  if(k==='solar_tx'){
   if(removed.length){changes.push({table:'transaction_items',removeTransactionIds:removed});changes.push({table:'transactions',removed})}
