@@ -5,3 +5,58 @@ main.invoicePage{max-width:1360px;padding:16px 24px 40px}.invoicePage .top{margi
 /* Keep the invoice controls in normal flow and the totals within easy reach. */
 .invoicePage .top{position:static}.deskCatalogList{max-height:245px}.deskEmpty{min-height:245px}.deskField .partySearchInput>button{background:#f3f6fa;border:1px solid #bccbdb;border-radius:6px;color:#536c84}
 @media(max-width:800px){.deskCatalogList{max-height:190px}.deskEmpty{min-height:180px}}
+/* Desktop invoice fills the available screen; long item lists scroll internally. */
+@media(min-width:801px){
+ main.invoicePage{padding:6px 14px 16px;max-width:1600px}
+ .invoicePage>.top{height:36px;min-height:0;padding:0;margin:0 0 3px;gap:8px}
+ .invoicePage>.top h2{font-size:16px;margin:0}
+ .invoicePage>.top button{min-height:30px!important;padding:5px 12px!important;font-size:12px!important;border-radius:6px!important}
+ .invoicePage>.pageTools{min-height:32px;height:32px;margin:0 0 6px;padding:0;align-items:center}
+ .invoicePage .pageTools button{min-height:28px!important;height:28px!important;padding:4px 10px!important;font-size:11px!important;border-radius:5px!important}
+ .invoicePage .pageTools .iconButton{width:30px}
+ .invoicePage .invoiceWorkspace{height:calc(100dvh - 94px);min-height:490px;display:flex;flex-direction:column;border-radius:8px}
+ .deskHeader{padding:8px 14px;gap:10px;border-radius:7px 7px 0 0;flex-shrink:0}
+ .deskHeader>div>small{display:none}
+ .deskHeader h1{font-size:18px;margin:0}
+ .deskHeaderMeta{font-size:11px}
+ .deskHeaderMeta span,.deskHeaderMeta time{padding:3px 7px}
+ .deskForm{display:flex;flex-direction:column;gap:8px;flex:1;min-height:0;padding:10px 12px}
+ .deskMeta{gap:12px;padding-bottom:8px;flex-shrink:0}
+ .deskField{gap:3px}
+ .deskLabel,.deskField>label{font-size:12px}
+ .invoiceWorkspace input:not([type=checkbox]),.invoiceWorkspace select,.invoiceWorkspace textarea{min-height:30px!important;font-size:14px!important;padding:4px 8px!important;border-radius:5px!important;line-height:1.4!important}
+ .deskReadonly{min-height:30px;padding:5px 8px;font-size:12px;border-radius:5px}
+ .deskField .partySearchInput>button{height:30px;min-height:30px;width:30px}
+ .deskBody{grid-template-columns:260px minmax(0,1fr);gap:12px;flex:1;min-height:100px;margin:0;align-items:stretch}
+ .deskCatalog{padding:8px;display:flex;flex-direction:column;min-height:0}
+ .deskSectionTitle{margin-bottom:6px}
+ .deskSectionTitle h2{font-size:13px}
+ .deskSectionTitle>span{font-size:11px;padding:2px 6px}
+ .deskCatalogList{max-height:none;flex:1;min-height:0;margin-top:6px}
+ .deskProduct{padding:6px 7px;margin-bottom:5px;gap:6px}
+ .deskProduct b{font-size:12px}.deskProduct small{font-size:10px;margin-top:1px}
+ .deskCatalogHint{font-size:10px;margin-top:4px;line-height:1.3}
+ .deskItems{overflow:auto;min-height:0;scroll-padding-top:60px}
+ .deskItems>.deskSectionTitle{position:sticky;top:0;z-index:2;padding:7px 10px}
+ .deskTable thead th{position:sticky;top:33px;z-index:1;padding:6px;font-size:11px}
+ .deskTable td{padding:6px;font-size:12px}
+ .deskMaterial b{font-size:12px;line-height:1.4}.deskMaterial small{font-size:10px;line-height:1.4}
+ .deskTable .deskRemove{min-height:27px;height:27px;width:27px;font-size:20px}
+ .deskEmpty{min-height:0;height:100%;padding:12px}
+ .deskEmpty>span{display:none}.deskEmpty h3{font-size:15px;margin:5px 0}.deskEmpty p{font-size:12px}
+ .deskFooterFields{grid-template-columns:240px 1fr;gap:12px;margin:0;flex-shrink:0}
+ .deskFooterFields textarea{height:42px;min-height:42px!important}
+ .deskFooterFields .deskField small{font-size:10px;line-height:1.3}
+ .deskSummary{margin:0;flex-shrink:0}
+ .deskSummaryDetails{padding:8px 12px;gap:10px 22px;align-items:center}
+ .deskSummaryDetails>div{gap:3px}.deskSummaryDetails span{font-size:11px}.deskSummaryDetails b{font-size:13px}
+ .deskGrand{padding:7px 14px;min-width:210px;gap:2px}.deskGrand>span{font-size:11px}.deskGrand strong{font-size:22px}
+ .deskActions{padding:0;gap:6px;flex-shrink:0}
+ .deskActions button,.deskCopyActions button{min-height:32px;padding:5px 12px;font-size:12px;border-radius:5px}
+ .deskActions .deskSave{font-size:13px;padding:6px 18px}
+ .deskMore{margin:0;padding:0;flex-shrink:0}.deskMore summary{font-size:11px;padding:4px 0}
+ .deskCopyActions{margin:4px 0 0}.deskHistory{margin-top:10px}
+ .deskInstall{padding:8px 10px;margin:0;flex-shrink:0}.deskInstall .deskSectionTitle{margin-bottom:5px}
+ .deskInstallGrid{gap:12px}.deskSchedule{margin-top:6px;font-size:12px}.deskDates{margin-top:6px;gap:10px}
+ .deskSystemFields{grid-template-columns:1fr 1fr 2fr}
+}
