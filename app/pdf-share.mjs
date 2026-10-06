@@ -107,6 +107,12 @@ export async function createPdfDocument(html){
   await doc.fonts?.ready;
   doc.querySelector('.previewNav')?.remove();doc.querySelector('.actions')?.remove();
   const sheet=doc.querySelector('.sheet')||doc.body;
+  // SVG foreignObject has no HTML body ancestor. Freeze inherited typography
+  // so rasterized rows have exactly the same height as the pagination layout.
+  const typography=doc.defaultView.getComputedStyle(sheet);
+  for(const property of ['font-size','font-family','font-weight','line-height','letter-spacing','color']){
+   sheet.style.setProperty(property,typography.getPropertyValue(property));
+  }
   sheet.style.setProperty('width','190mm','important');sheet.style.setProperty('max-width','none','important');sheet.style.setProperty('min-height','0','important');sheet.style.setProperty('margin','0 auto','important');sheet.style.setProperty('padding','0','important');
   doc.documentElement.style.cssText+=';width:794px!important;min-height:0!important;overflow:visible!important;background:#fff!important';
   doc.body.style.cssText+=';width:794px!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;background:#fff!important';
