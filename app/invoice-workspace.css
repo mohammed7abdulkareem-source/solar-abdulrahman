@@ -81,3 +81,5 @@ main.invoicePage{max-width:1360px;padding:16px 24px 40px}.invoicePage .top{margi
  .systemWorkspace .deskInstall{padding:12px;margin-top:12px}
  .deskTable td{border:0}
 }
+
+.deskExchange{display:grid;grid-template-columns:minmax(160px,1fr) 2fr;gap:16px;padding:16px;border:1px solid #d5e5ea;border-radius:12px;background:#f1f8fa}.deskExchange p{margin:0;line-height:1.8}.exchangeRatePage form{display:grid;gap:12px}.exchangeRatePage input{width:100%}@media(max-width:650px){.deskExchange{grid-template-columns:1fr}}
