@@ -42,3 +42,9 @@ test('saved receipts show the assigned number instead of internal timestamp IDs'
  assert.equal(matchesReceipt(row,'١'),true);
  assert.equal(matchesReceipt(row,'1791112349592'),false);
 });
+
+test('non-cash supplier additions increase debt and print as additions, not cash payments',()=>{
+ const charge={id:7,receiptNo:3,kind:'supplier_payment',party:'مورد',total:-20000,cash:false,mode:'charge_old_balance',notes:'حساب قديم',date:'2026-10-04',beforeBalance:1100,afterBalance:21100};
+ const ledger=supplierLedger([...rows,charge],supplier);assert.equal(ledger.balance,21100);
+ const doc=supplierDocument(charge);assert.equal(doc.title,'وصل إضافة على حساب مورد');assert.match(doc.total,/20,000/);assert.ok(doc.body.includes('غير نقدية'));assert.ok(doc.body.includes('لا تخصم من القاصة'));assert.ok(doc.body.includes('21,100'));
+});

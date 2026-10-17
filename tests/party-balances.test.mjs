@@ -29,3 +29,19 @@ test('reports require their own permissions and never allow warehouse/engineer o
  assert.equal(canOpenPage({...p,active:false},'customerDebts'),false);
  assert.equal(balanceDate(null),'—');
 });
+
+test('owner filters, category filters and grouped totals describe exactly the exported accounts',async()=>{
+ const {groupBalances,filterUnresolved}=await import('../app/party-balances-utils.mjs');
+ const records=[{...rows[0],owner_id:'a',owner_name:'مبيعات أ'},{...rows[1],owner_id:'b',owner_name:'مبيعات ب'},{...rows[2],owner_id:'a',owner_name:'مبيعات أ'}];
+ const selected=filterBalances(records,{ownerId:'a',systems:false});assert.deepEqual(selected.map(r=>r.id),[1]);assert.equal(groupBalances(selected)[0].total,1200);
+ const legacy=[{name:'قديم',effect:2000,owner_id:'a',customer_type:'system'},{name:'آخر',effect:3000,owner_id:'b',customer_type:'wholesale'}];
+ assert.equal(filterUnresolved(legacy,{ownerId:'a',wholesale:false})[0].effect,2000);assert.equal(filterUnresolved(legacy,{ownerId:'a',systems:false}).length,0);
+ const html=balancesDocument(selected,{ownerName:'مبيعات أ',unresolved:legacy.slice(0,1),showType:true});
+ assert.ok(html.includes('مبيعات أ'));assert.ok(html.includes('ملحق الحركات القديمة'));assert.ok(html.includes('2,000'));assert.ok(html.includes('غير مضافة'));
+});
+test('account search normalizes Arabic names, spacing and Iraqi phone aliases',async()=>{
+ const {filterAccountCustomers}=await import('../app/party-balances-utils.mjs');
+ const records=[{id:1,name:'عبد الرحمن أَحمد',phone:'07701234567'},{id:2,name:'سيف',phone:''}];
+ for(const query of ['عبدالرحمن','احمد','+9647701234567','٠٧٧٠١٢٣٤٥٦٧'])assert.equal(filterAccountCustomers(records,query)[0].id,1);
+ assert.equal(filterAccountCustomers(records,'غير موجود').length,0);
+});

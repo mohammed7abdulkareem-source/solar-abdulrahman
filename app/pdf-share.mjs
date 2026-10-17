@@ -126,15 +126,24 @@ export async function createPdfDocument(html){
 export async function createPdf(html){return (await createPdfDocument(html)).blob;}
 
 export async function sharePdf(title,html){
- const filename=pdfFilename(title),blob=await createPdf(html),file=new File([blob],filename,{type:'application/pdf'});
+ return sharePreparedPdf(title,await createPdf(html));
+}
+
+// A prepared file lets navigator.share run directly in the user's click event.
+// Rendering before that call can consume transient browser activation.
+export async function sharePreparedPdf(title,blob){
+ const filename=pdfFilename(title),file=new File([blob],filename,{type:'application/pdf'});
  if(typeof navigator!=='undefined'&&navigator.share&&navigator.canShare?.({files:[file]})){
   try{await navigator.share({title,files:[file]});return 'shared';}
   catch(error){if(error?.name==='AbortError')return 'cancelled';}
  }
- const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=filename;link.style.display='none';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+ downloadPreparedPdf(title,blob);
  return 'downloaded';
 }
 
 export async function downloadPdf(title,html){
- const blob=await createPdf(html),url=URL.createObjectURL(blob),link=document.createElement("a");link.href=url;link.download=pdfFilename(title);document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
+ downloadPreparedPdf(title,await createPdf(html));
+}
+export function downloadPreparedPdf(title,blob){
+ const url=URL.createObjectURL(blob),link=document.createElement('a');link.href=url;link.download=pdfFilename(title);document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
