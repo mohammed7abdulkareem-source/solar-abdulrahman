@@ -6,10 +6,12 @@ import {cashOwner} from './access-utils.mjs';
 const rounded=n=>Math.round((n+Number.EPSILON)*100)/100;
 const table=(headers,rows,widths=[])=>'<table data-pdf-paginate>'+(widths.length?'<colgroup>'+widths.map(w=>'<col style="width:'+w+'%">').join('')+'</colgroup>':'')+'<thead><tr>'+headers.map(h=>'<th>'+e(h)+'</th>').join('')+'</tr></thead><tbody>'+(rows.length?rows.map(cells=>'<tr>'+cells.map((c,i)=>'<td'+(i===0?' style="white-space:nowrap"':'')+'>'+c+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+headers.length+'">لا توجد بيانات</td></tr>')+'</tbody></table>';
 export function capitalAccounts(tx,parties=[],supplier=false){
- const kinds=supplier?['purchase','supplier_payment']:['sale','system','customer_payment','system_payment'];
+ const posted=new Set(tx.filter(t=>t.fxAccountEntry&&t.linkedTransaction!=null).map(t=>String(t.linkedTransaction)));
+ const kinds=supplier?['purchase','supplier_payment','supplier_fx_book']:['sale','system','customer_payment','system_payment'];
  const accounts=new Map();
  for(const t of tx.filter(t=>kinds.includes(t.kind))){
-  const value=supplier?supplierEffect(t):accountEffect(t);if(!value)continue;
+  if(supplier&&!t.fxAccountEntry&&posted.has(String(t.id)))continue;
+  const value=supplier?(t.fxAccountEntry?Number(t.total):supplierEffect(t)):accountEffect(t);if(!value)continue;
   const named=parties.filter(p=>p.name===t.party);
   const party=t.partyId?parties.find(p=>String(p.id)===String(t.partyId)):named.length===1?named[0]:null;
   const key=t.partyId?'id:'+t.partyId:party?'id:'+party.id:'name:'+(t.party||'غير محدد');
@@ -28,7 +30,7 @@ export function capitalDebtReport(accounts,supplier=false){
  const title=supplier?'كشف ديون الموردين علينا':'كشف ديون العملاء لنا';
  return {title,total:accounts.total,body:table(['ت',supplier?'المورد':'العميل','الهاتف',supplier?'علينا د.ع':'لنا د.ع',supplier?'لنا د.ع':'للعميل د.ع'],accounts.rows.map((r,i)=>[i+1,e(r.name),e(r.phone),money(Math.max(0,r.balance)),money(Math.max(0,-r.balance))]),[7,30,17,23,23])+'<div data-pdf-end class="notes">عدد الحسابات: '+accounts.rows.length+'<br>صافي الأرصدة: '+money(accounts.net)+' د.ع<br>المبلغ في رأس المال هو صافي الأرصدة الموجب بعد طرح الأرصدة الدائنة. الفواتير النقدية المسددة لا تدخل ضمن الديون.</div>'};
 }
-const cashLabels={sale:'بيع نقدي',system:'بيع منظومة',purchase:'شراء نقدي',customer_payment:'تسديد عميل',system_payment:'تسديد منظومة',supplier_payment:'تسديد مورد',cash_income:'إيداع بالصندوق',cash_expense:'مصروف من الصندوق',capital:'رأس مال',profit_distribution:'توزيع أرباح',installation_payout:'دفع مصاريف تنصيب',installation_refund:'استرجاع فرق التنصيب',handover_expense:'مصروف قبل تسليم القاصة',transfer_out:'إرسال أموال',transfer_in:'استلام أموال',transfer_refund:'إرجاع تحويل',transfer_transit:'أموال قيد التسليم'};
+const cashLabels={buy_usd:'شراء دولار من الدينار',sell_usd:'بيع دولار إلى الدينار',sale:'بيع نقدي',system:'بيع منظومة',purchase:'شراء نقدي',customer_payment:'تسديد عميل',system_payment:'تسديد منظومة',supplier_payment:'تسديد مورد',cash_income:'إيداع بالصندوق',cash_expense:'مصروف من الصندوق',capital:'رأس مال',profit_distribution:'توزيع أرباح',installation_payout:'دفع مصاريف تنصيب',installation_refund:'استرجاع فرق التنصيب',handover_expense:'مصروف قبل تسليم القاصة',transfer_out:'إرسال أموال',transfer_in:'استلام أموال',transfer_refund:'إرجاع تحويل',transfer_transit:'أموال قيد التسليم'};
 // Receives the same cash-owner-scoped rows used by the capital tile.
 export function capitalCashReport(rows,staff=[]){
  let total=0,incoming=0,outgoing=0;

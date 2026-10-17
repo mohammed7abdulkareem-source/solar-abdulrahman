@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import {convertAmount,fxCloudRows,usdBalance,usdBook} from '../app/fx-utils.mjs';
+import {cashBalance} from '../app/access-utils.mjs';
+import {capitalAccounts} from '../app/capital-reports.mjs';
+import {supplierDocument} from '../app/supplier-utils.mjs';
+assert.equal(convertAmount(700000,'IQD','USD',1400),500);
+assert.equal(convertAmount(500,'USD','IQD',1500),750000);
+const rows=fxCloudRows({walletEntries:[{id:1,owner_id:'a',currency:'USD',delta:1000,book_delta:1500000,entry_type:'deposit'},{id:2,owner_id:'a',transaction_id:4,currency:'USD',delta:-500,book_delta:-750000,entry_type:'supplier_cash'},{id:3,owner_id:'a',currency:'IQD',delta:-150000,book_delta:-150000,entry_type:'buy_usd'},{id:4,owner_id:'b',currency:'USD',delta:100,book_delta:140000,entry_type:'deposit'}],accountEntries:[{id:1,supplier_id:1,owner_id:'a',currency:'USD',revision:0,transaction_id:3,delta:1000,book_delta:1500000},{id:2,supplier_id:1,owner_id:'a',currency:'USD',revision:0,transaction_id:4,delta:-500,book_delta:-750000,gain:50000}]});
+const tx=[{id:1,kind:'cash_income',cash:true,total:10000000,createdBy:'a'},{id:3,kind:'purchase',cash:false,partyId:1,total:1500000},{id:4,kind:'supplier_payment',cash:true,cashCurrency:'USD',cashAmount:500,total:700000,createdBy:'a'},...rows];
+assert.equal(cashBalance(tx,'a'),9850000,'A USD settlement cannot debit IQD cash');
+assert.equal(usdBalance(tx,'a'),500);assert.equal(usdBalance(tx,'b'),100);assert.equal(usdBook(tx,'a'),750000);
+assert.equal(capitalAccounts(tx,[{id:1,name:'مورد'}],true).total,750000,'Use book ledger without counting raw invoices twice');
+assert.equal(rows.filter(r=>r.kind==='fx_gain').reduce((s,r)=>s+r.total,0),50000);
+const doc=supplierDocument({kind:'supplier_payment',sourceCurrency:'USD',sourceSubtotal:500,marketRate:1400,accountCurrency:'USD',accountAmount:500,cashCurrency:'USD',cashAmount:500,total:700000,cash:true,date:'2026-10-17',party:'مورد'});
+assert.equal(doc.total,'500 $');assert.ok(doc.body.includes('1,400 د.ع لكل دولار'));assert.ok(doc.body.includes('عملة حساب المورد: USD'));

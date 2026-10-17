@@ -1,3 +1,4 @@
+import {fxCloudRows} from './fx-utils.mjs';
 import {changedRows} from './review-utils.mjs';
 import {createClient} from '@supabase/supabase-js';
 
@@ -31,8 +32,8 @@ async function allRows(table,select='*',order='id'){
 
 const mapProduct=r=>({id:r.id,code:r.code,name:r.name,brand:r.brands?.name||'',brandId:r.brand_id,category:r.category||'',qty:Number(r.qty||0),cost:Number(r.cost||0),costBasis:r.cost_basis||{},costingRevision:Number(r.costing_revision||0)});
 const mapCustomer=r=>({id:r.id,name:r.name,phone:r.phone||'',customerType:r.customer_type==='wholesale'?'جملة - بيع جملة':'مفرد - منظومات',ownerId:r.owner_id||null});
-const mapSupplier=r=>({id:r.id,name:r.name,phone:r.phone||''});
-const mapTx=(r,items=[])=>({id:r.id,receiptNo:r.receipt_no,sourceCurrency:r.source_currency||'IQD',exchangeRate:Number(r.exchange_rate||1),sourceSubtotal:r.source_subtotal==null?null:Number(r.source_subtotal),fxPricing:!!r.fx_pricing,pricingRevision:Number(r.pricing_revision||0),kind:r.kind,party:r.party_name||'',partyId:r.party_id,createdBy:r.created_by||null,installerId:r.installer_id||null,installDate:r.install_date||'',installTime:r.install_time||'',customerPhone:r.customer_phone||'',customerAddress:r.customer_address||'',installationStatus:r.installation_status||'none',installationCompletedAt:r.installation_completed_at||null,installationClosedAt:r.installation_closed_at||null,installationExpenses:Number(r.installation_expenses||0),installationExpenseNotes:r.installation_expense_notes||'',cashboxUserId:r.cashbox_user_id||null,capitalEffect:!!r.capital_effect,total:Number(r.total||0),subtotal:Number(r.subtotal||0),expenses:Number(r.expenses||0),cost:Number(r.cost||0),profit:Number(r.profit||0),cash:!!r.cash,notes:r.notes||'',mode:r.payment_mode||'',date:r.created_at,items:items.filter(i=>i.transaction_id===r.id).map(i=>({id:i.product_id,name:i.product_name,brand:i.brand_name||'',category:i.category||'',qty:Number(i.qty||0),price:Number(i.price||0),cost:Number(i.cost||0),landedCost:Number(i.landed_cost||0),sourcePrice:i.source_price==null?null:Number(i.source_price),costBasis:i.cost_basis||{}}))});
+const mapSupplier=r=>({id:r.id,name:r.name,phone:r.phone||'',accountCurrency:r.account_currency||'IQD',currencyRevision:Number(r.currency_revision||0)});
+const mapTx=(r,items=[])=>({id:r.id,receiptNo:r.receipt_no,sourceCurrency:r.source_currency||'IQD',exchangeRate:Number(r.exchange_rate||1),sourceSubtotal:r.source_subtotal==null?null:Number(r.source_subtotal),fxPricing:!!r.fx_pricing,pricingRevision:Number(r.pricing_revision||0),accountCurrency:r.account_currency||'IQD',accountAmount:Number(r.account_amount||0),accountRevision:Number(r.account_revision||0),marketRate:Number(r.market_rate||1),cashCurrency:r.cash_currency||'IQD',cashAmount:Number(r.cash_amount||0),fxAccounted:!!r.fx_accounted,kind:r.kind,party:r.party_name||'',partyId:r.party_id,createdBy:r.created_by||null,installerId:r.installer_id||null,installDate:r.install_date||'',installTime:r.install_time||'',customerPhone:r.customer_phone||'',customerAddress:r.customer_address||'',installationStatus:r.installation_status||'none',installationCompletedAt:r.installation_completed_at||null,installationClosedAt:r.installation_closed_at||null,installationExpenses:Number(r.installation_expenses||0),installationExpenseNotes:r.installation_expense_notes||'',cashboxUserId:r.cashbox_user_id||null,capitalEffect:!!r.capital_effect,total:Number(r.total||0),subtotal:Number(r.subtotal||0),expenses:Number(r.expenses||0),cost:Number(r.cost||0),profit:Number(r.profit||0),cash:!!r.cash,notes:r.notes||'',mode:r.payment_mode||'',date:r.created_at,items:items.filter(i=>i.transaction_id===r.id).map(i=>({id:i.product_id,name:i.product_name,brand:i.brand_name||'',category:i.category||'',qty:Number(i.qty||0),price:Number(i.price||0),cost:Number(i.cost||0),landedCost:Number(i.landed_cost||0),sourcePrice:i.source_price==null?null:Number(i.source_price),costBasis:i.cost_basis||{}}))});
 
 export async function loadCloud(){
  const {data:sessionData,error:sessionError}=await supabase.auth.getSession();
@@ -42,18 +43,19 @@ export async function loadCloud(){
  if(profileError)throw profileError;
  if(!profile.active||['installer','warehouse'].includes(profile.user_type))return {brands:[],products:[],customers:[],suppliers:[],tx:[]};
 
- const [b,p,c,s,t,ti,ce]=await Promise.all([
+ const [b,p,c,s,t,ti,ce,fx]=await Promise.all([
   allRows('brands'),
   allRows('products','*,brands(name)'),
   allRows('customers'),
   allRows('suppliers'),
   allRows('transactions'),
   allRows('transaction_items'),
-  allRows('solar_cash_entries')
+  allRows('solar_cash_entries'),
+  supabase.rpc('solar_fx',{action:'state'})
  ]);
- for(const x of [b,p,c,s,t,ti,ce])if(x.error)throw x.error;
+ for(const x of [b,p,c,s,t,ti,ce,fx])if(x.error)throw x.error;
  const entries=ce.data.map(r=>({id:'cash:'+r.id,systemCash:true,kind:r.entry_type,cash:true,cashDelta:Number(r.delta),total:Math.abs(Number(r.delta)),cashboxUserId:r.owner_id,createdBy:r.owner_id,notes:r.notes||'',date:r.created_at,jobId:r.job_id}));
- return {brands:b.data.map(x=>({id:x.id,name:x.name})),products:p.data.map(mapProduct),customers:c.data.map(mapCustomer),suppliers:s.data.map(mapSupplier),tx:[...t.data.map(x=>mapTx(x,ti.data)),...entries].sort((a,b)=>new Date(a.date)-new Date(b.date))};
+ return {brands:b.data.map(x=>({id:x.id,name:x.name})),products:p.data.map(mapProduct),customers:c.data.map(mapCustomer),suppliers:s.data.map(mapSupplier),tx:[...t.data.map(x=>mapTx(x,ti.data)),...entries,...fxCloudRows(fx.data)].sort((a,b)=>new Date(a.date)-new Date(b.date))};
 }
 let pendingSaves=[];
 let saveQueue=Promise.resolve();

@@ -7,12 +7,13 @@ import {loadExchangeRate} from './currency-store.mjs';
 import {supplierDocument,money,moneyInput,receiptNumber} from './supplier-utils.mjs';
 import {salesDocument} from './sales-document.mjs';
 import {invoiceError} from './review-utils.mjs';
+import {convertAmount,currencyLabel} from './fx-utils.mjs';
 
-const blank=kind=>({party:'',currency:'IQD',exchangeRate:'',mode:kind==='purchase'?'credit':'cash',notes:'',expenses:''});
+const blank=kind=>({party:'',currency:'IQD',exchangeRate:'',cashCurrency:'IQD',mode:kind==='purchase'?'credit':'cash',notes:'',expenses:''});
 export default function CurrencyInvoice({kind,products,parties,items,setItems,search,setSearch,onSave,onUpdateInvoice,history=[],renderHistory,initialInvoice,onCancel,canEditRate=false,a4,openA4,saveA4,shareA4}){
  const [meta,setMeta]=useState(()=>blank(kind)),[saving,setSaving]=useState(false),[editing,setEditing]=useState(null),[backup,setBackup]=useState(null),[error,setError]=useState(''),[settings,setSettings]=useState(null);
  const opened=useRef(false);
- useEffect(()=>{let live=true;if(kind==='purchase')loadExchangeRate().then(data=>{if(live){setSettings(data);setMeta(m=>({...m,exchangeRate:m.exchangeRate|| (data.rate==null?'':String(data.rate))}));}}).catch(()=>{if(live)setError('تعذر تحميل الصرف المعتمد. الشراء بالدينار متاح؛ حدّث البيانات قبل الشراء بالدولار.');});return()=>{live=false;};},[kind]);
+ useEffect(()=>{let live=true;if(kind==='purchase')loadExchangeRate().then(data=>{if(live){setSettings(data);setMeta(m=>({...m,exchangeRate:m.exchangeRate|| (data.rate==null?'':String(data.rate))}));}}).catch(()=>{if(live)setError('تعذر تحميل الصرف المعتمد؛ حدّث البيانات قبل حفظ الشراء.');});return()=>{live=false;};},[kind]);
  useEffect(()=>{if(initialInvoice&&!opened.current){opened.current=true;beginEdit(initialInvoice);}},[initialInvoice]);
  function beginEdit(invoice){
   if(saving)return;
@@ -20,37 +21,40 @@ export default function CurrencyInvoice({kind,products,parties,items,setItems,se
   if(!editing)setBackup({items:items.map(i=>({...i})),meta:{...meta},search});
   setEditing(invoice);setError('');
   setItems((invoice.items||[]).map(i=>({...i,price:kind==='purchase'?(i.sourcePrice??i.price):i.price,code:products.find(p=>p.id===i.id)?.code||i.code||''})));
-  setMeta({party:invoice.party||'',currency:invoice.sourceCurrency||'IQD',exchangeRate:String(invoice.exchangeRate||1),mode:invoice.cash?'cash':'credit',notes:invoice.notes||'',expenses:String(invoice.expenses||'')});setSearch('');
+  setMeta({party:invoice.party||'',currency:invoice.sourceCurrency||'IQD',exchangeRate:String(invoice.marketRate>1?invoice.marketRate:invoice.sourceCurrency==='USD'?invoice.exchangeRate:settings?.rate||''),cashCurrency:invoice.cashCurrency||'IQD',mode:invoice.cash?'cash':'credit',notes:invoice.notes||'',expenses:String(invoice.expenses||'')});setSearch('');
   window.scrollTo({top:0,behavior:'instant'});
  }
  function restore(){if(onCancel){onCancel();return;}setItems(backup?.items||[]);setMeta(backup?.meta||blank(kind));setSearch(backup?.search||'');setEditing(null);setBackup(null);setError('');}
  const rate=meta.currency==='USD'?Number(meta.exchangeRate):1;
- const validation=kind==='purchase'?exchangeRateError(meta.currency,meta.exchangeRate):'';
+ const supplier=parties.find(s=>s.name===meta.party),accountCurrency=supplier?.accountCurrency||'IQD';
+ const validation=kind==='purchase'?exchangeRateError('USD',meta.exchangeRate):'';
  let amounts={items:[],sourceSubtotal:0,subtotal:0,total:0,expenses:Number(meta.expenses||0)};
  try{amounts=purchaseAmounts(items,kind==='purchase'?meta.currency:'IQD',rate,meta.expenses||0);}catch{}
  const landed=i=>amounts.items.find(x=>x.id===i.id)?.landedCost||0;
  const average=i=>{const product=products.find(p=>p.id===i.id);if(validation||i.price===''||!Number.isFinite(Number(i.price))||Number(i.price)<0||Number(i.qty)<=0||!product)return null;return weightedCost(product.qty,product.cost,i.qty,landed(i));};
  const change=(key,value)=>setMeta(m=>({...m,[key]:value}));
  const availableProducts=editing&&kind==='sale'?products.map(p=>({...p,qty:Number(p.qty)+(editing.items||[]).filter(i=>i.id===p.id).reduce((sum,i)=>sum+Number(i.qty),0)})):products;
- const draft={id:editing?.id,receiptNo:editing?.receiptNo,kind,draft:true,party:meta.party,cash:meta.mode==='cash',date:editing?.date||new Date().toISOString(),...amounts,sourceCurrency:kind==='purchase'?meta.currency:'IQD',exchangeRate:rate,notes:meta.notes};
+ const fxMeta={marketRate:Number(meta.exchangeRate),accountRevision:supplier?.currencyRevision||0,cashCurrency:meta.cashCurrency,partyId:supplier?.id};
+ const draft={id:editing?.id,receiptNo:editing?.receiptNo,kind,draft:true,party:meta.party,cash:meta.mode==='cash',date:editing?.date||new Date().toISOString(),...amounts,sourceCurrency:kind==='purchase'?meta.currency:'IQD',exchangeRate:rate,...fxMeta,accountCurrency,accountAmount:convertAmount(amounts.total,'IQD',accountCurrency,meta.exchangeRate||1),cashAmount:convertAmount(amounts.total,'IQD',meta.cashCurrency,meta.exchangeRate||1),notes:meta.notes};
  function document(priced=true){const d=kind==='purchase'?supplierDocument(draft):salesDocument({...draft,party_name:draft.party,created_at:draft.date,items:amounts.items.map(i=>({...i,product_name:i.name,brand_name:i.brand}))},priced);return a4(d.title,d.body,d.total,editing?'تعديل فاتورة #'+receiptNumber(editing)+' — غير محفوظ':d.subtitle);}
  async function save(){
   if(saving)return;setError('');
   const invalid=validation||invoiceError(items,availableProducts,kind);
   if(invalid){setError(invalid);return;}
+  if(kind==='purchase'&&!supplier){setError('اختر المورد المسجّل لتحديد عملة حسابه');return;}
   if(meta.mode==='credit'&&!meta.party){setError('اختر العميل أو المورد للفاتورة الآجلة');return;}
   if(!Number.isFinite(Number(meta.expenses||0))||Number(meta.expenses||0)<0){setError('أدخل مصاريف صحيحة بالدينار');return;}
   if(kind==='purchase'&&!amounts.sourceSubtotal&&Number(meta.expenses)>0){setError('لا يمكن توزيع المصاريف على أسعار مجموعها صفر');return;}
   setSaving(true);
   try{
-   if(editing){const original=editing;const ok=await onUpdateInvoice(original,{...original,...meta,sourceCurrency:meta.currency,exchangeRate:rate,items,expenses:Number(meta.expenses||0)});if(ok)restore();}
-   else{const ok=await onSave({...meta,sourceCurrency:kind==='purchase'?meta.currency:'IQD',exchangeRate:rate},items);if(ok){setItems([]);setMeta(m=>({...blank(kind),currency:m.currency,exchangeRate:m.exchangeRate}));setSearch('');}}
+   if(editing){const original=editing;const ok=await onUpdateInvoice(original,{...original,...meta,...fxMeta,sourceCurrency:meta.currency,exchangeRate:rate,items,expenses:Number(meta.expenses||0)});if(ok)restore();}
+   else{const ok=await onSave({...meta,...fxMeta,sourceCurrency:kind==='purchase'?meta.currency:'IQD',exchangeRate:rate},items);if(ok){setItems([]);setMeta(m=>({...blank(kind),currency:m.currency,exchangeRate:m.exchangeRate}));setSearch('');}}
   }catch(e){setError(e.message||'تعذر حفظ الفاتورة؛ أعد المحاولة بنفس البيانات.');}
   finally{setSaving(false);}
  }
  return <><InvoiceShell title={kind==='purchase'?'فاتورة شراء':'فاتورة بيع جملة'} currency={kind==='purchase'?meta.currency:'IQD'} saving={saving} editing={editing?{number:receiptNumber(editing),date:editing.date}:null}>
   <div className="deskMeta"><InvoiceField label={kind==='purchase'?'المورد':'العميل'}><PartySearch rows={parties} value={meta.party} onChange={v=>change('party',v)}/></InvoiceField><InvoiceField label="طريقة الدفع"><select aria-label="طريقة الدفع" disabled={!!editing} value={meta.mode} onChange={e=>change('mode',e.target.value)}><option value="cash">نقدي</option><option value="credit">آجل</option></select></InvoiceField><InvoiceField label="عملة الفاتورة">{kind==='purchase'?<select aria-label="عملة الشراء" value={meta.currency} onChange={e=>setMeta(m=>({...m,currency:e.target.value,exchangeRate:e.target.value==='USD'&&(!m.exchangeRate||m.exchangeRate==='1')?String(settings?.rate||''):m.exchangeRate}))}><option value="IQD">الدينار العراقي (IQD)</option><option value="USD">الدولار الأمريكي (USD)</option></select>:<div className="deskReadonly">الدينار العراقي (IQD)</div>}</InvoiceField></div>
-  {kind==='purchase'&&meta.currency==='USD'&&<section className="deskExchange"><InvoiceField label="صرف الفاتورة · د.ع لكل دولار"><input aria-label="صرف فاتورة الشراء" inputMode="decimal" value={meta.exchangeRate} disabled={!canEditRate} onChange={e=>change('exchangeRate',moneyInput(e.target.value))} placeholder="سعر الصرف المعتمد"/><small>{rate>0?'100 دولار = '+money(rate*100)+' د.ع':'حدد سعر الصرف من إعدادات البرنامج أولاً.'}</small></InvoiceField><p>يُثبت الصرف داخل هذه الفاتورة. المصاريف بالدينار، والكلفة والحسابات تُحفظ بالدينار.{!canEditRate&&' تغيير الصرف يحتاج صلاحية من الإدارة.'}</p></section>}
+  {kind==='purchase'&&<section className="deskExchange"><InvoiceField label="الصرف المثبّت · د.ع لكل دولار"><input aria-label="صرف فاتورة الشراء" inputMode="decimal" value={meta.exchangeRate} disabled={!canEditRate} onChange={e=>change('exchangeRate',moneyInput(e.target.value))} placeholder="سعر الصرف المعتمد"/><small>100 دولار = {money(Number(meta.exchangeRate)*100)} د.ع</small></InvoiceField><div><p>عملة حساب المورد: <b>{accountCurrency}</b> · {money(draft.accountAmount)} {currencyLabel(accountCurrency)}. تُحفظ الكلفة بالدينار والصرف داخل الوصل.{!canEditRate&&' تغيير الصرف يحتاج صلاحية.'}</p>{meta.mode==='cash'&&<InvoiceField label="عملة الدفع من القاصة"><select aria-label="عملة دفع الشراء" disabled={!!editing} value={meta.cashCurrency} onChange={e=>change('cashCurrency',e.target.value)}><option value="IQD">دينار عراقي IQD</option><option value="USD">دولار أمريكي USD</option></select><small>يُخصم {money(draft.cashAmount)} {currencyLabel(meta.cashCurrency)}</small></InvoiceField>}</div></section>}
   <div className="deskBody"><InvoiceCatalog products={products} items={items} query={search} onQuery={setSearch} onAdd={p=>{if(!items.some(i=>i.id===p.id))setItems([...items,{...p,qty:'',price:''}]);}}/><InvoiceItems currency={kind==='purchase'?meta.currency:'IQD'} items={items} products={availableProducts} kind={kind} average={kind==='purchase'&&!editing?average:undefined} onEdit={(id,key,value)=>setItems(items.map(i=>i.id===id?{...i,[key]:value}:i))} onRemove={id=>setItems(items.filter(i=>i.id!==id))} landed={landed}/></div>
   <div className="deskFooterFields"><InvoiceField label="المصاريف الإضافية · د.ع"><input aria-label="المصاريف الإضافية" inputMode="decimal" value={meta.expenses} onChange={e=>change('expenses',moneyInput(e.target.value))}/>{kind==='purchase'&&<small>توزّع على المواد قبل احتساب متوسط كلفة المخزون.</small>}</InvoiceField><InvoiceField label="ملاحظات الفاتورة"><textarea aria-label="ملاحظات الفاتورة" value={meta.notes} maxLength={4000} onChange={e=>change('notes',e.target.value)}/></InvoiceField></div>
   <InvoiceSummary entries={[["عدد الأصناف",items.length],["مجموع الكميات",money(items.reduce((sum,i)=>sum+Number(i.qty||0),0))],["مجموع المواد",money(amounts.sourceSubtotal)+(kind==='purchase'&&meta.currency==='USD'?' $':' د.ع')],...(kind==='purchase'&&meta.currency==='USD'?[["المواد بالدينار",money(amounts.subtotal)+' د.ع']]:[]),["المصاريف",money(amounts.expenses)+' د.ع']]} total={amounts.total}/>

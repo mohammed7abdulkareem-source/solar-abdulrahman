@@ -3,7 +3,7 @@ export const isWarehouse = profile => profile?.user_type === 'warehouse';
 export const isEngineer = profile => profile?.user_type === 'installer';
 export const isAdministrator = profile => !!profile?.active && !!profile?.is_admin && !isEngineer(profile) && !isWarehouse(profile);
 export function cashRowsFor(rows, userId, all = false) {
-  return rows.filter(row => row.cash && (all || (!!userId && cashOwner(row) === userId)));
+  return rows.filter(row => row.cash && row.cashCurrency!=='USD' && (all || (!!userId && cashOwner(row) === userId)));
 }
 export function cashBalance(rows, userId, all = false) {
   return cashRowsFor(rows,userId,all).reduce((sum,row) =>
