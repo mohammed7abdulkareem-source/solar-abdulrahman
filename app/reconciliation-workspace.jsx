@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from './supabase';
 import {filteredStock,quantity,warehouseDate} from './warehouse-utils.mjs';
 import {accountLabel,accountEffect,money,statementPeriod,customerStatementBody} from './reconciliation-utils.mjs';
+import MoneyInput from './money-input';
 
 // Retain the request key for an exact retry after a lost network response.
 export function useReconciliation(){
@@ -13,7 +14,8 @@ export function useReconciliation(){
 }
 export function OpeningBalanceFields(){
  const [enabled,setEnabled]=useState(false);
- return <div className="openingFields"><label className="reconcileCheck"><input type="checkbox" name="hasOpening" checked={enabled} onChange={e=>setEnabled(e.target.checked)}/>رصيد افتتاحي إن وجد</label>{enabled&&<div className="reconcilePair"><label>مبلغ الرصيد الافتتاحي · د.ع<input aria-label="مبلغ الرصيد الافتتاحي" name="openingAmount" type="number" inputMode="decimal" min="0" max="1000000000000000" step="0.01" required placeholder="أدخل المبلغ"/></label><label>اتجاه الرصيد<select name="openingDirection"><option value="1">لنا على العميل</option><option value="-1">للعميل عندنا</option></select></label></div>}</div>;
+ const [amount,setAmount]=useState('');
+ return <div className="openingFields"><label className="reconcileCheck"><input type="checkbox" name="hasOpening" checked={enabled} onChange={e=>setEnabled(e.target.checked)}/>رصيد افتتاحي إن وجد</label>{enabled&&<div className="reconcilePair"><label>مبلغ الرصيد الافتتاحي · د.ع<MoneyInput aria-label="مبلغ الرصيد الافتتاحي" name="openingAmount" value={amount} onChange={setAmount} required placeholder="مثال: 2,000,000"/></label><label>اتجاه الرصيد<select name="openingDirection"><option value="1">لنا على العميل</option><option value="-1">للعميل عندنا</option></select></label></div>}</div>;
 }
 export function StockReconciliation({products,onChanged}){
  const [query,setQuery]=useState(''),[selected,setSelected]=useState(null),[actual,setActual]=useState(''),[note,setNote]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');const reconcile=useReconciliation();
