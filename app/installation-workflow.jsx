@@ -1,4 +1,5 @@
 'use client';
+import AppIcon from './app-icons';
 import {useEffect,useState} from 'react';
 import {supabase} from './supabase';
 import {receiptNumber} from './supplier-utils.mjs';
@@ -27,7 +28,7 @@ export default function InstallationWorkflow({profile,onChanged,selectedJob=''})
  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Baghdad',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
  const visible=jobs.filter(j=>(status==='all'||(status==='open'?j.installationStatus!=='closed':j.installationStatus===status))&&(!query||[j.party,j.customerPhone,j.customerAddress,j.installerName,String(j.receiptNo),...(selectedJob?[String(j.id)]:[])].join(' ').includes(query.trim())));
  return <div className="workflow">
-  <div className="workflowHero"><div><small>متابعة التنفيذ خطوة بخطوة</small><h2>{engineer?'مهامي الميدانية':'إدارة التنصيبات'}</h2><p>{engineer?'موعدك، موادك، وتقرير إنجازك بمكان واحد':'متابعة المهندس، مراجعة التقرير، ثم اعتماد الكلفة النهائية'}</p></div><span aria-hidden="true">☀</span></div>
+  <div className="workflowHero"><div><small>متابعة التنفيذ خطوة بخطوة</small><h2>{engineer?'مهامي الميدانية':'إدارة التنصيبات'}</h2><p>{engineer?'موعدك، موادك، وتقرير إنجازك بمكان واحد':'متابعة المهندس، مراجعة التقرير، ثم اعتماد الكلفة النهائية'}</p></div><span aria-hidden="true"><AppIcon name="sun" size={38}/></span></div>
   <div className="workflowStats"><div><b>{jobs.filter(j=>j.installDate===today&&j.installationStatus!=='closed').length}</b><span>مواعيد اليوم</span></div><div><b>{jobs.filter(j=>j.installationStatus==='in_progress').length}</b><span>قيد التنفيذ</span></div><div><b>{jobs.filter(j=>j.installationStatus==='completed').length}</b><span>بانتظار المراجعة</span></div></div>
   <div className="workflowSearch"><input aria-label="بحث بالتنصيبات" value={query} onChange={e=>setQuery(e.target.value)} placeholder="بحث بالزبون، الهاتف أو العنوان…"/><button disabled={loading||busy!==null} onClick={async()=>{setLoading(true);setError('');try{await refresh()}catch{setError('تعذر التحديث. تحقق من الاتصال.')}finally{setLoading(false)}}}>تحديث</button></div>
   <div className="statusTabs" aria-label="تصفية المهام">{[['open','المفتوحة'],...stages,['all','الكل']].map(([value,label])=><button key={value} aria-pressed={status===value} onClick={()=>setStatus(value)}>{label}</button>)}</div>

@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
-export const APP_VERSION='3.35.0';
+import AppIcon from './app-icons';
+export const APP_VERSION='3.36.0';
 export default function AppUpdate(){
  const [busy,setBusy]=useState(false),[available,setAvailable]=useState(false),[error,setError]=useState('');
  useEffect(()=>{let live=true;const check=()=>{if(document.visibilityState!=='visible')return;fetch('/version.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(v=>{if(live&&v?.version)setAvailable(v.version!==APP_VERSION)}).catch(()=>{})};check();window.addEventListener('focus',check);return()=>{live=false;window.removeEventListener('focus',check)}},[]);
@@ -13,5 +14,5 @@ export default function AppUpdate(){
    const url=new URL(window.location.href);url.searchParams.set('updated',String(Date.now()));window.location.replace(url.href);
   }catch{setError('تعذر التحديث؛ تأكد من الإنترنت وحاول مجدداً.');setBusy(false)}
  }
- return <div className="appUpdate"><button type="button" className={available?'available':''} disabled={busy} onClick={update} title={'الإصدار الحالي '+APP_VERSION}>{busy?'جاري التحديث…':available?'↻ تحديث جديد متوفر':'↻ تحديث البرنامج'}</button>{error&&<small role="alert">{error}</small>}</div>;
+ return <div className="appUpdate"><button type="button" className={available?'available':''} disabled={busy} onClick={update} aria-label={busy?'جاري التحديث…':available?'تحديث جديد متوفر':'تحديث البرنامج'} title={'الإصدار الحالي '+APP_VERSION}><AppIcon name="refresh" size={18}/><span className="updateLabel">{busy?'جاري التحديث…':available?'تحديث جديد متوفر':'تحديث البرنامج'}</span></button>{error&&<small role="alert">{error}</small>}</div>;
 }
