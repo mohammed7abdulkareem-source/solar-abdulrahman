@@ -37,9 +37,9 @@ test('editing a purchase preserves its original rate and supplies a revision',()
  const result=invoicePayload('purchase',{sourceCurrency:'USD',exchangeRate:1500},[{id:1,qty:1,price:100}],{id:20,pricingRevision:3});
  assert.equal(result.invoiceId,20);assert.equal(result.expectedRevision,3);assert.equal(result.exchangeRate,1500);
 });
-test('saved USD purchase PDF shows its frozen source price and rate, with IQD total',()=>{
+test('saved USD purchase PDF shows its frozen source price and rate, with source-currency total and explicit IQD book value',()=>{
  const doc=supplierDocument({kind:'purchase',receiptNo:5,party:'مورد',date:'2026-10-12',sourceCurrency:'USD',exchangeRate:1500,total:150000,items:[{qty:1,price:150000,sourcePrice:100,name:'لوح'}]});
- assert.match(doc.body,/الصرف المثبت/);assert.match(doc.body,/1,500/);assert.match(doc.body,/سعر الوحدة \$/);assert.match(doc.body,/>100</);assert.equal(doc.total,'150,000 د.ع');
+ assert.match(doc.body,/الصرف المثبت/);assert.match(doc.body,/1,500/);assert.match(doc.body,/سعر الوحدة \$/);assert.match(doc.body,/>100</);assert.equal(doc.total,'100 $');assert.match(doc.body,/القيمة المحاسبية للمخزون/);assert.match(doc.body,/150,000/);
 });
 test('supplier balances use locked IQD values, not current exchange rates',()=>{
  const tx=[{kind:'purchase',party:'مورد',sourceCurrency:'USD',exchangeRate:1500,total:150000,cash:false,date:'2026-10-12'},{kind:'supplier_payment',party:'مورد',total:50000,date:'2026-10-12'}];
