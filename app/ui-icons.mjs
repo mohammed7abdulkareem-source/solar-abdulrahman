@@ -1,4 +1,5 @@
 export const iconPaths={
+ signout:'M10 4H4v16h6m4-12 4 4-4 4m-6-4h10',
  sun:'M12 3v1m0 16v1M3 12h1m16 0h1M5.64 5.64l.7.7m11.32 11.32.7.7m0-12.72-.7.7M6.34 17.66l-.7.7M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
  home:'m3 10 9-7 9 7M5 9v11a1 1 0 0 0 1 1h4v-7h4v7h4a1 1 0 0 0 1-1V9',
  grid:'M3 3h7v7H3V3Zm11 0h7v7h-7V3ZM3 14h7v7H3v-7Zm11 0h7v7h-7v-7Z',
