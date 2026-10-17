@@ -1,5 +1,5 @@
 import {escapeHtml,warehouseDate} from './warehouse-utils.mjs';
-export const accountLabel=t=>({opening_balance:'رصيد افتتاحي',account_reconciliation:'مطابقة حساب',charge_extra_expense:'مصروف إضافي',charge_old_balance:'حساب قديم',charge_other:'إضافة أخرى'}[t.mode]||(['customer_payment','system_payment'].includes(t.kind)?(Number(t.total)<0?'إضافة على الحساب':'تسديد'):t.kind==='system'?'بيع منظومة':t.cash?'فاتورة بيع نقدية':'فاتورة بيع'));
+export const accountLabel=t=>({opening_balance:'رصيد افتتاحي',account_reconciliation:'مطابقة حساب',charge_extra_expense:'مصروف إضافي',charge_old_balance:'حساب قديم',charge_other:'إضافة أخرى'}[t.mode]||(['customer_payment','system_payment'].includes(t.kind)?(Number(t.total)<0?'إضافة على الحساب':'تسديد'):t.kind==='system'?'بيع منظومة':t.cash?'فاتورة بيع نقدية':'فاتورة بيع'))+(t.systemReceiptNo?' · المنظومة #'+t.systemReceiptNo:'');
 export const accountEffect=t=>t.effect!==undefined?Number(t.effect):['customer_payment','system_payment'].includes(t.kind)?-Number(t.total||0):t.kind==='sale'&&t.cash?0:Number(t.total||0);
 export const money=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const baghdadDay=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Baghdad',year:'numeric',month:'2-digit',day:'2-digit'});
