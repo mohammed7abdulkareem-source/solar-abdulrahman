@@ -1,0 +1,154 @@
+/* Cash and retail workspace: one flat reading order, explicit actions and contrast. */
+.premiumSolar .appContent .cashRefresh{display:flex!important;flex-direction:column;gap:18px;max-width:1180px;margin:auto}
+.premiumSolar .appContent .cashRefresh .workspaceHead h1{color:#173b54;font-size:28px}
+.premiumSolar .appContent .cashRefresh .workspaceHead p{color:#536b7b;font-size:14px}
+.premiumSolar .appContent .cashRefresh .cashScope{display:flex;gap:24px;align-items:center;padding:18px 20px;border:1px solid #d9e3ed;border-radius:16px;background:#fff}
+.premiumSolar .appContent .cashRefresh .cashScope label{width:min(340px,100%);gap:8px;font-size:13px!important;color:#29485e!important}
+.premiumSolar .appContent .cashRefresh .cashScope>div{display:grid;gap:5px;border:0;padding:0}
+.premiumSolar .appContent .cashRefresh .cashScope>div b{display:block;font-size:15px;color:#173b54}
+.premiumSolar .appContent .cashRefresh :is(input,select,textarea){font-size:16px!important;color:#173b54!important;background:#fff!important;border:1px solid #c8d6e2!important;border-radius:10px;min-height:46px;box-shadow:none}
+.premiumSolar .appContent .cashRefresh :is(input,select,textarea):focus{border-color:#2563bd!important;outline:3px solid #dbeafe;outline-offset:1px}
+.premiumSolar .appContent .cashRefresh .cashBalanceGrid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.premiumSolar .appContent .cashRefresh .cashBalanceCard{padding:23px 24px;min-height:162px;border:1px solid #cad9e8;border-radius:16px;box-shadow:none}
+.premiumSolar .appContent .cashRefresh .cashBalanceCard.iqd{background:#163c60;color:#fff;border-color:#163c60}
+.premiumSolar .appContent .cashRefresh .cashBalanceCard.usd{background:#eff8f2;border-color:#c3ddce}
+.premiumSolar .appContent .cashRefresh .cashBalanceCard>div{flex-direction:row;align-items:center;color:inherit!important;font-size:14px}
+.premiumSolar .appContent .cashRefresh .cashBalanceCard>div>span{display:flex;gap:8px;align-items:center}
+.premiumSolar .appContent .cashRefresh .cashBalanceCard strong{font-size:34px;color:#13543a;margin-top:13px;letter-spacing:0}
+.premiumSolar .appContent .cashRefresh .cashBalanceCard.iqd strong{color:#fff}
+.premiumSolar .appContent .cashRefresh .cashBalanceCard strong small{font-size:14px;color:inherit}
+.premiumSolar .appContent .cashRefresh .cashBalanceCard p{font-size:12px;color:#405e50!important;margin:8px 0 0}
+.premiumSolar .appContent .cashRefresh .cashBalanceCard.iqd p{color:#dce9f8!important}
+.premiumSolar .appContent .cashRefresh .cashBalanceCard>small{display:block;font-size:11px;color:#496352!important;margin-top:5px}
+.premiumSolar .appContent .cashRefresh .cashBalanceCard.iqd>small{color:#dce9f8!important}
+.premiumSolar .appContent .cashOperationGrid{display:grid;grid-template-columns:repeat(var(--cash-columns,3),minmax(0,1fr));gap:12px}
+.premiumSolar .appContent .cashOperation{display:flex;align-items:center;justify-content:flex-start;gap:11px;background:#fff;border:1px solid #d5e0ea;border-radius:14px;padding:17px 13px;text-align:right;color:#25465b;min-height:88px;cursor:pointer;box-shadow:none}
+.premiumSolar .appContent .cashOperation>span:nth-child(2){display:grid;gap:5px;flex:1;min-width:0}
+.premiumSolar .appContent .cashOperation strong{font-size:14px;color:#193d53}
+.premiumSolar .appContent .cashOperation small{font-size:11px;line-height:1.7;color:#536d7d}
+.premiumSolar .appContent .cashOperationIcon{display:grid;place-items:center;width:39px;height:39px;flex:none;border-radius:11px;background:#e4f5eb;color:#137344}
+.premiumSolar .appContent .cashOperation.red .cashOperationIcon{background:#fff0eb;color:#b43d22}
+.premiumSolar .appContent .cashOperation.blue .cashOperationIcon{background:#e9f1ff;color:#225fba}
+.premiumSolar .appContent .cashOperation.violet .cashOperationIcon{background:#f1eafd;color:#7542b1}
+.premiumSolar .appContent .cashOperation.selected{border-color:#2563bd;outline:2px solid #dbeafe;background:#f8fbff}
+.premiumSolar .appContent .cashOperation:disabled{opacity:.5;cursor:default}
+.premiumSolar .appContent .cashAdminTools{display:flex;flex-wrap:wrap;align-items:center;gap:9px;padding:13px 16px;background:#f2f4f8;border:1px solid #dde3eb;border-radius:12px}
+.premiumSolar .appContent .cashAdminTools>span{display:flex;align-items:center;gap:6px;color:#496274;font-size:12px;margin-inline-end:auto}
+.premiumSolar .appContent .cashAdminTools button{background:#fff;border:1px solid #cbd7e3;color:#334f64;border-radius:8px;min-height:39px;font-size:12px;padding:8px 12px;cursor:pointer}
+.premiumSolar .appContent .cashRefresh .cashEntryPanel{border:1px solid #c6d6e7;border-top:4px solid #2563bd;scroll-margin-top:90px;padding:22px}
+.premiumSolar .appContent .cashRefresh .cashEntryPanel.expenseEntry{border-top-color:#bc4e2d}
+.premiumSolar .appContent .cashRefresh :is(.cashEntryPanel,.cashLedgerPanel) h2{color:#173b54;font-size:20px}
+.premiumSolar .appContent .cashRefresh .cashEntryPanel label{font-size:13px!important;color:#29485e!important;gap:8px}
+.premiumSolar .appContent .cashRefresh .cashEntryPanel fieldset{display:grid;gap:18px;border:0;padding:0;min-width:0}
+.premiumSolar .appContent .cashRefresh .cashEntryPanel .formGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.premiumSolar .appContent .cashRefresh .cashEntryPreview{display:grid;grid-template-columns:1fr 1fr;gap:15px;background:#f5f8fc;border:1px solid #dde6f0;border-radius:12px;padding:16px}
+.premiumSolar .appContent .cashRefresh .cashEntryPreview>div{display:grid;gap:7px;min-width:0}
+.premiumSolar .appContent .cashRefresh .cashEntryPreview span{color:#28485f;font-size:13px;font-weight:600}
+.premiumSolar .appContent .cashRefresh .cashEntryPreview small{color:#5c7182;font-size:12px}
+.premiumSolar .appContent .cashRefresh .cashEntryPreview b{color:#173c60;font-size:19px;overflow-wrap:anywhere}
+.premiumSolar .appContent .cashRefresh .cashEntryPanel .wide{min-height:48px;font-size:15px!important;margin-top:18px;background:#1e5fbf!important;color:#fff!important;border-color:#1e5fbf!important}
+.premiumSolar .appContent .cashRefresh .cashValidation{padding:13px;background:#fff7ed;border:1px solid #fed7aa;color:#8d4219;border-radius:10px;margin-top:15px;font-size:14px;line-height:1.8}
+.premiumSolar .appContent .cashRefresh .cashPeriodTotals{display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;color:#466172;padding:15px 0}
+.premiumSolar .appContent .cashRefresh .cashPeriodTotals>span{padding:12px;background:#f4f7fb;border-radius:9px;line-height:1.8}
+.premiumSolar .appContent .cashRefresh .cashPeriodTotals b{color:#126440}
+.premiumSolar .appContent .cashRefresh .cashFilters label{font-size:12px!important;color:#36556b!important}
+.premiumSolar .appContent .cashRefresh .cashTable th{font-size:12px;color:#3d5d73!important;background:#f0f5fa!important;font-weight:600}
+.premiumSolar .appContent .cashRefresh .cashTable td{font-size:13px;color:#29485e;line-height:1.8}
+.premiumSolar .appContent .cashRefresh .cashTable td b{font-size:13px}
+.premiumSolar .appContent .cashRefresh .cashTable td small{color:#536d7d;font-size:11px}
+.premiumSolar .appContent .cashRefresh .cashTable .cashPositive{color:#127044!important;font-weight:600}
+.premiumSolar .appContent .cashRefresh .cashTable .cashNegative{color:#b13d2c!important;font-weight:600}
+.premiumSolar .appContent .cashRefresh .cashTable .uiButton.small{min-height:36px;font-size:12px!important}
+.premiumSolar .appContent .customerOwnershipNote,.premiumSolar .appContent .customerPermissionNote{background:#eef5ff;border:1px solid #cbdcf1;color:#2c5277;border-radius:10px;padding:13px;font-size:13px;line-height:1.9}
+.premiumSolar .appContent .customerOwnershipNote{display:grid;gap:4px}
+.premiumSolar .appContent .customerOwnershipNote span{font-size:12px}
+/* Retail keeps white fields, a navy total and a blue primary action. */
+.premiumSolar .appContent .systemWorkspace .deskForm{display:flex!important;flex-direction:column;gap:18px!important}
+.premiumSolar .appContent .systemWorkspace :is(.deskMain,.deskCheckout){width:100%;min-width:0}
+.premiumSolar .appContent .systemWorkspace .deskMain{display:grid;gap:18px;align-content:start}
+.premiumSolar .appContent .systemWorkspace :is(.systemCustomerSection,.systemPricingSection,.deskInstall){background:#fff;border:1px solid #d6e1ec;border-radius:14px;padding:20px;margin:0}
+.premiumSolar .appContent .systemStepTitle{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.premiumSolar .appContent .systemStepTitle>span{display:grid;place-items:center;width:27px;height:27px;flex:none;background:#e9f1fc;color:#245b9a;font-size:13px;border-radius:8px;font-weight:600}
+.premiumSolar .appContent .systemStepTitle h2{font-size:17px;color:#193d56;margin:0}
+.premiumSolar .appContent .systemStepTitle small{font-size:12px;color:#61788b;margin-inline-start:auto}
+.premiumSolar .appContent .systemWorkspace .deskMeta{padding:0!important;border:0;background:none;grid-template-columns:2fr 1fr 1fr}
+.premiumSolar .appContent .systemWorkspace .deskMeta>.deskField:first-child{grid-column:auto}
+.premiumSolar .appContent .systemWorkspace .deskLabel{color:#34536a!important;font-size:13px!important}
+.premiumSolar .appContent .systemWorkspace :is(input,textarea,select,.deskReadonly){color:#173b54!important;background:#fff!important;border:1px solid #cad7e3!important;box-shadow:none;border-radius:9px;min-height:45px}
+.premiumSolar .appContent .systemWorkspace .deskReadonly{background:#f5f7fa!important;color:#4b6578!important;font-size:13px!important}
+.premiumSolar .appContent .systemWorkspace input:focus,.premiumSolar .appContent .systemWorkspace select:focus,.premiumSolar .appContent .systemWorkspace textarea:focus{outline:3px solid #e3edfc;border-color:#3775c7!important}
+.premiumSolar .appContent .systemWorkspace .deskSchedule{background:#f5f8fc;border:1px solid #e0e7f0;border-radius:10px;color:#34536a!important;padding:12px;min-height:46px;font-size:13px!important;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.premiumSolar .appContent .systemWorkspace .deskSchedule input{min-height:0;width:17px;height:17px;accent-color:#2563bd}
+.premiumSolar .appContent .systemWorkspace .deskSchedule small{color:#5b7385;font-size:12px}
+.premiumSolar .appContent .systemWorkspace .deskFooterFields{padding:0;border:0;background:none;gap:16px;grid-template-columns:1fr 1fr}
+.premiumSolar .appContent .systemWorkspace .deskFooterFields>.deskField:last-child{grid-column:1/-1}
+.premiumSolar .appContent .systemWorkspace .deskCheckout{position:static;background:#fff!important;color:#24465e;border:1px solid #ccdbe9;border-radius:14px;padding:20px}
+.premiumSolar .appContent .systemWorkspace .deskCheckout>h2{display:block;color:#173b54;margin:0 0 15px;font-size:17px}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .deskGrand{background:#163c60!important;border:0;padding:18px 20px!important;border-radius:11px;display:flex!important;flex-direction:row;justify-content:space-between;align-items:center;gap:12px}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .deskGrand>span{color:#dce9f8!important;font-size:13px}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .deskGrand>strong{color:#fff!important;font-size:30px}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .deskGrand strong small{color:#e1eaf4!important}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .deskSummaryDetails{padding:16px 0;color:#294c65;display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .deskSummaryDetails>div{display:flex;flex-direction:column;gap:6px;padding:0}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .deskSummaryDetails span{font-size:12px;color:#526e82!important}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .deskSummaryDetails b{color:#173b54!important;font-size:16px!important}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .deskSummaryToggle{display:none}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .deskActions{display:grid;grid-template-columns:1fr;padding:15px 0 0}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .deskActions .deskSave{background:#1e5fbf!important;color:#fff!important;border:1px solid #1e5fbf!important;min-height:48px;font-size:14px!important;grid-column:1/-1}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .reportExportButtons{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .reportButton{background:#f5f8fc!important;color:#234d70!important;border:1px solid #cfdde9!important;font-size:12px!important;min-height:42px}
+.premiumSolar .appContent .systemWorkspace .deskCheckout .reportExportStatus{color:#536d80;font-size:11px}
+.premiumSolar .appContent .systemWorkspace .deskMore{border:1px solid #dde5ed;background:#f8fafc;color:#385a70;border-radius:9px;padding:10px;margin-top:14px}
+.premiumSolar .appContent .systemWorkspace .deskMore summary{font-size:13px;color:#33566e;cursor:pointer;min-height:28px}
+.premiumSolar .appContent .systemWorkspace .deskCopyActions button{background:#fff!important;border:1px solid #cfdbe6;color:#34556e;font-size:12px!important;min-height:40px}
+@media(max-width:1000px){
+ .premiumSolar .appContent .cashOperationGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .premiumSolar .appContent .systemWorkspace .deskMeta{grid-template-columns:1fr 1fr}
+ .premiumSolar .appContent .systemWorkspace .deskMeta>.deskField:first-child{grid-column:1/-1}
+}
+@media(max-width:600px){
+ .premiumSolar .appContent .cashRefresh{gap:14px}
+ .premiumSolar .appContent .cashRefresh .cashScope{display:grid;gap:9px;padding:15px}
+ .premiumSolar .appContent .cashRefresh .cashScope label{width:100%}
+ .premiumSolar .appContent .cashRefresh .cashScope>div b{display:none}
+ .premiumSolar .appContent .cashRefresh .cashBalanceGrid{gap:10px}
+ .premiumSolar .appContent .cashRefresh .cashBalanceCard{padding:17px 13px;min-height:143px}
+ .premiumSolar .appContent .cashRefresh .cashBalanceCard>div{font-size:12px;gap:7px;align-items:start;flex-direction:column}
+ .premiumSolar .appContent .cashRefresh .cashBalanceCard strong{font-size:25px;margin-top:8px;line-height:1.6}
+ .premiumSolar .appContent .cashRefresh .cashBalanceCard strong small{font-size:12px}
+ .premiumSolar .appContent .cashRefresh .cashBalanceCard p,.premiumSolar .appContent .cashRefresh .cashBalanceCard>small{font-size:11px;line-height:1.8}
+ .premiumSolar .appContent .cashOperationGrid{gap:9px}
+ .premiumSolar .appContent .cashOperation{padding:14px 11px;gap:9px;flex-wrap:wrap;align-content:start;min-height:108px}
+ .premiumSolar .appContent .cashOperation>svg:last-child{display:none}
+ .premiumSolar .appContent .cashOperation>span:nth-child(2){flex-basis:calc(100% - 50px)}
+ .premiumSolar .appContent .cashOperation strong{font-size:13px;line-height:1.8}
+ .premiumSolar .appContent .cashOperation small{font-size:11px}
+ .premiumSolar .appContent .cashOperationIcon{width:32px;height:32px;border-radius:9px}
+ .premiumSolar .appContent .cashAdminTools{padding:12px;gap:8px}
+ .premiumSolar .appContent .cashAdminTools>span{width:100%;margin:0}
+ .premiumSolar .appContent .cashAdminTools button{flex:1 1 130px;line-height:1.8}
+ .premiumSolar .appContent .cashRefresh .cashEntryPanel{padding:17px 14px}
+ .premiumSolar .appContent .cashRefresh .cashEntryPanel .formGrid{grid-template-columns:1fr}
+ .premiumSolar .appContent .cashRefresh .cashEntryPreview{gap:10px;padding:13px}
+ .premiumSolar .appContent .cashRefresh .cashEntryPreview b{font-size:16px}
+ .premiumSolar .appContent .cashRefresh .cashEntryPreview small{font-size:11px}
+ .premiumSolar .appContent .cashRefresh .cashPeriodTotals{grid-template-columns:1fr;font-size:12px;gap:8px}
+ .premiumSolar .appContent .cashRefresh .cashTable td:before{font-size:11px;color:#526e82}
+ .premiumSolar .appContent .systemWorkspace :is(.systemCustomerSection,.systemPricingSection,.deskInstall,.deskCheckout){padding:16px 14px}
+ .premiumSolar .appContent .systemStepTitle{gap:8px;margin-bottom:15px;flex-wrap:wrap}
+ .premiumSolar .appContent .systemStepTitle h2{font-size:16px}
+ .premiumSolar .appContent .systemStepTitle small{font-size:11px}
+ .premiumSolar .appContent .systemWorkspace .deskMeta{padding:0!important}
+ .premiumSolar .appContent .systemWorkspace .deskFooterFields{grid-template-columns:1fr}
+ .premiumSolar .appContent .systemWorkspace .deskCheckout .deskGrand{padding:16px!important;flex-wrap:wrap}
+ .premiumSolar .appContent .systemWorkspace .deskCheckout .deskGrand>strong{font-size:27px}
+ .premiumSolar .appContent .systemWorkspace .deskCheckout .deskSummaryDetails{grid-template-columns:1fr 1fr;gap:15px}
+ .premiumSolar .appContent .systemWorkspace .deskCheckout .deskSummaryDetails b{font-size:14px!important}
+ .premiumSolar .appContent .systemWorkspace .deskCheckout .reportExportButtons{gap:7px}
+ .premiumSolar .appContent .systemWorkspace .deskCheckout .reportButton{font-size:11px!important;padding:9px 5px}
+}
+
+.premiumSolar .appContent .systemWorkspace .deskBody{height:auto!important;min-height:0!important;margin:0;flex:none}
+.premiumSolar .appContent .systemWorkspace .deskItems{max-height:none!important;overflow:visible!important}
+.premiumSolar .appContent .systemWorkspace :is(input:not([type=checkbox]),textarea,select){min-height:45px!important;font-size:16px!important;padding:10px 12px!important}
+.premiumSolar .appContent .systemWorkspace textarea{min-height:76px!important}

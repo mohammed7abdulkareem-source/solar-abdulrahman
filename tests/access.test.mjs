@@ -27,3 +27,11 @@ test('permissions fail closed and staff only opens granted pages',()=>{
  assert.equal(canOpenPage({active:true,permissions:{cash:true}},'cash'),true);
  assert.equal(canOpenPage({active:true,permissions:{cash:true}},'installations'),false);
 });
+test('create-only customer permission opens the own-customer workspace without unrelated permissions',()=>{
+ const creator={active:true,permissions:{customerCreate:true}};
+ assert.equal(canOpenPage(creator,'customers'),true);
+ for(const page of ['users','cash','customerStatement','customerReconcile'])assert.equal(canOpenPage(creator,page),false);
+ assert.equal(canOpenPage({active:true,permissions:{}},'customers'),false);
+ assert.equal(canOpenPage({...creator,user_type:'warehouse'},'customers'),false);
+ assert.equal(canOpenPage({...creator,user_type:'installer'},'customers'),false);
+});

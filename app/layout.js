@@ -15,6 +15,7 @@ import './fx-mobile.css';
 import './finance-theme.css';
 import './premium-theme.css';
 import './clarity-theme.css';
+import './workspace-refresh.css';
 import PWARegister from './pwa-register';
 export const metadata={title:'عبدالرحمن سولار',description:'إدارة فرع الطاقة الشمسية',manifest:'/manifest.webmanifest',icons:{icon:'/icon.svg',apple:'/icon.svg'}};
 export const viewport={width:'device-width',initialScale:1,viewportFit:'cover',themeColor:'#123c48'};

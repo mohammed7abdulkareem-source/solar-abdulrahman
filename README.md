@@ -368,3 +368,9 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Concurrent changes to the same record still require optimistic concurrency/version checks; this release prevents rewriting unrelated records.
 - Full accounting reconciliation, invoice editing cost recalculation, and server-side role-by-column restrictions require a separate audited change.
 - Do not claim a full production financial audit based on the UI/build checks.
+
+
+### V3.41.0
+- Separate `customerCreate` permission adds wholesale or retail customers owned by the signed-in user. Existing `customers` permission retains management access. Restrictive RLS hides other users’ customers; admins retain their overview.
+- Cash actions use direct operation buttons and clear validation, with before/after balances in each currency. Cash deposits can repair a negative legacy balance without an unrelated currency blocking them.
+- Retail/system sales use numbered form sections, white fields, a navy total and a blue save button, with responsive mobile and desktop layouts.
