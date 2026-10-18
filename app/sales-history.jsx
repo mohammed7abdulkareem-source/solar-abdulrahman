@@ -1,12 +1,13 @@
 'use client';
 import {useEffect,useState} from 'react';
+import WarrantyManage from './warranty-manage';
 import {supabase} from './supabase';
 import {salesDocument,statusLabel,formatMoney} from './sales-document.mjs';
 import {deleteSale} from './delete-sale';
 import {receiptQuery,receiptNumber} from './supplier-utils.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 
-export default function SalesHistory({a4,openA4,saveA4,shareA4,onFollow,onChanged}){
+export default function SalesHistory({profile,a4,openA4,saveA4,shareA4,onFollow,onChanged}){
  const [deleting,setDeleting]=useState(null),[message,setMessage]=useState('');
  async function remove(row){if(deleting!==null)return;setDeleting(row.id);setError('');setMessage('');try{if(await deleteSale(row.id)){setMessage('تم حذف الفاتورة وإعادة المواد وتصحيح الحساب.');setOffset(0);setRefresh(n=>n+1);await onChanged?.()}}catch(e){setError(e.message)}finally{setDeleting(null)}}
  const [query,setQuery]=useState(''),[search,setSearch]=useState(''),[kind,setKind]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[status,setStatus]=useState(''),[offset,setOffset]=useState(0),[refresh,setRefresh]=useState(0);
@@ -34,6 +35,7 @@ export default function SalesHistory({a4,openA4,saveA4,shareA4,onFollow,onChange
    <p className="archiveStatus">المخزن: {row.warehouse_status==='ready'?'تم التجهيز':'بانتظار التجهيز'}</p>
    {row.kind==='system'&&<p className="archiveStatus">{statusLabel[row.installation_status]||'غير محدد'} · المهندس: {row.installerName||'غير محدد'}</p>}
    <details><summary>تفاصيل المواد ({row.items.length})</summary>{row.items.map((item,i)=><div className="archiveLine" key={i}><span>{item.product_name}<small>{[item.brand_name,item.category].filter(Boolean).join(' · ')}</small></span><b>× {formatMoney(item.qty)}</b></div>)}</details>
+   {(profile?.is_admin||((row.cashbox_user_id||row.created_by)===profile?.id&&profile?.permissions?.[row.kind]))&&<WarrantyManage invoiceId={row.id} onChanged={async()=>{setMessage('تم حفظ الضمان. رمز الوصل نفسه يعرض آخر تحديث.');setRefresh(n=>n+1);await onChanged?.();}}/>}
    <div className="receiptCopies"><button onClick={()=>openA4(doc(row,true))}>معاينة وصل الزبون</button><button onClick={()=>openA4(doc(row,false))}>معاينة الوصل المخزني</button><button onClick={()=>saveA4(doc(row,true),'وصل-زبون-'+receiptNumber(row))}>حفظ PDF الزبون</button><button onClick={()=>saveA4(doc(row,false),'وصل-مخزني-'+receiptNumber(row))}>حفظ PDF المخزن</button><button onClick={()=>shareA4('وصل-زبون-'+receiptNumber(row),'فاتورة '+receiptNumber(row)+' - '+(row.party_name||'زبون نقدي'),doc(row,true))}>مشاركة PDF الزبون</button><button onClick={()=>shareA4('وصل-مخزني-'+receiptNumber(row),'وصل مخزني '+receiptNumber(row),doc(row,false))}>مشاركة PDF المخزن</button></div>
    {row.kind==='system'&&onFollow&&<button className="workflowSecondary archiveFollow" onClick={()=>onFollow(String(row.id))}>متابعة ملف التنصيب</button>}
    {row.canDelete&&<button className="dangerMini archiveDelete" disabled={deleting!==null} onClick={()=>remove(row)}>{deleting===row.id?'جاري مراجعة الحذف…':'حذف الوصل'}</button>}

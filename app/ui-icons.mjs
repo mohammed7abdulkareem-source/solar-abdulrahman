@@ -1,4 +1,5 @@
 export const iconPaths={
+ warranty:'M3 8V3h5m8 0h5v5M3 16v5h5m8 0h5v-5M7 7h3v3H7V7Zm7 0h3v3h-3V7ZM7 14h3v3H7v-3Zm7 0h1m2 0v3h-3v-1',
  signout:'M10 4H4v16h6m4-12 4 4-4 4m-6-4h10',
  sun:'M12 3v1m0 16v1M3 12h1m16 0h1M5.64 5.64l.7.7m11.32 11.32.7.7m0-12.72-.7.7M6.34 17.66l-.7.7M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0',
  home:'m3 10 9-7 9 7M5 9v11a1 1 0 0 0 1 1h4v-7h4v7h4a1 1 0 0 0 1-1V9',

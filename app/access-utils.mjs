@@ -13,6 +13,7 @@ export function canOpenPage(profile, page) {
   if (!profile?.active) return false;
   if (page === 'exchangeRate') return !isEngineer(profile) && !isWarehouse(profile);
   if (page === 'home') return true;
+  if (page === 'warranty') return !isEngineer(profile) && !isWarehouse(profile);
   if (isEngineer(profile)) return page === 'installations';
   if (isWarehouse(profile)) return ['warehouse','stock','stockMovement'].includes(page);
   if (isAdministrator(profile)) return true;

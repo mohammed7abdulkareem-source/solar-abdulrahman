@@ -1,6 +1,6 @@
 {
   "name": "solar-abdulrahman",
-  "version": "3.43.0",
+  "version": "3.44.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -9,7 +9,9 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "2.57.4",
+    "jsqr": "^1.4.0",
     "next": "15.5.9",
+    "qrcode": "^1.5.4",
     "react": "19.1.1",
     "react-dom": "19.1.1"
   }

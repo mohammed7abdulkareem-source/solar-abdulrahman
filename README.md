@@ -386,3 +386,10 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Users request an exact period snapshot. Administrators set a fixed IQD share or percentage, confirm collection review and choose the funding cashbox. Approval atomically pays once, records one business expense, and checkpoints the reviewed profit sources. Only the paid share reduces company net profit.
 - Approved statements and receipts remain available as PDF/share. Corrections or deletion of settled sources remain visible as differences; source changes before approval require a new review. New business after a request remains open. In-app notifications link to settlements.
 - Validation: isolated PostgreSQL permission/atomicity/retry/history tests, mobile/desktop browser workflow including lost-response retry and PDF/share, unit suite and production build.
+
+### V3.44.0
+- Optional material-by-material and maintenance warranty terms on wholesale and system invoices, starting on the invoice date. Unspecified or unchecked terms give no cover.
+- Warranty policy, opaque QR certificate and financial invoice save commit atomically. Customer copies carry a locally generated QR; saved invoice warranties can be updated without changing their financial amounts, and printed QR links always reflect current cover or invoice cancellation.
+- Public token-only certificates show customer, invoice number/date, customer sale values, materials, service cover, expiry and server-calculated remaining days. They omit cost, profit, cashbox and account balances. No public invoice search exists.
+- Warranty checker supports live camera, QR image upload or pasting a link/token, including mobile browsers without native BarcodeDetector.
+- Validation includes QR decoding, calendar boundaries, anonymous read/owner edit restrictions, atomic invalid-policy rollback, idempotency, stale revisions, cancelled cover, mobile/desktop invoice workflows and PDF scan verification.
