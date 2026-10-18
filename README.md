@@ -374,3 +374,9 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Separate `customerCreate` permission adds wholesale or retail customers owned by the signed-in user. Existing `customers` permission retains management access. Restrictive RLS hides other users’ customers; admins retain their overview.
 - Cash actions use direct operation buttons and clear validation, with before/after balances in each currency. Cash deposits can repair a negative legacy balance without an unrelated currency blocking them.
 - Retail/system sales use numbered form sections, white fields, a navy total and a blue save button, with responsive mobile and desktop layouts.
+
+
+### V3.42.0
+- Compact customer/supplier directories: search and balance rows, separate add/edit screens, and one account screen per party.
+- A shared account view covers overview, dated movements, receipt details, detailed statement, PDF/share and CSV for Excel. Supplier currency revisions remain separate and cancellation postings remain in the running balance.
+- Existing protected payment, reconciliation, purchase and sale flows open with the selected party. Payment forms use compact spacing and prepare draft PDF exports on demand.

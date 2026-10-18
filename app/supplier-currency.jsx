@@ -5,9 +5,10 @@ import {loadExchangeRate} from './currency-store.mjs';
 import {convertAmount,currencyLabel as unit} from './fx-utils.mjs';
 import {money} from './supplier-utils.mjs';
 import PartySearch from './party-search';
-export default function SupplierCurrency({suppliers,onChanged}){
- const [party,setParty]=useState(''),[account,setAccount]=useState(null),[currency,setCurrency]=useState('USD'),[rate,setRate]=useState(''),[note,setNote]=useState(''),[review,setReview]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState(''),[refresh,setRefresh]=useState(0);
+export default function SupplierCurrency({suppliers,onChanged,initialParty='',onLockChange}){
+ const [party,setParty]=useState(initialParty),[account,setAccount]=useState(null),[currency,setCurrency]=useState('USD'),[rate,setRate]=useState(''),[note,setNote]=useState(''),[review,setReview]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState(''),[refresh,setRefresh]=useState(0);
  const attempt=useRef(null),supplier=suppliers.find(s=>s.name===party);
+ useEffect(()=>{onLockChange?.(busy||!!attempt.current);},[busy,error,success,onLockChange]);
  useEffect(()=>{loadExchangeRate().then(d=>setRate(String(d.rate||''))).catch(()=>{});},[]);
  useEffect(()=>{let live=true;setAccount(null);setReview(false);setError('');if(supplier)fxRead('account',{supplierId:supplier.id}).then(a=>{if(live){setAccount(a);setCurrency(a.currency==='USD'?'IQD':'USD');}}).catch(e=>live&&setError(e.message));return()=>{live=false;};},[supplier?.id,refresh]);
  async function save(){setBusy(true);setError('');try{await fxSave(attempt,'currency',{supplierId:supplier.id,currency,rate:Number(rate),note,expectedRevision:account.revision,expectedToken:account.token});setReview(false);setRefresh(n=>n+1);setSuccess('تم اعتماد عملة الحساب وحفظ سجل التحويل.');await onChanged?.();}catch(e){setError(e.message);if(e.code==='40001'){setReview(false);setRefresh(n=>n+1);}}finally{setBusy(false);}}

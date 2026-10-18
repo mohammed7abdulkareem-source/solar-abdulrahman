@@ -1,0 +1,220 @@
+/* One small screen per job: directory, account, movement, form or report. */
+body.premiumSolar .appContent main:has(.miniParty),body.premiumSolar .appContent main:has(.miniFinance){max-width:1040px;padding-top:10px}
+body.premiumSolar .appContent main:has(.miniParty)>.top,body.premiumSolar .appContent main:has(.miniFinance)>.top{display:none}
+body.premiumSolar .appContent .miniParty{--mini-ink:#183c4d;--mini-accent:#087e70;--mini-line:#e5edf0;--mini-muted:#607782;max-width:800px;width:100%;margin:0 auto;background:#fff;border:1px solid var(--mini-line);border-radius:14px;padding:0 20px 20px;box-sizing:border-box;color:var(--mini-ink);font-size:14px;min-width:0}
+body.premiumSolar .appContent .miniDirectory{display:block!important;min-height:65vh}
+body.premiumSolar .appContent .miniPartyEditor{display:block!important}
+body.premiumSolar .appContent .miniPageHead{display:flex;align-items:center;gap:9px;min-height:60px;margin-bottom:8px;border-bottom:1px solid var(--mini-line);padding:9px 0;position:relative}
+body.premiumSolar .appContent .miniPageHead h1{font-size:18px;line-height:1.5;color:#183c4d;margin:0;flex:1;font-weight:650}
+body.premiumSolar .appContent .miniIcon{display:inline-flex;align-items:center;justify-content:center;flex:none;width:38px;min-height:38px;padding:7px;border:1px solid #e1eaee;border-radius:9px;background:#fff;color:#315565;cursor:pointer;box-shadow:none}
+body.premiumSolar .appContent .miniIcon.add{background:#163f4c;color:#fff;border-color:#163f4c}
+body.premiumSolar .appContent .miniIcon.selected{background:#e8f6f2;color:#087e70;border-color:#b8ded4}
+body.premiumSolar .appContent .miniIcon:disabled{opacity:.45;cursor:default}
+body.premiumSolar .appContent .miniPageHead .miniIcon:first-child svg{transform:rotate(180deg)}
+body.premiumSolar .appContent .miniDirectory>.miniPageHead .miniIcon:first-child svg{transform:none}
+body.premiumSolar .appContent .miniSearchBar{display:flex;gap:8px;align-items:center;margin:12px 0}
+body.premiumSolar .appContent .miniSearch{display:flex;position:relative;align-items:center;gap:7px;min-width:0;flex:1;background:#f7fafb;border:1px solid #e1e9ed;border-radius:9px;padding:0 10px;color:#77909c}
+body.premiumSolar .appContent .miniSearch input{background:transparent!important;border:0!important;box-shadow:none!important;margin:0;min-height:42px!important;padding:8px 0!important;width:100%;min-width:0;color:#244b5c!important;font-size:16px!important;outline-offset:2px}
+body.premiumSolar .appContent .miniSearch input::placeholder{font-size:13px;color:#8a9ca4}
+body.premiumSolar .appContent .miniDirectoryFilters{display:flex;gap:10px;padding:10px;background:#f7fafb;border:1px solid #e1e9ed;border-radius:9px;margin-bottom:10px}
+body.premiumSolar .appContent .miniDirectoryFilters label{display:grid;gap:5px;flex:1;min-width:0;color:#4c6672;font-size:12px!important}
+body.premiumSolar .appContent .miniParty select{color:#244b5c;font-size:14px!important;min-height:39px!important;border:1px solid #dbe6eb;border-radius:8px;background:#fff;padding:7px 9px!important;max-width:100%}
+body.premiumSolar .appContent .miniPartyRows{display:grid}
+body.premiumSolar .appContent .miniPartyRow{display:flex;align-items:center;width:100%;gap:11px;border:0!important;border-bottom:1px solid #edf2f4!important;border-radius:0!important;background:#fff!important;color:#244b5c;padding:13px 1px!important;min-height:73px;cursor:pointer;text-align:right;box-shadow:none}
+body.premiumSolar .appContent .miniPartyRow:hover{background:#f8fbfc!important}
+body.premiumSolar .appContent .miniPartyRow:disabled{opacity:.6}
+body.premiumSolar .appContent .miniAvatar{display:grid;place-items:center;flex:none;width:41px;height:41px;border-radius:50%;background:#164653;color:white;font-size:14px;font-weight:600}
+body.premiumSolar .appContent .miniRowIdentity{display:grid;gap:5px;flex:1;min-width:0}
+body.premiumSolar .appContent .miniRowIdentity b{color:#244653;font-size:14px;line-height:1.7;font-weight:600;overflow-wrap:anywhere}
+body.premiumSolar .appContent .miniRowIdentity small{font-size:11px;color:#738b97;overflow-wrap:anywhere}
+body.premiumSolar .appContent .miniRowBalance{font-size:14px;font-weight:650;text-align:left;line-height:1.7;max-width:42%;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+body.premiumSolar .appContent .miniRowBalance small{font-size:10px;font-weight:400}
+body.premiumSolar .appContent .miniPartyRow>svg{color:#8ba1aa;transform:rotate(90deg);width:12px;flex:none}
+body.premiumSolar .appContent .miniParty .credit{color:#07836b!important}
+body.premiumSolar .appContent .miniParty .debit{color:#d9464e!important}
+body.premiumSolar .appContent .miniParty .neutral{color:#4f6c7a!important}
+body.premiumSolar .appContent .miniEmpty{font-size:13px;color:#6a828e;text-align:center;padding:35px 10px;line-height:1.8;margin:0}
+body.premiumSolar .appContent .miniAlert,body.premiumSolar .appContent .miniSuccess{font-size:13px;line-height:1.9;padding:11px 13px;background:#fff4ef;color:#9a422c;border:1px solid #f0d5c8;border-radius:8px;margin:10px auto;max-width:800px}
+body.premiumSolar .appContent .miniSuccess{background:#eff9f4;border-color:#d0e8dd;color:#156e4e}
+body.premiumSolar .appContent .miniPagination{display:flex;justify-content:center;align-items:center;gap:18px;padding-top:15px;color:#6f8693;font-size:12px}
+body.premiumSolar .appContent .miniPagination button,body.premiumSolar .appContent .miniLoadMore{background:#f7fafb;border:1px solid #dce8ed;border-radius:7px;padding:7px 12px;min-height:36px;color:#355e70;font-size:12px;cursor:pointer}
+body.premiumSolar .appContent .miniIdentity{display:flex;gap:11px;align-items:center;padding:13px 0 16px;border-bottom:1px solid var(--mini-line)}
+body.premiumSolar .appContent .miniIdentity>div{flex:1;min-width:0}
+body.premiumSolar .appContent .miniIdentity h2{font-size:15px;line-height:1.8;color:#244653;margin:0;font-weight:650}
+body.premiumSolar .appContent .miniIdentity small{font-size:11px;line-height:1.8;color:#6a8490}
+body.premiumSolar .appContent .miniCurrency{font-size:10px;background:#f1f6f8;color:#4f7282;padding:4px 7px;border-radius:6px}
+body.premiumSolar .appContent .miniPeriod{padding:12px 0;display:grid;gap:8px}
+body.premiumSolar .appContent .miniDates{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+body.premiumSolar .appContent .miniDates label{display:grid;gap:4px;font-size:10px!important;color:#718994!important}
+body.premiumSolar .appContent .miniDates input{border:1px solid #e1eaef;background:#fff!important;box-shadow:none;min-height:38px!important;padding:7px 8px!important;min-width:0;width:100%;font-size:14px!important;color:#365e73;border-radius:7px}
+body.premiumSolar .appContent .miniSegments{display:flex;gap:5px;padding:3px;background:#f7fafb;border-radius:8px;border:1px solid #edf2f4;min-width:0}
+body.premiumSolar .appContent .miniSegments button{flex:1;background:transparent;border:0;border-radius:6px;color:#5f7c8b;min-height:33px;padding:7px 5px;font-size:12px!important;line-height:1.6;cursor:pointer;white-space:nowrap;box-shadow:none}
+body.premiumSolar .appContent .miniSegments button[aria-pressed=true]{background:#087e70;color:#fff}
+body.premiumSolar .appContent .miniRevision{display:flex;align-items:center;gap:10px;color:#6a818b;font-size:11px!important}
+body.premiumSolar .appContent .miniRevision select{flex:1;font-size:12px!important;min-height:32px!important}
+body.premiumSolar .appContent .miniAccountStats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:3px 0 13px}
+body.premiumSolar .appContent .miniAccountStats>div{display:grid;grid-template-columns:25px 1fr;align-items:center;gap:4px 7px;border:1px solid #e4edf1;background:#f7fafc;border-radius:9px;padding:12px;min-height:76px}
+body.premiumSolar .appContent .miniAccountStats svg{grid-row:span 2;color:#718a9a}
+body.premiumSolar .appContent .miniAccountStats span{font-size:11px;color:#68808b;line-height:1.7}
+body.premiumSolar .appContent .miniAccountStats b{font-size:16px;font-weight:650;color:#274c60;direction:ltr;text-align:right;overflow-wrap:anywhere}
+body.premiumSolar .appContent .miniAccountStats small{font-size:11px;font-weight:400}
+body.premiumSolar .appContent .miniAccountStats .green{background:#eefaf4;border-color:#e0eee7}
+body.premiumSolar .appContent .miniAccountStats .green :is(svg,b){color:#0b8168}
+body.premiumSolar .appContent .miniAccountStats .blue{background:#f0f6fd;border-color:#e1eaf5}
+body.premiumSolar .appContent .miniAccountStats .blue :is(svg,b){color:#2778b3}
+body.premiumSolar .appContent .miniAccountStats .rose{background:#fff4f3;border-color:#f4e7e5}
+body.premiumSolar .appContent .miniAccountStats .rose :is(svg,b){color:#c34c52}
+body.premiumSolar .appContent .miniAccountActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:1px 0 12px;border-bottom:1px solid var(--mini-line)}
+body.premiumSolar .appContent .miniAccountActions button{display:grid;justify-items:center;gap:7px;border:1px solid #e2ebf0;border-radius:8px;background:#fff;color:#345c70;min-height:63px;padding:10px 5px;font-size:12px;cursor:pointer;box-shadow:none}
+body.premiumSolar .appContent .miniAccountActions button:hover{border-color:#b6d3d9;background:#f5fbf9}
+body.premiumSolar .appContent .miniListTitle{display:flex;align-items:center;justify-content:space-between;padding:14px 0 4px}
+body.premiumSolar .appContent .miniListTitle h2{font-size:13px;font-weight:600;margin:0;color:#325667}
+body.premiumSolar .appContent .miniListTitle button{font-size:11px;border:0;background:none;color:#478c82;padding:6px;cursor:pointer}
+body.premiumSolar .appContent .miniMovementRow{display:flex;align-items:center;gap:9px;background:#fff;border:0;border-bottom:1px solid #edf2f4;border-radius:0;width:100%;text-align:right;min-height:76px;padding:12px 0;cursor:pointer;box-shadow:none}
+body.premiumSolar .appContent .miniMovementIcon{display:grid;place-items:center;flex:none;width:34px;height:37px;border-radius:9px;background:#eff5fc;color:#347ba8}
+body.premiumSolar .appContent .miniMovementIcon.green{background:#e9f9f1;color:#138668}
+body.premiumSolar .appContent .miniMovementIcon.muted{background:#f0f3f4;color:#83949e}
+body.premiumSolar .appContent .miniMovementName{display:grid;gap:5px;min-width:0;flex:1}
+body.premiumSolar .appContent .miniMovementName b{font-size:12px;color:#365361;line-height:1.7;font-weight:600;overflow-wrap:anywhere}
+body.premiumSolar .appContent .miniMovementName small{font-size:10px;color:#7d939d}
+body.premiumSolar .appContent .miniMovementAmount{display:grid;gap:5px;text-align:left;max-width:46%;min-width:0;font-size:14px;font-weight:650;font-variant-numeric:tabular-nums}
+body.premiumSolar .appContent .miniMovementAmount small{font-size:10px;color:#7a929e;font-weight:400}
+body.premiumSolar .appContent .miniMovementRow>svg{width:12px;transform:rotate(90deg);color:#8ca1ad;flex:none}
+body.premiumSolar .appContent .miniMovementTabs{margin:0 0 9px}
+body.premiumSolar .appContent .miniMovementList+.miniNewActions{margin-top:15px}
+body.premiumSolar .appContent .miniNewActions,body.premiumSolar .appContent .miniExport,body.premiumSolar .appContent .miniEditActions{display:flex;gap:9px;margin-top:15px}
+body.premiumSolar .appContent :is(.miniPrimary,.miniSecondary){display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #d4e5e8;border-radius:8px;min-height:43px;padding:10px 13px;background:#fff;color:#316374;font-size:13px!important;line-height:1.7;cursor:pointer;box-shadow:none}
+body.premiumSolar .appContent .miniPrimary{background:#087e70!important;border-color:#087e70!important;color:#fff!important}
+body.premiumSolar .appContent .miniNewActions button{flex:1}
+body.premiumSolar .appContent .miniDetail{padding:16px 0 2px}
+body.premiumSolar .appContent .miniDetailHero{display:flex;align-items:start;gap:16px;justify-content:space-between;padding-bottom:15px}
+body.premiumSolar .appContent .miniDetailHero>div{display:grid;gap:7px;text-align:left}
+body.premiumSolar .appContent .miniDetailHero h2{font-size:15px;color:#264c61;margin:0;line-height:1.7}
+body.premiumSolar .appContent .miniDetailHero strong{font-size:23px;font-weight:650}
+body.premiumSolar .appContent .miniDetailHero small{font-size:11px;color:#7e949f}
+body.premiumSolar .appContent .miniDetail dl{display:grid;gap:0;margin:0;border:1px solid #e4ecf0;border-radius:10px;padding:6px 12px}
+body.premiumSolar .appContent .miniDetail dl>div{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid #f0f4f6;padding:11px 0;align-items:baseline}
+body.premiumSolar .appContent .miniDetail dl>div:last-child{border-bottom:0}
+body.premiumSolar .appContent .miniDetail dt{font-size:12px;color:#7b939f;flex:none}
+body.premiumSolar .appContent .miniDetail dd{font-size:13px;color:#294d61;line-height:1.8;margin:0;overflow-wrap:anywhere;text-align:left}
+body.premiumSolar .appContent .miniBalanceAfter{display:grid;gap:7px;background:#edf9f4;border:1px solid #d9ede5;border-radius:9px;text-align:center;padding:13px;margin:16px 0}
+body.premiumSolar .appContent .miniBalanceAfter span{font-size:12px;color:#6d8a80}
+body.premiumSolar .appContent .miniBalanceAfter strong{font-size:21px;color:#137a62}
+body.premiumSolar .appContent .miniEditActions button{display:flex;align-items:center;justify-content:center;gap:7px;flex:1;min-height:40px;background:#fff;border:1px solid #bdd9ee;border-radius:7px;color:#1c7abd;font-size:13px;cursor:pointer}
+body.premiumSolar .appContent .miniEditActions .danger{border-color:#f0c9cd;color:#d4414c}
+body.premiumSolar .appContent .miniTableWrap{width:100%;overflow:auto;border:1px solid #e4ecf1;border-radius:8px;margin:12px 0}
+body.premiumSolar .appContent .miniStatementTable{width:100%;border-collapse:collapse;table-layout:auto;font-variant-numeric:tabular-nums}
+body.premiumSolar .appContent .miniStatementTable th{font-size:11px;font-weight:500;color:#6f8797;background:#f5f8fb;padding:9px 6px;border-bottom:1px solid #e2ecf2;text-align:right;white-space:nowrap}
+body.premiumSolar .appContent .miniStatementTable td{font-size:12px;color:#32566b;padding:9px 6px;border-bottom:1px solid #edf3f6;white-space:nowrap;text-align:right}
+body.premiumSolar .appContent .miniStatementTable td button{color:#32566b;background:none;border:0;font-size:12px;line-height:1.8;text-align:right;padding:0;cursor:pointer;white-space:normal;min-width:65px}
+body.premiumSolar .appContent .miniStatementTable tfoot td{color:#127c65;background:#edfaf4;font-weight:600}
+body.premiumSolar .appContent .miniParty .reportExportButtons{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+body.premiumSolar .appContent .miniParty .reportButton{font-size:12px!important;min-height:40px;padding:8px 6px!important}
+body.premiumSolar .appContent .miniParty .reportExportStatus{font-size:10px;line-height:1.8;color:#8098a3}
+body.premiumSolar .appContent .miniPartyEditor>.customerEditor{padding:8px 0!important;background:#fff;border:0;border-radius:0;box-shadow:none;position:static}
+body.premiumSolar .appContent .miniPartyEditor :is(form,fieldset){min-width:0}
+body.premiumSolar .appContent .miniPartyEditor :is(.customerEditor fieldset,.formGrid){display:grid;grid-template-columns:1fr;gap:15px;border:0;padding:0;margin:0}
+body.premiumSolar .appContent .miniPartyEditor :is(input,textarea,select){font-size:16px!important;min-height:44px!important;border:1px solid #dbe6ed!important;border-radius:8px;background:#fff!important;box-shadow:none!important;padding:10px 11px!important;max-width:100%}
+body.premiumSolar .appContent .miniPartyEditor :is(label,.deskLabel){font-size:12px!important;color:#506c7b!important;display:grid;gap:7px}
+body.premiumSolar .appContent .miniPartyEditor .customerOwnershipNote{display:flex;gap:6px;padding:8px;background:#f4faf7;border-color:#e4eee9;color:#577b6c;font-size:11px}
+body.premiumSolar .appContent .miniPartyEditor .customerOwnershipNote :is(strong,span){font-size:11px;font-weight:400}
+body.premiumSolar .appContent .miniPartyEditor .customerDuplicate{font-size:12px;line-height:1.8;padding:8px 11px;min-height:0}
+body.premiumSolar .appContent .miniPartyEditor .customerCheck{display:flex;gap:8px;align-items:center}
+body.premiumSolar .appContent .miniPartyEditor .customerCheck input{min-height:0!important;width:17px;height:17px;accent-color:#087e70}
+body.premiumSolar .appContent .miniPartyEditor .customerCheck small{display:none}
+body.premiumSolar .appContent .miniPartyEditor .customerOpening{padding:11px;border-color:#e0ebe7}
+body.premiumSolar .appContent .miniPartyEditor :is(.customerPrimary,form>.uiButton.primary){background:#087e70!important;color:#fff!important;border-color:#087e70!important;min-height:45px;font-size:14px;width:100%;margin-top:14px}
+body.premiumSolar .appContent .miniPartyEditor .uiPanel{border:0;background:#fff;padding:3px 0}
+body.premiumSolar .appContent .miniPartyEditor .panelTitle{display:none}
+body.premiumSolar .appContent .miniDelete{width:100%;border:1px solid #eccbd0;background:#fff;color:#c74b57;border-radius:8px;padding:10px;margin-top:12px;font-size:13px}
+body.premiumSolar .appContent .miniParty .reconcilePanel{margin-top:12px;border:0;background:#fff;padding:0}
+body.premiumSolar .appContent .miniParty .reconcileForm{padding:10px 0;display:grid;gap:13px}
+body.premiumSolar .appContent .miniParty .reconcileForm>p:first-child{display:none}
+body.premiumSolar .appContent .miniParty .reconcileForm label{display:grid;gap:6px;font-size:12px!important;color:#5b7889!important}
+body.premiumSolar .appContent .miniParty .reconcileForm :is(input,textarea,select){font-size:16px!important;min-height:42px;border:1px solid #d9e5ec;border-radius:8px;background:#fff;padding:9px 11px}
+body.premiumSolar .appContent .miniBackLink{background:#f3f8fa;border:1px solid #d6e6ed;border-radius:8px;padding:9px 12px;font-size:13px;color:#3e6d82;margin:10px 0;cursor:pointer}
+body.premiumSolar .appContent .miniEmbedded .workspaceHead{padding:10px 0;gap:10px;align-items:center}
+body.premiumSolar .appContent .miniEmbedded .workspaceHead h1{font-size:17px}
+body.premiumSolar .appContent .miniEmbedded .workspaceHead p{display:none}
+body.premiumSolar .appContent .miniEmbedded .receiptEditPanel{padding:14px}
+body.premiumSolar .appContent .miniEmbedded .receiptHistoryList{display:none}
+body.premiumSolar .appContent .miniEmbedded .receiptHistorySearch{display:none}
+body.premiumSolar .appContent .miniEmbedded .receiptChangePreview{padding:12px;gap:12px}
+body.premiumSolar .appContent .miniEmbedded .receiptChangePreview b{font-size:17px}
+body.premiumSolar .appContent .miniEmbedded .receiptEditPanel h2{font-size:16px}
+/* Payment forms share the same spacing and hierarchy as the party account. */
+body.premiumSolar .appContent .miniFinance{max-width:800px;margin:auto;gap:12px}
+body.premiumSolar .appContent .miniFinance .accountHero{background:#fff!important;color:#254c60;border:1px solid #e1ebef;padding:14px 16px;border-radius:10px;gap:10px}
+body.premiumSolar .appContent .miniFinance .accountHero h1{font-size:19px;color:#244958}
+body.premiumSolar .appContent .miniFinance .accountHero :is(p,.accountEyebrow,.accountHeroIcon){display:none}
+body.premiumSolar .appContent .miniFinance .reportRefresh{font-size:11px;padding:7px 9px;min-height:36px}
+body.premiumSolar .appContent .miniFinance .receiptHistoryOpen{font-size:12px!important;min-height:38px!important;padding:9px!important;background:#fff;border:1px solid #dae7ed;color:#3b647a}
+body.premiumSolar .appContent .miniFinance .accountFilterPanel{padding:16px;border:1px solid #dce8ee;border-radius:11px;box-shadow:none}
+body.premiumSolar .appContent .miniFinance fieldset{gap:13px}
+body.premiumSolar .appContent .miniFinance label{font-size:12px!important;color:#4e6d7f!important;gap:6px}
+body.premiumSolar .appContent .miniFinance :is(input,textarea,select){font-size:16px!important;min-height:44px!important;padding:9px 11px!important;border:1px solid #d8e5ec!important;border-radius:8px;background:#fff!important;color:#284d64}
+body.premiumSolar .appContent .miniFinance textarea{min-height:65px!important}
+body.premiumSolar .appContent .miniFinance .supplierDirection{gap:7px}
+body.premiumSolar .appContent .miniFinance .supplierDirection button{padding:10px!important;min-height:46px;border-radius:8px;gap:7px}
+body.premiumSolar .appContent .miniFinance .supplierDirection b{font-size:12px}
+body.premiumSolar .appContent .miniFinance .supplierDirection small{display:none}
+body.premiumSolar .appContent .miniFinance .supplierDirection svg{width:17px;height:17px}
+body.premiumSolar .appContent .miniFinance .supplierCurrentBalances{gap:8px}
+body.premiumSolar .appContent .miniFinance .supplierCurrentBalances>div{padding:12px;border-radius:9px;background:#f4f8fb;border:1px solid #e0eaf0}
+body.premiumSolar .appContent .miniFinance .supplierCurrentBalances span{font-size:10px;color:#748c98}
+body.premiumSolar .appContent .miniFinance .supplierCurrentBalances b{font-size:18px;color:#28657a}
+body.premiumSolar .appContent .miniFinance .supplierProjection{padding:11px;gap:10px;grid-template-columns:1fr 1fr;border-radius:8px;background:#f0f9f5;border-color:#d5e9e0}
+body.premiumSolar .appContent .miniFinance .supplierProjection>div:first-child{display:none}
+body.premiumSolar .appContent .miniFinance .supplierProjection b{font-size:17px}
+body.premiumSolar .appContent .miniFinance .supplierProjection span{font-size:10px}
+body.premiumSolar .appContent .miniFinance .fxNotice{font-size:11px;line-height:1.8;padding:9px 11px;border-radius:7px}
+body.premiumSolar .appContent .miniFinance .supplierMovementSave{background:#087e70!important;color:#fff!important;border-radius:8px;padding:11px 13px;font-size:14px;min-height:46px}
+body.premiumSolar .appContent .miniFinance .supplierDraftExport{padding:0;border:0;background:none;margin-top:0}
+body.premiumSolar .appContent .miniFinance .supplierDraftExport>.miniSecondary{width:100%}
+body.premiumSolar .appContent .miniFinance .supplierMovementSaved{padding:20px;border:1px solid #dce9e5;border-radius:12px;background:#fff}
+body.premiumSolar .appContent .miniFinance .supplierMovementSaved>h2{font-size:19px}
+body.premiumSolar .appContent .miniFinance .supplierMovementSaved>b{font-size:27px}
+body.premiumSolar .appContent .miniFinance .supplierSavedCheck{width:37px;height:37px;font-size:21px;margin-bottom:8px}
+body.premiumSolar .appContent .miniFinance .supplierSavedBalance{padding:12px;font-size:12px}
+body.premiumSolar .appContent .miniFinance .supplierSavedBalance strong{font-size:23px}
+@media(min-width:900px){body.premiumSolar .appContent .miniDirectory .miniPartyRows{grid-template-columns:1fr 1fr;column-gap:26px}body.premiumSolar .appContent .miniDirectory .miniPageHead{min-height:67px}body.premiumSolar .appContent .miniAccountStats{grid-template-columns:repeat(4,minmax(0,1fr))}body.premiumSolar .appContent .miniAccountActions{grid-template-columns:repeat(6,minmax(0,1fr))}body.premiumSolar .appContent .miniAccountActions button{font-size:11px}}
+@media(max-width:600px){
+ body.premiumSolar .appContent main:has(.miniParty),body.premiumSolar .appContent main:has(.miniFinance){padding:8px 10px 105px}
+ body.premiumSolar .appContent .miniParty{padding:0 12px 16px;border-radius:11px}
+ body.premiumSolar .appContent .miniPageHead{min-height:53px;padding:7px 0;margin-bottom:5px}
+ body.premiumSolar .appContent .miniPageHead h1{font-size:16px}
+ body.premiumSolar .appContent .miniPartyRow{gap:8px;padding:11px 0!important;min-height:68px}
+ body.premiumSolar .appContent .miniAvatar{width:36px;height:36px;font-size:12px}
+ body.premiumSolar .appContent .miniRowIdentity b{font-size:13px}
+ body.premiumSolar .appContent .miniRowIdentity small{font-size:10px}
+ body.premiumSolar .appContent .miniRowBalance{font-size:13px}
+ body.premiumSolar .appContent .miniIdentity{padding:10px 0 12px}
+ body.premiumSolar .appContent .miniIdentity h2{font-size:14px}
+ body.premiumSolar .appContent .miniIdentity small{font-size:10px}
+ body.premiumSolar .appContent .miniAccountStats>div{padding:10px 8px;grid-template-columns:21px 1fr;gap:3px 5px;min-height:70px}
+ body.premiumSolar .appContent .miniAccountStats span{font-size:10px}
+ body.premiumSolar .appContent .miniAccountStats b{font-size:15px}
+ body.premiumSolar .appContent .miniAccountActions button{font-size:11px;min-height:61px}
+ body.premiumSolar .appContent .miniMovementRow{gap:7px;min-height:71px;padding:11px 0}
+ body.premiumSolar .appContent .miniMovementName b{font-size:11px}
+ body.premiumSolar .appContent .miniMovementName small,body.premiumSolar .appContent .miniMovementAmount small{font-size:9px}
+ body.premiumSolar .appContent .miniMovementAmount{font-size:13px}
+ body.premiumSolar .appContent .miniDetailHero strong{font-size:22px}
+ body.premiumSolar .appContent .miniParty .reportButton{font-size:11px!important}
+ body.premiumSolar .appContent .miniPartyEditor :is(.customerOpeningFields,.reconcilePair){grid-template-columns:1fr}
+ body.premiumSolar .appContent .miniPartyEditor .openingEditSummary{font-size:11px}
+ body.premiumSolar .appContent .miniFinance .accountFilterPanel{padding:13px}
+ body.premiumSolar .appContent .miniFinance .accountHero{padding:12px}
+ body.premiumSolar .appContent .miniFinance .accountHero h1{font-size:17px}
+ body.premiumSolar .appContent .miniFinance .supplierCurrentBalances b{font-size:17px}
+ body.premiumSolar .appContent .miniFinance .supplierCurrentBalances>div{padding:10px}
+}
+
+body.premiumSolar .appContent .miniParty .miniSearch input{border:0!important;outline:none!important;background:transparent!important;box-shadow:none!important}
+body.premiumSolar .appContent .miniParty .miniSearch:focus-within{outline:2px solid #c2e0d9;outline-offset:1px}
+body.premiumSolar .appContent .miniPartyEditor .fxCurrencyManager{border:0;padding:8px 0;background:#fff}
+body.premiumSolar .appContent .miniPartyEditor .fxCurrencyManager>h2{display:none}
+body.premiumSolar .appContent .miniPartyEditor .fxCurrencyManager>p{font-size:12px;line-height:1.8}
+
+body.premiumSolar .appContent .miniContextBack{display:flex;align-items:center;gap:7px;max-width:800px;width:100%;margin:0 auto 10px;background:#fff;color:#355e70;border:1px solid #e0e9ef;border-radius:8px;font-size:13px;min-height:39px;padding:8px 12px;cursor:pointer}
+body.premiumSolar .appContent .miniContextBack svg{transform:rotate(180deg)}
