@@ -1,4 +1,5 @@
 import {supabase} from './supabase';
+import {saveRequest} from './save-request.mjs';
 import {invoicePayload} from './currency-utils.mjs';
 
 export async function loadExchangeRate(){
@@ -18,7 +19,7 @@ export async function saveCurrencyInvoice(attempt,kind,meta,items,original){
   const signature=JSON.stringify(payload);
   if(attempt.current&&attempt.current.signature!==signature)throw new Error('تعذر تأكيد محاولة الحفظ السابقة. أعد المحاولة بنفس البيانات أولاً.');
   if(!attempt.current)attempt.current={requestId:crypto.randomUUID(),signature};
-  const {data,error}=await supabase.rpc('solar_invoice_save',{request_id:attempt.current.requestId,payload});
+  const {data,error}=await saveRequest(signal=>supabase.rpc('solar_invoice_save',{request_id:attempt.current.requestId,payload}).abortSignal(signal));
   if(error){if(error.code)attempt.current=null;throw error;}
   attempt.current=null;
   return data;

@@ -1,7 +1,9 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from './supabase';
+import {saveRequest} from './save-request.mjs';
 import MoneyInput from './money-input';
+import {refreshAfterSave} from './data-refresh.mjs';
 import ReportActions from './report-actions';
 import {money,receiptNumber,supplierDocument} from './supplier-utils.mjs';
 import {convertAmount,currencyLabel as unit} from './fx-utils.mjs';
@@ -15,7 +17,7 @@ export default function SupplierPaymentHistory({initialId,initialAction='update'
  const value=action==='delete'?0:Number(amount),newAccount=selected?convertAmount(value,selected.currency,selected.accountCurrency,Number(rate))*(selected.cash?1:-1):0,afterBalance=Number(selected?.balance||0)+Number(selected?.accountAmount||0)-newAccount,newCash=selected?.cash?convertAmount(value,selected.currency,selected.cashCurrency,Number(rate)):0,afterCash=Number(selected?.cashBalance||0)+Number(selected?.cashAmount||0)-newCash;
  async function submit(e){e.preventDefault();if(busy||!selected)return;setError('');if(action==='update'&&(!Number.isFinite(value)||value<=0||value>1e12||!Number(rate)||Number(rate)>1e6)){setError('أدخل مبلغاً وسعر صرف صحيحين.');return;}if(action==='update'&&selected.cash&&afterCash<0){setError('رصيد قاصة صاحب الوصل لا يكفي للزيادة المطلوبة.');return;}
   const payload={id:selected.id,expectedToken:selected.token,...(action==='update'?{amount:value,rate:Number(rate),notes}:{})},signature=JSON.stringify({action,payload});if(attempt.current&&attempt.current.signature!==signature){setError('أعد تأكيد العملية السابقة بنفس البيانات.');return;}if(!attempt.current)attempt.current={id:crypto.randomUUID(),signature};setBusy(true);
-  try{const r=await supabase.rpc('solar_supplier_payment_manage',{action,request_id:attempt.current.id,payload});if(r.error)throw r.error;attempt.current=null;setSelected(null);setResult(r.data);setRefresh(n=>n+1);try{await onChanged?.();}catch{setError('تم الحفظ؛ حدّث بيانات البرنامج.');}}
+  try{const r=await saveRequest(signal=>supabase.rpc('solar_supplier_payment_manage',{action,request_id:attempt.current.id,payload}).abortSignal(signal));if(r.error)throw r.error;attempt.current=null;setSelected(null);setResult(r.data);setRefresh(n=>n+1);refreshAfterSave(onChanged,()=>setError('تم الحفظ؛ حدّث بيانات البرنامج.'));}
   catch(e){if(e.code)attempt.current=null;setError(e.code?e.message:'لم يتأكد الرد؛ أعد تأكيد العملية بنفس البيانات ولن تتكرر.');}finally{setBusy(false);}
  }
  const doc=result?.replacement?supplierDocument({...result.replacement,kind:'supplier_payment'}):null;

@@ -1,7 +1,9 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from './supabase';
+import {saveRequest} from './save-request.mjs';
 import MoneyInput from './money-input';
+import {refreshAfterSave} from './data-refresh.mjs';
 import AppIcon from './app-icons';
 import {money,receiptNumber} from './supplier-utils.mjs';
 
@@ -17,7 +19,7 @@ export default function CustomerPaymentHistory({initialId,initialAction='update'
   if(action==='update'&&(!Number.isFinite(Number(amount))||Number(amount)<=0)){setError('أدخل مبلغاً صحيحاً أكبر من صفر.');return;}
   if(attempt.current&&attempt.current.signature!==signature){setError('أعد تأكيد العملية السابقة بنفس البيانات.');return;}
   if(!attempt.current)attempt.current={id:crypto.randomUUID(),signature};setBusy(true);setError('');
-  try{const r=await supabase.rpc('solar_customer_payment_manage',{action,request_id:attempt.current.id,payload});if(r.error)throw r.error;attempt.current=null;setSelected(null);setMessage(action==='delete'?'تم حذف التسديد وتصحيح حساب الزبون والقاصة.':'تم تعديل التسديد وتصحيح حساب الزبون والقاصة.');setRefresh(n=>n+1);try{await onChanged?.();}catch{setError('تمت العملية؛ حدّث بيانات البرنامج لإظهارها في بقية الأقسام.');}}
+  try{const r=await saveRequest(signal=>supabase.rpc('solar_customer_payment_manage',{action,request_id:attempt.current.id,payload}).abortSignal(signal));if(r.error)throw r.error;attempt.current=null;setSelected(null);setMessage(action==='delete'?'تم حذف التسديد وتصحيح حساب الزبون والقاصة.':'تم تعديل التسديد وتصحيح حساب الزبون والقاصة.');setRefresh(n=>n+1);refreshAfterSave(onChanged,()=>setError('تمت العملية؛ حدّث بيانات البرنامج لإظهارها في بقية الأقسام.'));}
   catch(e){if(e.code)attempt.current=null;setError(e.code?e.message:'لم يتأكد الرد؛ أعد تأكيد العملية بنفس البيانات ولن تتكرر.');}finally{setBusy(false);}
  }
  return <section className="accountWorkspace receiptHistoryWorkspace"><header className="workspaceHead"><div><h1>تسديدات الجملة</h1><p>ابحث عن الوصل، ثم اختر تعديل أو حذف.</p></div><button type="button" className="uiButton primary" disabled={busy||!!attempt.current} onClick={onBack}><AppIcon name="add" size={17}/>{backLabel}</button></header>

@@ -401,3 +401,12 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - New system invoices have no initial expenses. After stock preparation, administration can approve final expenses and close directly, without a mandatory engineer report. Existing protected revision checks and a single cash payout remain in force. Historical expense records are preserved.
 - Deploy migration `20261018230823_warehouse_queue_and_alerts.sql` before this frontend. No existing invoice is marked prepared or financially rewritten by the migration.
 - Verification: isolated SQL rollback, browser-to-local-Postgres preparation/approval flow, notification/sound worker tests and production build.
+
+### V3.46.0
+- Customer, system and supplier payments include a committed account snapshot in the protected save response. Receipts and the next payment no longer wait for another account read or the global data reload. Invoice saving and receipt edits refresh other sections in the background.
+- Full amount fills the available customer/invoice balance or converts a supplier balance into the chosen payment currency at the displayed rate. It never submits automatically. USD cents are retained.
+- Cloud reads are coalesced per account; a confirmed write invalidates an older in-flight snapshot. Invoice items are grouped once instead of scanning every item for each transaction.
+- Save requests release a stalled connection after 15 seconds while retaining the same idempotency key for manual confirmation; no automatic retry or unconfirmed success.
+- Admin cashbox overview shows each visible user's current IQD and USD separately with a shortcut to their ledger. Ledger filters do not alter current balances; staff retain own-account access only.
+- Apply `20261018233027_fast_payment_confirmation.sql` and `20261018233143_cashbox_owner_balances.sql` before publishing. Both change read/response logic only; historical financial records remain intact.
+- Each permitted user can save personal section order, 1–7 mobile/desktop columns, drag-and-drop or accessible move controls. Layout permission is enforced server-side and never grants page access; warehouse role normalization preserves only its explicit layout flag.
