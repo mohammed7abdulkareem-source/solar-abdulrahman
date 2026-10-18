@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import WarrantyManage from './warranty-manage';
+import WarehouseBadge,{useWarehouseStatuses} from './warehouse-badge';
 import {supabase} from './supabase';
 import {salesDocument,statusLabel,formatMoney} from './sales-document.mjs';
 import {deleteSale} from './delete-sale';
@@ -18,6 +19,7 @@ export default function SalesHistory({profile,a4,openA4,saveA4,shareA4,onFollow,
   }).catch(()=>{if(active){setError('تعذر الاتصال. حاول مرة ثانية.');setLoading(false)}});
   return()=>{active=false};
  },[search,kind,from,to,status,offset,refresh]);
+ const preparation=useWarehouseStatuses(result.rows,()=>setRefresh(n=>n+1));
  const change=(setter,value)=>{setter(value);setOffset(0)};
  const doc=(row,customer)=>{const d=salesDocument(row,customer);return a4(d.title,d.body,d.total,d.subtitle)};
  return <section className="salesArchive">
@@ -32,7 +34,7 @@ export default function SalesHistory({profile,a4,openA4,saveA4,shareA4,onFollow,
   {loading?<div className="empty">جاري تحميل المبيعات…</div>:<><p className="archiveCount">{formatMoney(result.count)} فاتورة ضمن صلاحياتك</p>
   {!result.rows.length?<div className="empty">لا توجد مبيعات ضمن هذا الاختيار</div>:result.rows.map(row=><article className="card archiveInvoice" key={row.id}>
    <header><div><small>{row.kind==='system'?'بيع منظومة':'بيع جملة'} · #{receiptNumber(row)}</small><h3>{row.party_name||'زبون نقدي'}</h3><small>{new Date(row.created_at).toLocaleDateString('ar-IQ',{timeZone:'Asia/Baghdad'})} · {row.creatorName||'—'}</small></div><b>{formatMoney(row.total)} د.ع</b></header>
-   <p className="archiveStatus">المخزن: {row.warehouse_status==='ready'?'تم التجهيز':'بانتظار التجهيز'}</p>
+   <p className="archiveStatus"><WarehouseBadge status={preparation[row.id]||row.warehouse_status} compact/></p>
    {row.kind==='system'&&<p className="archiveStatus">{statusLabel[row.installation_status]||'غير محدد'} · المهندس: {row.installerName||'غير محدد'}</p>}
    <details><summary>تفاصيل المواد ({row.items.length})</summary>{row.items.map((item,i)=><div className="archiveLine" key={i}><span>{item.product_name}<small>{[item.brand_name,item.category].filter(Boolean).join(' · ')}</small></span><b>× {formatMoney(item.qty)}</b></div>)}</details>
    {(profile?.is_admin||((row.cashbox_user_id||row.created_by)===profile?.id&&profile?.permissions?.[row.kind]))&&<WarrantyManage invoiceId={row.id} onChanged={async()=>{setMessage('تم حفظ الضمان. رمز الوصل نفسه يعرض آخر تحديث.');setRefresh(n=>n+1);await onChanged?.();}}/>}

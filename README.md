@@ -393,3 +393,11 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Public token-only certificates show customer, invoice number/date, customer sale values, materials, service cover, expiry and server-calculated remaining days. They omit cost, profit, cashbox and account balances. No public invoice search exists.
 - Warranty checker supports live camera, QR image upload or pasting a link/token, including mobile browsers without native BarcodeDetector.
 - Validation includes QR decoding, calendar boundaries, anonymous read/owner edit restrictions, atomic invalid-policy rollback, idempotency, stale revisions, cancelled cover, mobile/desktop invoice workflows and PDF scan verification.
+
+### V3.45.0
+- Warehouse pending, prepared and all-invoice counters keep completed invoices accessible. Notification links can be cleared; reopening the department resets the invoice filter. Stock starts with available materials.
+- Warehouse users can activate push and sound on their own device. Foreground alerts use deduplicated Realtime plus polling; system-ready alerts open office approval. Background notification sound follows the device and browser notification settings.
+- Small green prepared badges appear in sales history and saved customer copies, with scoped status refresh. Warehouse responses do not expose prices or profit.
+- New system invoices have no initial expenses. After stock preparation, administration can approve final expenses and close directly, without a mandatory engineer report. Existing protected revision checks and a single cash payout remain in force. Historical expense records are preserved.
+- Deploy migration `20261018230823_warehouse_queue_and_alerts.sql` before this frontend. No existing invoice is marked prepared or financially rewritten by the migration.
+- Verification: isolated SQL rollback, browser-to-local-Postgres preparation/approval flow, notification/sound worker tests and production build.
