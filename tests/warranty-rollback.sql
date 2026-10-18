@@ -1,5 +1,13 @@
 \set ON_ERROR_STOP on
 begin;
+-- Production does not give anon schema access by default. Exercise both states.
+revoke usage on schema solar_private from anon;
+set local role anon;
+do $$begin
+ begin perform public.solar_warranty_verify(gen_random_uuid());raise exception 'missing schema usage accepted';exception when insufficient_privilege then null;end;
+end $$;
+reset role;
+grant usage on schema solar_private to anon;
 insert into profiles(id,display_name,is_admin,permissions,user_type) values
 ('00000000-0000-0000-0000-000000003440','Warranty Admin',true,'{}','admin_staff'),
 ('00000000-0000-0000-0000-000000003441','Warranty Seller',false,'{"sale":true,"system":true,"salesDeleteOwn":true}','admin_staff'),
