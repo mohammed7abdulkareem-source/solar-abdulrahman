@@ -35,3 +35,12 @@ test('create-only customer permission opens the own-customer workspace without u
  assert.equal(canOpenPage({...creator,user_type:'warehouse'},'customers'),false);
  assert.equal(canOpenPage({...creator,user_type:'installer'},'customers'),false);
 });
+
+test('profit settlement permission opens only the own-profit workspace',()=>{
+ const p={active:true,permissions:{profitSettlement:true}};
+ assert.equal(canOpenPage(p,'profit'),true);
+ for(const page of ['cash','users','capital'])assert.equal(canOpenPage(p,page),false);
+ assert.equal(canOpenPage({...p,user_type:'installer'},'profit'),false);
+ assert.equal(canOpenPage({...p,user_type:'warehouse'},'profit'),false);
+ assert.equal(canOpenPage({active:true,permissions:{}},'profit'),false);
+});

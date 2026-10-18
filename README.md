@@ -380,3 +380,9 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Compact customer/supplier directories: search and balance rows, separate add/edit screens, and one account screen per party.
 - A shared account view covers overview, dated movements, receipt details, detailed statement, PDF/share and CSV for Excel. Supplier currency revisions remain separate and cancellation postings remain in the running balance.
 - Existing protected payment, reconciliation, purchase and sale flows open with the selected party. Payment forms use compact spacing and prepare draft PDF exports on demand.
+
+### V3.43.0
+- Own-only profit reports and a separate staff profit-settlement request permission. Credit sales remain eligible; management reviews collection rather than requiring fully paid invoices.
+- Users request an exact period snapshot. Administrators set a fixed IQD share or percentage, confirm collection review and choose the funding cashbox. Approval atomically pays once, records one business expense, and checkpoints the reviewed profit sources. Only the paid share reduces company net profit.
+- Approved statements and receipts remain available as PDF/share. Corrections or deletion of settled sources remain visible as differences; source changes before approval require a new review. New business after a request remains open. In-app notifications link to settlements.
+- Validation: isolated PostgreSQL permission/atomicity/retry/history tests, mobile/desktop browser workflow including lost-response retry and PDF/share, unit suite and production build.
