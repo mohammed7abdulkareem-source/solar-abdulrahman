@@ -27,7 +27,7 @@ do $$declare row jsonb; stock jsonb; mov jsonb; token text;begin
  begin perform public.solar_warehouse_action(-963001,token,'save','[{"lineId":-963002,"productId":-963001,"qty":3}]');raise exception 'FAIL foreign line accepted';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  begin perform public.solar_warehouse_action(-963001,token,'save','[{"lineId":-963001,"productId":-963001,"qty":200}]');raise exception 'FAIL overselling';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  perform public.solar_warehouse_action(-963001,token,'save','[{"lineId":-963001,"productId":-963001,"qty":3}]');
- begin perform public.solar_warehouse_action(-963001,token,'ready');raise exception 'FAIL stale edit accepted';exception when serialization_failure then null;end;
+ begin perform public.solar_warehouse_action(-963001,token,'ready');raise exception 'FAIL stale edit accepted';exception when serialization_failure or sqlstate 'PT409' then null;end;
  row:=(public.solar_warehouse_orders('WH TEST CUSTOMER','')->'rows')->0;
  perform public.solar_warehouse_action(-963001,row->>'token','ready');
  row:=(public.solar_warehouse_orders('WH TEST CUSTOMER','')->'rows')->0;

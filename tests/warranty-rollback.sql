@@ -32,9 +32,9 @@ do $$declare r jsonb;c jsonb;b jsonb;again jsonb;p jsonb;token uuid;begin
  b:=jsonb_build_object('id',r->>'id','expectedToken',c->>'expectedToken','warranty',jsonb_build_object('enabled',true,'items',jsonb_build_array(jsonb_build_object('id',-344001,'duration',2,'unit','years')),'maintenance',jsonb_build_object('duration',12,'unit','months')));
  again:=public.solar_warranty_manage('save','00000000-0000-0000-0000-000000034402',b);
  if again->>'warrantyToken'<>r->>'warrantyToken' or public.solar_warranty_manage('save','00000000-0000-0000-0000-000000034402',b)<>again then raise exception 'stable QR / replay';end if;
- begin perform public.solar_warranty_manage('save',gen_random_uuid(),b);raise exception 'stale warranty edit';exception when serialization_failure then null;end;
+ begin perform public.solar_warranty_manage('save',gen_random_uuid(),b);raise exception 'stale warranty edit';exception when serialization_failure or sqlstate 'PT409' then null;end;
  -- A stale financial edit must not overwrite a separately updated warranty.
- begin perform public.solar_invoice_save(gen_random_uuid(),p||jsonb_build_object('invoiceId',r->'id','expectedRevision',r->'pricingRevision','expectedWarrantyRevision',r->'warrantyRevision'));raise exception 'stale invoice overwrote warranty';exception when serialization_failure then null;end;
+ begin perform public.solar_invoice_save(gen_random_uuid(),p||jsonb_build_object('invoiceId',r->'id','expectedRevision',r->'pricingRevision','expectedWarrantyRevision',r->'warrantyRevision'));raise exception 'stale invoice overwrote warranty';exception when serialization_failure or sqlstate 'PT409' then null;end;
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003442',true);
  begin perform public.solar_warranty_manage('get',null,jsonb_build_object('id',r->>'id'));raise exception 'owner scope leak';exception when insufficient_privilege then null;end;
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003441',true);

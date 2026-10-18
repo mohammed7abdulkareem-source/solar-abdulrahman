@@ -23,7 +23,7 @@ do $$ declare jobs jsonb; begin
  if exists(select 1 from jsonb_array_elements(jobs) j,jsonb_array_elements(j->'items') i where i ?| array['price','cost','landedCost']) then raise exception 'FAIL leaked item prices'; end if;
  begin perform public.solar_installation_action(-910004,0,'start');raise exception 'FAIL unassigned job started';exception when insufficient_privilege then null;end;
  perform public.solar_installation_action(-910003,0,'start');
- begin perform public.solar_installation_action(-910003,0,'start');raise exception 'FAIL stale revision accepted';exception when serialization_failure then null;end;
+ begin perform public.solar_installation_action(-910003,0,'start');raise exception 'FAIL stale revision accepted';exception when serialization_failure or sqlstate 'PT409' then null;end;
  begin perform public.solar_installation_action(-910003,1,'complete','{"notes":"test","checks":{},"expenses":[]}');raise exception 'FAIL unchecked completion';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  perform public.solar_installation_action(-910003,1,'complete','{"notes":"Test commissioning complete","checks":{"materials":true,"tested":true,"handover":true},"expenses":[{"description":"transport","amount":20}]}');
  begin perform public.solar_installation_action(-910003,2,'close','{"amount":20}');raise exception 'FAIL engineer closed finances';exception when insufficient_privilege then null;end;

@@ -410,3 +410,9 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Admin cashbox overview shows each visible user's current IQD and USD separately with a shortcut to their ledger. Ledger filters do not alter current balances; staff retain own-account access only.
 - Apply `20261018233027_fast_payment_confirmation.sql` and `20261018233143_cashbox_owner_balances.sql` before publishing. Both change read/response logic only; historical financial records remain intact.
 - Each permitted user can save personal section order, 1–7 mobile/desktop columns, drag-and-drop or accessible move controls. Layout permission is enforced server-side and never grants page access; warehouse role normalization preserves only its explicit layout flag.
+
+### V3.47.0
+- Reproduced the production save failure: the next generated transaction ID equaled the highest deleted invoice ID. Protected payments, cash entries and supplier replacement receipts now allocate above existing, deleted and reset IDs under the same financial lock. Deleted invoice history and replay guards remain enforced.
+- Custom business conflicts use `PT409` instead of `40001`. PostgREST 14 retries a custom serialization error indefinitely; true PostgreSQL serialization errors remain unchanged. UI supports both conflict codes during rollout.
+- Payment amount inputs span both form columns, use a large green numeric field, and place the full-amount action below the input so the complete number stays visible on phones.
+- Apply `20261018235418_reserved_transaction_ids.sql` before the frontend. Verified the previous failure and fixed posting, exactly-once retries, stale conflicts and reservation guards in isolated rollback tests. Production repair changes functions only.

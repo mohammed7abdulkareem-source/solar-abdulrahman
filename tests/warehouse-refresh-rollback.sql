@@ -42,7 +42,7 @@ do $$declare jobs jsonb;j jsonb;begin
  jobs:=public.solar_installation_jobs();select x into j from jsonb_array_elements(jobs)x where x->>'id'=current_setting('wh.system');
  if j->>'warehouseStatus'<>'ready' or not(j->>'canManage')::boolean then raise exception 'office return state';end if;
  perform public.solar_installation_action((j->>'id')::bigint,(j->>'installationRevision')::bigint,'close','{"amount":150,"notes":"كامل المصاريف النهائية"}');
- begin perform public.solar_installation_action((j->>'id')::bigint,(j->>'installationRevision')::bigint,'close','{"amount":150}');raise exception 'duplicate closing';exception when serialization_failure then null;end;
+ begin perform public.solar_installation_action((j->>'id')::bigint,(j->>'installationRevision')::bigint,'close','{"amount":150}');raise exception 'duplicate closing';exception when serialization_failure or sqlstate 'PT409' then null;end;
 end $$;
 reset role;
 do $$declare delivery jsonb;begin

@@ -16,7 +16,7 @@ do $$declare uid uuid:='00000000-0000-0000-0000-000000003500';staff uuid:='00000
  p:=jsonb_build_object('ownerId',uid,'mode','capital_deposit','currency','IQD','amount',1000000,'note','رأس مال');req:=gen_random_uuid();r:=public.solar_cash_save(req,p);r2:=public.solar_cash_save(req,p);
  if r<>r2 or(r->>'afterIQD')::numeric<>1000000 or r->>'receiptNo' is null then raise exception 'FAIL IQD capital/retry: %',r;end if;
  if public.solar_cash_receipt(req)<>r then raise exception 'FAIL reopening cash receipt';end if;
- begin perform public.solar_cash_save(req,p||'{"amount":1}'::jsonb);raise exception 'FAIL changed retry';exception when serialization_failure then null;end;
+ begin perform public.solar_cash_save(req,p||'{"amount":1}'::jsonb);raise exception 'FAIL changed retry';exception when serialization_failure or sqlstate 'PT409' then null;end;
  perform public.solar_cash_save(gen_random_uuid(),jsonb_build_object('ownerId',uid,'mode','capital_deposit','currency','USD','amount',1000.5,'rate',1500,'note','رأس مال دولار'));
  a:=public.solar_cash_workspace(jsonb_build_object('ownerId',uid));
  if(a->'summary'->>'IQD')::numeric<>1000000 or(a->'summary'->>'USD')::numeric<>1000.5 or(a->'summary'->>'usdBook')::numeric<>1500750 or(a->>'retainedProfit')::numeric<>100000 then raise exception 'FAIL separated balances and capital not profit: %',a;end if;
@@ -73,7 +73,7 @@ do $$declare a jsonb;r jsonb;p jsonb;req uuid:=gen_random_uuid();begin
  a:=public.solar_customer_payment_context(-350001);if(a->>'balance')::numeric<>100000 then raise exception 'FAIL wholesale opening context';end if;
  p:=jsonb_build_object('customerId',-350001,'invoiceId',null,'amount',25000,'mode','payment','notes','','expectedToken',a->>'token');r:=public.solar_customer_payment_save(req,p);
  if public.solar_customer_payment_save(req,p)<>r or(r->>'remaining')::numeric<>75000 or(r->>'cashAfter')::numeric<>215000 then raise exception 'FAIL wholesale settlement/retry';end if;
- begin perform public.solar_customer_payment_save(gen_random_uuid(),p);raise exception 'FAIL wholesale stale token';exception when serialization_failure then null;end;
+ begin perform public.solar_customer_payment_save(gen_random_uuid(),p);raise exception 'FAIL wholesale stale token';exception when serialization_failure or sqlstate 'PT409' then null;end;
  a:=public.solar_customer_payment_context(-350001);p:=jsonb_build_object('customerId',-350001,'invoiceId',null,'amount',5000,'mode','charge_old_balance','notes','إضافة موثقة','expectedToken',a->>'token');r:=public.solar_customer_payment_save(gen_random_uuid(),p);
  if(r->>'remaining')::numeric<>80000 or(r->>'cashAfter')::numeric<>215000 then raise exception 'FAIL wholesale reverse noncash charge';end if;
 end $$;

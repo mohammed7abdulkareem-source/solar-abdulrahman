@@ -22,6 +22,6 @@ do $$ begin
 end $$;
 insert into solar_private.reset_record_ids(table_name,record_id) values('transactions',-963009);
 do $$ begin
- begin insert into public.transactions(id,kind,total) values(-963009,'purchase',10);raise exception 'FAIL stale reset row returned';exception when serialization_failure then null;end;
+ begin insert into public.transactions(id,kind,total) values(-963009,'purchase',10);raise exception 'FAIL stale reset row returned';exception when serialization_failure or sqlstate 'PT409' then null;end;
 end $$;
 rollback;

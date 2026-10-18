@@ -22,7 +22,7 @@ do $$ declare p jsonb; begin
  begin update public.transactions set kind='cash_income' where id=-941001;raise exception 'FAIL kind bypass';exception when insufficient_privilege then null;end;
  p:=public.solar_sale_delete_preview(-941001);
  update public.transactions set notes='edited after preview' where id=-941001;
- begin perform public.solar_sale_delete(-941001,p->>'token');raise exception 'FAIL stale delete';exception when serialization_failure then null;end;
+ begin perform public.solar_sale_delete(-941001,p->>'token');raise exception 'FAIL stale delete';exception when serialization_failure or sqlstate 'PT409' then null;end;
  p:=public.solar_sale_delete_preview(-941001);
  perform public.solar_sale_delete(-941001,p->>'token');
  perform public.solar_sale_delete(-941001,p->>'token');
@@ -30,7 +30,7 @@ do $$ declare p jsonb; begin
  if (select qty from public.products where id=-941001)<>12 then raise exception 'FAIL duplicate/missing stock reversal';end if;
  if not exists(select 1 from public.transactions where id=-941005) then raise exception 'FAIL payment deleted';end if;
  if (public.solar_cash_transfer_overview()->>'balance')::numeric<>current_setting('v312.balance')::numeric-100 then raise exception 'FAIL cash reversal';end if;
- begin insert into public.transactions(id,kind,created_by,cashbox_user_id) values(-941001,'sale',auth.uid(),auth.uid());raise exception 'FAIL deleted id resurrected';exception when serialization_failure then null;end;
+ begin insert into public.transactions(id,kind,created_by,cashbox_user_id) values(-941001,'sale',auth.uid(),auth.uid());raise exception 'FAIL deleted id resurrected';exception when serialization_failure or sqlstate 'PT409' then null;end;
  p:=public.solar_sale_delete_preview(-941003);perform public.solar_sale_delete(-941003,p->>'token');
  if (select qty from public.products where id=-941001)<>15 then raise exception 'FAIL system stock reversal';end if;
  begin perform 1 from solar_private.deleted_sales;raise exception 'FAIL audit exposure';exception when insufficient_privilege then null;end;

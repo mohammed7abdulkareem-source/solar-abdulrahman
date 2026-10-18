@@ -24,7 +24,7 @@ export default function InstallationWorkflow({profile,onChanged,selectedJob=''})
    setMessage({start:'تم بدء التنصيب وتسجيل الوقت.',complete:'تم إرسال تقريرك للإدارة. الملف بانتظار المراجعة.',close:'تم إغلاق الملف واعتماد المصاريف والربح.',reopen:'تمت إعادة فتح الملف للمراجعة.'}[action]);
    if(onChanged)await onChanged();
    return true;
-  }catch(e){setError(e.code==='P0002'?'رصيد قاصتك لا يكفي لدفع المصاريف. أضف الرصيد أو راجع المبلغ.':e.code==='40001'?'تغيّرت حالة الملف. تم تحديث المهام؛ راجعها وأعد المحاولة.':'تعذر تنفيذ العملية. حدّث المهام وتأكد من الصلاحية والمرحلة الحالية.');await refresh().catch(()=>{});return false;}
+  }catch(e){setError(e.code==='P0002'?'رصيد قاصتك لا يكفي لدفع المصاريف. أضف الرصيد أو راجع المبلغ.':['40001','PT409'].includes(e.code)?'تغيّرت حالة الملف. تم تحديث المهام؛ راجعها وأعد المحاولة.':'تعذر تنفيذ العملية. حدّث المهام وتأكد من الصلاحية والمرحلة الحالية.');await refresh().catch(()=>{});return false;}
   finally{setBusy(null)}
  }
  useEffect(()=>{let active=true;const update=()=>{if(active&&document.visibilityState==='visible'&&busy===null)refresh().catch(()=>{});};const timer=setInterval(update,15000);window.addEventListener('solar-notification',update);window.addEventListener('focus',update);return()=>{active=false;clearInterval(timer);window.removeEventListener('solar-notification',update);window.removeEventListener('focus',update);};},[busy]);

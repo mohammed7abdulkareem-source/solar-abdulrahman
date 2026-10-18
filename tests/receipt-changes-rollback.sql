@@ -25,14 +25,14 @@ do $$declare inv jsonb;pay jsonb;a jsonb;r jsonb;edit jsonb;body jsonb;invbody j
  edit:=public.solar_customer_payment_manage('update',editid,body);
  if (edit->>'remaining')::numeric<>1400 or(edit->>'cashAfter')::numeric<>600 then raise exception 'edit effects';end if;
  if public.solar_customer_payment_manage('update',editid,body)<>edit then raise exception 'update retry';end if;
- begin perform public.solar_customer_payment_manage('update',gen_random_uuid(),body);raise exception 'stale edit accepted';exception when serialization_failure then null;end;
+ begin perform public.solar_customer_payment_manage('update',gen_random_uuid(),body);raise exception 'stale edit accepted';exception when serialization_failure or sqlstate 'PT409' then null;end;
  a:=public.solar_customer_payment_manage('get',null,jsonb_build_object('id',pay->'id'));
  body:=jsonb_build_object('id',pay->'id','expectedToken',a->>'token');
  r:=public.solar_customer_payment_manage('delete',delid,body);
  if (r->>'remaining')::numeric<>1500 or(r->>'cashAfter')::numeric<>500 then raise exception 'delete effects';end if;
  if public.solar_customer_payment_manage('delete',delid,body)<>r then raise exception 'delete retry';end if;
- begin perform public.solar_customer_payment_save(rid,paybody);raise exception 'stale create replay accepted';exception when serialization_failure then null;end;
- begin perform public.solar_customer_payment_manage('get',null,'{"id":-338001}');raise exception 'opening can edit';exception when serialization_failure then null;end;
+ begin perform public.solar_customer_payment_save(rid,paybody);raise exception 'stale create replay accepted';exception when serialization_failure or sqlstate 'PT409' then null;end;
+ begin perform public.solar_customer_payment_manage('get',null,'{"id":-338001}');raise exception 'opening can edit';exception when serialization_failure or sqlstate 'PT409' then null;end;
  -- Credit → cash → credit: original cash owner and frozen quantities/costs/profit.
  invbody:=invbody||jsonb_build_object('invoiceId',inv->'id','expectedRevision',inv->'pricingRevision','mode','cash');inv:=public.solar_invoice_save(gen_random_uuid(),invbody);
  a:=public.solar_customer_payment_context(-338001);if(a->>'balance')::numeric<>1000 or(a->>'cashBalance')::numeric<>1000 then raise exception 'credit to cash';end if;

@@ -26,7 +26,7 @@ do $$declare a jsonb;p jsonb;r jsonb;r2 jsonb;req uuid:=gen_random_uuid();tid bi
  r:=public.solar_system_payment_save(req,p);tid:=(r->>'id')::bigint;
  if(r->>'remaining')::numeric<>16500000 or(r->>'cashAfter')::numeric<>1500000 or r->>'systemInvoiceId' is not null or r->>'receiptNo' is null then raise exception 'FAIL opening payment and cash: %',r;end if;
  r2:=public.solar_system_payment_save(req,p);if r<>r2 or(public.solar_system_payment_context(-341001)->>'cashBalance')::numeric<>1500000 then raise exception 'FAIL exact retry duplicates';end if;
- begin perform public.solar_system_payment_save(gen_random_uuid(),p);raise exception 'FAIL stale balance token';exception when serialization_failure then null;end;
+ begin perform public.solar_system_payment_save(gen_random_uuid(),p);raise exception 'FAIL stale balance token';exception when serialization_failure or sqlstate 'PT409' then null;end;
  begin update public.transactions set total=1 where id=tid;raise exception 'FAIL raw payment update';exception when insufficient_privilege then null;end;
  begin delete from public.transactions where id=tid;raise exception 'FAIL raw payment delete';exception when insufficient_privilege then null;end;
  a:=public.solar_system_payment_context(-341001);

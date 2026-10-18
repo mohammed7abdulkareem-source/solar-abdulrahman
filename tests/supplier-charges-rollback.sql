@@ -21,7 +21,7 @@ do $$declare r jsonb;a jsonb;token text;begin
  token:=r->>'token';
  r:=public.solar_supplier_movement_save('00000000-0000-0000-0000-000000334002',-334002,-334001,30000,'charge_extra_expense','تصحيح المصروف',token);
  if (r->>'afterBalance')::numeric<>130000 or (public.solar_supplier_account(-334001)->>'cashBalance')::numeric<>0 then raise exception 'FAIL charge edit';end if;
- begin perform public.solar_supplier_movement_save('00000000-0000-0000-0000-000000334003',-334002,-334001,40000,'charge_other','تعديل قديم',token);raise exception 'FAIL stale charge edit';exception when serialization_failure then null;end;
+ begin perform public.solar_supplier_movement_save('00000000-0000-0000-0000-000000334003',-334002,-334001,40000,'charge_other','تعديل قديم',token);raise exception 'FAIL stale charge edit';exception when serialization_failure or sqlstate 'PT409' then null;end;
  begin perform public.solar_supplier_movement_save('00000000-0000-0000-0000-000000334004',-334003,-334001,1000,'cash','');raise exception 'FAIL cash payment with empty cashbox';exception when no_data_found then null;end;
  begin perform public.solar_supplier_movement_save('00000000-0000-0000-0000-000000334005',-334004,-334001,1000,'charge_other','');raise exception 'FAIL missing charge reason';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  begin perform public.solar_supplier_movement_save('00000000-0000-0000-0000-000000334006',-334004,-334001,-1000,'charge_other','سبب');raise exception 'FAIL negative input';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;

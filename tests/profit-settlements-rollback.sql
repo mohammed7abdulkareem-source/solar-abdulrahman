@@ -30,7 +30,7 @@ do $$declare c jsonb;r jsonb;b jsonb;d jsonb;old_result jsonb;req uuid:=gen_rand
  begin perform public.solar_profit_workspace('approve',gen_random_uuid(),b||'{"cashOwnerId":"00000000-0000-0000-0000-000000003432"}');raise exception 'overdraft allowed';exception when sqlstate 'P0002' then null;end;
  old_result:=public.solar_profit_workspace('approve',decision,b);
  if public.solar_profit_workspace('approve',decision,b)<>old_result then raise exception 'decision replay';end if;
- begin perform public.solar_profit_workspace('approve',gen_random_uuid(),b);raise exception 'paid twice';exception when serialization_failure then null;end;
+ begin perform public.solar_profit_workspace('approve',gen_random_uuid(),b);raise exception 'paid twice';exception when serialization_failure or sqlstate 'PT409' then null;end;
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003431',true);
  c:=public.solar_profit_workspace('overview');if(c->>'available')::numeric<>0 or(c->'requests'->0->>'share')::numeric<>75000 then raise exception 'reset/history';end if;
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003432',true);
@@ -65,7 +65,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003430',true);
 do $$declare c jsonb;r jsonb;begin
  c:=public.solar_profit_workspace('overview');select x into r from jsonb_array_elements(c->'requests')x where x->>'id'='00000000-0000-0000-0000-000000003439';
- begin perform public.solar_profit_workspace('approve',gen_random_uuid(),jsonb_build_object('id',r->>'id','expectedToken',r->>'token','share',100000,'cashOwnerId','00000000-0000-0000-0000-000000003430','collectionConfirmed',true));raise exception 'stale approval allowed';exception when serialization_failure then null;end;
+ begin perform public.solar_profit_workspace('approve',gen_random_uuid(),jsonb_build_object('id',r->>'id','expectedToken',r->>'token','share',100000,'cashOwnerId','00000000-0000-0000-0000-000000003430','collectionConfirmed',true));raise exception 'stale approval allowed';exception when serialization_failure or sqlstate 'PT409' then null;end;
  perform public.solar_profit_workspace('reject',gen_random_uuid(),jsonb_build_object('id',r->>'id','expectedToken',r->>'token','note','تغيرت الكلفة؛ إصدار طلب جديد'));
 end $$;
 reset role;

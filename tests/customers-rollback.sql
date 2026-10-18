@@ -35,7 +35,7 @@ do $$declare current jsonb; changed jsonb; old_token text;payload jsonb;begin
  if not exists(select 1 from public.transactions where id=-332010 and total=500000 and cash and payment_mode='payment') then raise exception 'FAIL edit rewrote receipt';end if;
  perform public.solar_customer_save('update','00000000-0000-0000-0000-000000332004',payload);
  if (public.solar_customer_get(-332001)->>'balance')::numeric<>2500000 then raise exception 'FAIL edit retry double applied';end if;
- begin perform public.solar_customer_save('update','00000000-0000-0000-0000-000000332005',payload);raise exception 'FAIL stale edit accepted';exception when serialization_failure then null;end;
+ begin perform public.solar_customer_save('update','00000000-0000-0000-0000-000000332005',payload);raise exception 'FAIL stale edit accepted';exception when serialization_failure or sqlstate 'PT409' then null;end;
  current:=public.solar_customer_get(-332001);
  changed:=public.solar_customer_save('update','00000000-0000-0000-0000-000000332006',jsonb_build_object('id',-332001,'token',current->>'token','name','احمد علي الجديد','phone','07701234567','customerType','wholesale','openingBalance',-1000000));
  if (changed->>'balance')::numeric<>-1500000 or (changed->>'openingBalance')::numeric<>-1000000 then raise exception 'FAIL opening credit direction';end if;

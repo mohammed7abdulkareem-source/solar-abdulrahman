@@ -33,7 +33,7 @@ do $$declare a jsonb;r jsonb;r2 jsonb;req uuid:=gen_random_uuid();p jsonb;tid bi
  -- Currency conversion preserves book value and keeps a separately readable old register.
  perform public.solar_fx('currency',gen_random_uuid(),jsonb_build_object('supplierId',-340001,'currency','IQD','rate',1400,'expectedRevision',1,'expectedToken',a->>'token','note','اتفاق دينار'));
  a:=public.solar_fx('account',null,'{"supplierId":-340001}');if(a->>'balance')::numeric<>280000 or(a->>'bookBalance')::numeric<>300000 then raise exception 'FAIL currency conversion book carry: %',a;end if;
- begin perform public.solar_fx('payment',gen_random_uuid(),'{"supplierId":-340001,"paymentId":-340004,"amount":1,"currency":"USD","rate":1500,"accountRevision":1,"mode":"cash"}');raise exception 'FAIL stale currency revision';exception when serialization_failure then null;end;
+ begin perform public.solar_fx('payment',gen_random_uuid(),'{"supplierId":-340001,"paymentId":-340004,"amount":1,"currency":"USD","rate":1500,"accountRevision":1,"mode":"cash"}');raise exception 'FAIL stale currency revision';exception when serialization_failure or sqlstate 'PT409' then null;end;
  -- Dollar invoice into IQD account. Purchase costs stay in IQD weighted average.
  perform public.solar_invoice_save(gen_random_uuid(),'{"kind":"purchase","party":"المورد الديناري","mode":"credit","sourceCurrency":"USD","exchangeRate":1450,"marketRate":1450,"accountRevision":0,"items":[{"id":-340001,"qty":2,"price":100}]}');
  a:=public.solar_fx('account',null,'{"supplierId":-340002}');if(a->>'balance')::numeric<>290000 then raise exception 'FAIL USD invoice to IQD account';end if;
@@ -47,7 +47,7 @@ do $$declare a jsonb;r jsonb;r2 jsonb;req uuid:=gen_random_uuid();p jsonb;tid bi
  r:=public.solar_fx('payment',gen_random_uuid(),p);token:=r->>'token';
  r:=public.solar_fx('payment',gen_random_uuid(),p||jsonb_build_object('amount',200,'expectedToken',token));
  if(r->>'total')::numeric<>-300000 or(r->>'sourceSubtotal')::numeric<>-200 or(r->>'cash')::boolean then raise exception 'FAIL USD charge edit';end if;
- begin perform public.solar_fx('payment',gen_random_uuid(),p||jsonb_build_object('expectedToken',token));raise exception 'FAIL stale payment';exception when serialization_failure then null;end;
+ begin perform public.solar_fx('payment',gen_random_uuid(),p||jsonb_build_object('expectedToken',token));raise exception 'FAIL stale payment';exception when serialization_failure or sqlstate 'PT409' then null;end;
  a:=public.solar_fx('account',null,'{"supplierId":-340002}');if(a->>'balance')::numeric<>590000 or(a->>'cashBalance')::numeric<>9150000 or(a->'usdWallet'->>'amount')::numeric<>600 then raise exception 'FAIL charge no cash effect: %',a;end if;
  begin perform public.solar_fx('payment',gen_random_uuid(),'{"supplierId":-340002,"paymentId":-340005,"amount":601,"currency":"USD","rate":1500,"accountRevision":0,"mode":"cash"}');raise exception 'FAIL USD overdraft';exception when no_data_found then null;end;
  begin update public.suppliers set account_currency='USD' where id=-340002;raise exception 'FAIL raw currency change';exception when insufficient_privilege then null;end;

@@ -24,7 +24,7 @@ do $$declare admin_id uuid:='00000000-0000-0000-0000-000000003390';staff_id uuid
  r:=public.solar_cash_reconcile('apply',rid,b);
  if(r->'rows'->0->>'afterBook')::numeric<>183150 or(r->'rows'->0->>'afterIQD')::numeric<>8000 then raise exception 'usd book or iqd changed';end if;
  if public.solar_cash_reconcile('apply',rid,b)<>r then raise exception 'retry duplicated';end if;
- begin perform public.solar_cash_reconcile('apply',gen_random_uuid(),b);raise exception 'stale accepted';exception when serialization_failure then null;end;
+ begin perform public.solar_cash_reconcile('apply',gen_random_uuid(),b);raise exception 'stale accepted';exception when serialization_failure or sqlstate 'PT409' then null;end;
  c:=public.solar_cash_reconcile('context',null,jsonb_build_object('ownerId',admin_id));
  b:=b||jsonb_build_object('expectedToken',c->>'token','target',60.25,'rate',null);
  r:=public.solar_cash_reconcile('apply',gen_random_uuid(),b);

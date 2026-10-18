@@ -17,7 +17,7 @@ do $$ declare r jsonb; updated jsonb; begin
  if (public.solar_cash_transfer_overview()->>'balance')::numeric<>4000 then raise exception 'FAIL duplicate debit';end if;
  updated:=public.solar_supplier_payment_save('00000000-0000-0000-0000-000000095102',-951002,-951001,600,'edited',r->>'token');
  if (public.solar_cash_transfer_overview()->>'balance')::numeric<>4400 then raise exception 'FAIL edited cash';end if;
- begin perform public.solar_supplier_payment_save('00000000-0000-0000-0000-000000095103',-951002,-951001,700,'',r->>'token');raise exception 'FAIL stale edit';exception when serialization_failure then null;end;
+ begin perform public.solar_supplier_payment_save('00000000-0000-0000-0000-000000095103',-951002,-951001,700,'',r->>'token');raise exception 'FAIL stale edit';exception when serialization_failure or sqlstate 'PT409' then null;end;
  begin perform public.solar_supplier_payment_save('00000000-0000-0000-0000-000000095104',-951002,-951001,6000,'',updated->>'token');raise exception 'FAIL overspend';exception when no_data_found then null;end;
  begin perform public.solar_supplier_payment_save('00000000-0000-0000-0000-000000095105',-951003,-951001,-10,'');raise exception 'FAIL negative amount';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  begin update public.transactions set total=0 where id=-951002;raise exception 'FAIL direct update';exception when insufficient_privilege then null;end;

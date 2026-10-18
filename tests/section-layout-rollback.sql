@@ -11,7 +11,7 @@ do $$declare r jsonb;begin
  r:=public.solar_section_layout();if r->>'mobileColumns'<>'3' then raise exception 'default columns';end if;
  r:=public.solar_section_layout('save','{"mobileColumns":7,"desktopColumns":1,"order":["cash","sale","system"],"expectedRevision":0}');if r->>'revision'<>'1' or r->'order'->>0<>'cash' then raise exception 'order not saved';end if;
  if public.solar_section_layout() is distinct from r then raise exception 'persisted preferences';end if;
- begin perform public.solar_section_layout('save','{"mobileColumns":2,"desktopColumns":7,"order":[],"expectedRevision":0}');raise exception 'stale revision accepted';exception when serialization_failure then null;end;
+ begin perform public.solar_section_layout('save','{"mobileColumns":2,"desktopColumns":7,"order":[],"expectedRevision":0}');raise exception 'stale revision accepted';exception when serialization_failure or sqlstate 'PT409' then null;end;
  begin perform public.solar_section_layout('save','{"mobileColumns":8,"desktopColumns":7,"order":[],"expectedRevision":1}');raise exception 'invalid grid accepted';exception when raise_exception then if sqlerrm='invalid grid accepted' then raise;end if;end;
  begin perform public.solar_section_layout('save','{"mobileColumns":2,"desktopColumns":7,"order":["sale","sale"],"expectedRevision":1}');raise exception 'duplicate order accepted';exception when raise_exception then if sqlerrm='duplicate order accepted' then raise;end if;end;
 end $$;

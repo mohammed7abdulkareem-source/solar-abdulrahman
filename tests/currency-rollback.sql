@@ -17,7 +17,7 @@ end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003310',true);
 select public.solar_exchange_rate_set(1500,0);
 do $$begin
- begin perform public.solar_exchange_rate_set(1600,0);raise exception 'FAIL stale settings revision';exception when serialization_failure then null;end;
+ begin perform public.solar_exchange_rate_set(1600,0);raise exception 'FAIL stale settings revision';exception when serialization_failure or sqlstate 'PT409' then null;end;
  begin perform public.solar_exchange_rate_set('NaN'::numeric,1);raise exception 'FAIL nonfinite rate';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
 end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003311',true);
@@ -49,8 +49,8 @@ do $$declare response jsonb;begin
  if not exists(select 1 from public.transactions where id=current_setting('fx.sale')::bigint and cost=550000 and profit=200000) then raise exception 'FAIL historic sale changed';end if;
  response:=public.solar_invoice_save('00000000-0000-0000-0000-000000033105',jsonb_build_object('invoiceId',current_setting('fx.sale')::bigint,'expectedRevision',0,'kind','sale','mode','credit','party','FX Customer','sourceCurrency','IQD','exchangeRate',1,'expenses',0,'items',jsonb_build_array(jsonb_build_object('id',-3310,'qty',5,'price',160000))));
  if (response->>'cost')::numeric<>550000 or (response->>'profit')::numeric<>250000 then raise exception 'FAIL edit revalued historic cost';end if;
- begin perform public.solar_purchase_delete(current_setting('fx.purchase')::bigint,0);raise exception 'FAIL deletion after subsequent movement';exception when serialization_failure then null;end;
- begin perform public.solar_invoice_save('00000000-0000-0000-0000-000000033106',jsonb_build_object('invoiceId',current_setting('fx.sale')::bigint,'expectedRevision',0,'kind','sale','mode','credit','sourceCurrency','IQD','expenses',0,'items',jsonb_build_array(jsonb_build_object('id',-3310,'qty',5,'price',150000))));raise exception 'FAIL stale invoice revision';exception when serialization_failure then null;end;
+ begin perform public.solar_purchase_delete(current_setting('fx.purchase')::bigint,0);raise exception 'FAIL deletion after subsequent movement';exception when serialization_failure or sqlstate 'PT409' then null;end;
+ begin perform public.solar_invoice_save('00000000-0000-0000-0000-000000033106',jsonb_build_object('invoiceId',current_setting('fx.sale')::bigint,'expectedRevision',0,'kind','sale','mode','credit','sourceCurrency','IQD','expenses',0,'items',jsonb_build_array(jsonb_build_object('id',-3310,'qty',5,'price',150000))));raise exception 'FAIL stale invoice revision';exception when serialization_failure or sqlstate 'PT409' then null;end;
  begin perform public.solar_invoice_save('00000000-0000-0000-0000-000000033107','{"kind":"sale","mode":"credit","party":"FX Customer","sourceCurrency":"IQD","exchangeRate":1,"expenses":0,"items":[{"id":-3310,"qty":100,"price":150000}]}');raise exception 'FAIL overselling';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  if not exists(select 1 from public.products where id=-3310 and qty=20 and cost=120000) then raise exception 'FAIL rejected operation changed stock';end if;
 end $$;

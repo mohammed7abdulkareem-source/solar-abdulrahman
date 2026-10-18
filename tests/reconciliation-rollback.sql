@@ -17,12 +17,12 @@ do $$declare r jsonb; x jsonb; ledger jsonb; req uuid=gen_random_uuid(); stock_r
  if x<>r then raise exception 'FAIL retry';end if;
  ledger:=public.solar_customer_statement(-932801);
  if (ledger->>'balance')::numeric<>1000 or jsonb_array_length(ledger->'rows')<>1 or ledger->'rows'->0->>'mode'<>'opening_balance' then raise exception 'FAIL opening ledger';end if;
- begin perform public.solar_reconcile('create_customer',req,payload||'{"openingBalance":2000}');raise exception 'FAIL changed retry';exception when serialization_failure then null;end;
+ begin perform public.solar_reconcile('create_customer',req,payload||'{"openingBalance":2000}');raise exception 'FAIL changed retry';exception when serialization_failure or sqlstate 'PT409' then null;end;
  begin perform public.solar_customer_statement(-932802);raise exception 'FAIL other ledger';exception when insufficient_privilege then null;end;
  begin perform public.solar_reconcile('customer_balance',gen_random_uuid(),'{"customerId":-932802,"actual":0}');raise exception 'FAIL other match';exception when insufficient_privilege then null;end;
  r:=public.solar_reconcile('customer_balance',gen_random_uuid(),jsonb_build_object('customerId',-932801,'actual',-50,'token',ledger->>'token','note','TEST matching'));
  if (r->>'delta')::numeric<>-1050 then raise exception 'FAIL match difference';end if;
- begin perform public.solar_reconcile('customer_balance',gen_random_uuid(),jsonb_build_object('customerId',-932801,'actual',0,'token',ledger->>'token','note','TEST stale'));raise exception 'FAIL stale ledger';exception when serialization_failure then null;end;
+ begin perform public.solar_reconcile('customer_balance',gen_random_uuid(),jsonb_build_object('customerId',-932801,'actual',0,'token',ledger->>'token','note','TEST stale'));raise exception 'FAIL stale ledger';exception when serialization_failure or sqlstate 'PT409' then null;end;
  ledger:=public.solar_customer_statement(-932801);
  if (ledger->>'balance')::numeric<>-50 then raise exception 'FAIL matched balance';end if;
  select value into x from jsonb_array_elements(public.solar_party_balances('customers',(now() at time zone 'Asia/Baghdad')::date)->'rows') where value->>'id'='-932801';
@@ -34,7 +34,7 @@ do $$declare r jsonb; x jsonb; ledger jsonb; req uuid=gen_random_uuid(); stock_r
  if x<>r or (r->>'delta')::numeric<>-3 then raise exception 'FAIL stock retry';end if;
  x:=public.solar_stock_movements(-932801);
  if jsonb_array_length(x)<>1 or (x->0->>'balance')::numeric<>7 or (x->0->>'outQty')::numeric<>3 or x->0->>'kind'<>'stock_adjustment' then raise exception 'FAIL stock journal';end if;
- begin perform public.solar_reconcile('stock_balance',gen_random_uuid(),'{"productId":-932801,"expected":10,"actual":5,"note":"stale"}');raise exception 'FAIL stale stock';exception when serialization_failure then null;end;
+ begin perform public.solar_reconcile('stock_balance',gen_random_uuid(),'{"productId":-932801,"expected":10,"actual":5,"note":"stale"}');raise exception 'FAIL stale stock';exception when serialization_failure or sqlstate 'PT409' then null;end;
  begin perform public.solar_reconcile('stock_balance',gen_random_uuid(),'{"productId":-932801,"expected":7,"actual":-1,"note":"invalid"}');raise exception 'FAIL negative stock';exception when raise_exception then if sqlerrm='FAIL negative stock' then raise;end if;end;
  r:=public.solar_reconcile('stock_balance',gen_random_uuid(),'{"productId":-932801,"expected":7,"actual":12,"note":"TEST increase"}');
  x:=public.solar_stock_movements(-932801);

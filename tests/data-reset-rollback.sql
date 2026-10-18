@@ -20,7 +20,7 @@ insert into public.solar_quotes(id,user_id,payload) values(gen_random_uuid(),cur
 set local role service_role;
 do $$begin
  begin perform public.solar_execute_reset(current_setting('reset_test.admin')::uuid,current_setting('reset_test.plan')::uuid,'wrong');raise exception 'FAIL invalid confirmation';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
- begin perform public.solar_execute_reset(current_setting('reset_test.admin')::uuid,current_setting('reset_test.plan')::uuid,'تصفير بيانات عبدالرحمن سولار');raise exception 'FAIL stale backup accepted';exception when serialization_failure then null;end;
+ begin perform public.solar_execute_reset(current_setting('reset_test.admin')::uuid,current_setting('reset_test.plan')::uuid,'تصفير بيانات عبدالرحمن سولار');raise exception 'FAIL stale backup accepted';exception when serialization_failure or sqlstate 'PT409' then null;end;
 end $$;
 reset role;
 set local role authenticated;

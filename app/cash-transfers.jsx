@@ -5,7 +5,7 @@ import AppIcon from './app-icons';
 import {supabase} from './supabase';
 const fmt=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const statuses={pending:'بانتظار الموافقة',accepted:'تم الاستلام',rejected:'مرفوض — أعيد للمرسل',cancelled:'ملغي — أعيد للمرسل'};
-const errorText=e=>e.code==='P0002'?'رصيد قاصتك لا يكفي. حدّث الرصيد وراجع المبلغ والمصاريف.':e.code==='42501'?'الصلاحية غير متاحة أو مسؤول المالية غير فعّال.':e.code==='40001'?'تغيّرت حالة الطلب. حدّث القائمة قبل المحاولة.':'تعذر تأكيد العملية. حدّث القائمة قبل إعادة المحاولة؛ الطلب محفوظ برقم يمنع تكرار الخصم.';
+const errorText=e=>e.code==='P0002'?'رصيد قاصتك لا يكفي. حدّث الرصيد وراجع المبلغ والمصاريف.':e.code==='42501'?'الصلاحية غير متاحة أو مسؤول المالية غير فعّال.':['40001','PT409'].includes(e.code)?'تغيّرت حالة الطلب. حدّث القائمة قبل المحاولة.':'تعذر تأكيد العملية. حدّث القائمة قبل إعادة المحاولة؛ الطلب محفوظ برقم يمنع تكرار الخصم.';
 
 export default function CashTransfers({profile,onChanged,selectedTransfer=''}){
  const [data,setData]=useState(null),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[loading,setLoading]=useState(true);
