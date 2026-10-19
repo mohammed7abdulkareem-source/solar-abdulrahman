@@ -22,8 +22,8 @@ export function canOpenPage(profile, page) {
   if (page === 'customers') return !!(profile.permissions?.customers || profile.permissions?.customerCreate);
   if (page === 'tahseel') return profile.permissions?.tahseel !== undefined ? !!profile.permissions.tahseel : !!profile.permissions?.system;
   if (page === 'cashTransfers') return !!(profile.permissions?.cashTransferSend || profile.permissions?.financeReceive);
-  if (page === 'installations') return !!(profile.permissions?.installations || profile.permissions?.installationsAll || profile.permissions?.system);
-  if (page === 'salesHistory') return !!(profile.permissions?.salesHistory || profile.permissions?.sale || profile.permissions?.system || profile.permissions?.installations || profile.permissions?.installationsAll || profile.permissions?.salesDeleteOwn || profile.permissions?.salesDeleteAll);
+  if (page === 'installations') return !!(profile.permissions?.installations || profile.permissions?.system);
+  if (page === 'salesHistory') return !!(profile.permissions?.salesHistory || profile.permissions?.sale || profile.permissions?.system || profile.permissions?.installations || profile.permissions?.salesDeleteOwn);
   return !!profile.permissions?.[page];
 }
 export const canSeeCash = profile => !isEngineer(profile) && canOpenPage(profile,'cash');

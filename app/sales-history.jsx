@@ -22,7 +22,7 @@ export default function SalesHistory({profile,a4,openA4,saveA4,shareA4,onFollow,
  const preparation=useWarehouseStatuses(result.rows,()=>setRefresh(n=>n+1));
  const change=(setter,value)=>{setter(value);setOffset(0)};
  const doc=(row,customer)=>{const d=salesDocument(row,customer);return a4(d.title,d.body,d.total,d.subtitle)};
- return <section className="salesArchive">
+ return <section className="salesArchive"><p className="archiveCount">{profile?.is_admin?'الإدارة — جميع وصولات المستخدمين':'وصولاتك فقط — بيانات باقي المستخدمين محمية'}</p>
   <form className="card form" onSubmit={e=>{e.preventDefault();const q=normalizeSearch(query);change(setSearch,/^[#\d,٬\s]+$/.test(q)?receiptQuery(q):query.trim());setRefresh(n=>n+1)}}>
    <label>بحث برقم الوصل أو اسم الزبون<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="رقم الوصل / اسم الزبون"/></label>
    <div className="archiveFilters"><label>نوع البيع<select value={kind} onChange={e=>{change(setKind,e.target.value);setStatus('')}}><option value="">الجملة والمنظومات</option><option value="sale">بيع جملة</option><option value="system">بيع منظومات</option></select></label>
@@ -37,7 +37,7 @@ export default function SalesHistory({profile,a4,openA4,saveA4,shareA4,onFollow,
    <p className="archiveStatus"><WarehouseBadge status={preparation[row.id]||row.warehouse_status} compact/></p>
    {row.kind==='system'&&<p className="archiveStatus">{statusLabel[row.installation_status]||'غير محدد'} · المهندس: {row.installerName||'غير محدد'}</p>}
    <details><summary>تفاصيل المواد ({row.items.length})</summary>{row.items.map((item,i)=><div className="archiveLine" key={i}><span>{item.product_name}<small>{[item.brand_name,item.category].filter(Boolean).join(' · ')}</small></span><b>× {formatMoney(item.qty)}</b></div>)}</details>
-   {(profile?.is_admin||((row.cashbox_user_id||row.created_by)===profile?.id&&profile?.permissions?.[row.kind]))&&<WarrantyManage invoiceId={row.id} onChanged={async()=>{setMessage('تم حفظ الضمان. رمز الوصل نفسه يعرض آخر تحديث.');setRefresh(n=>n+1);await onChanged?.();}}/>}
+   {(profile?.is_admin||(row.created_by===profile?.id&&profile?.permissions?.[row.kind]))&&<WarrantyManage invoiceId={row.id} onChanged={async()=>{setMessage('تم حفظ الضمان. رمز الوصل نفسه يعرض آخر تحديث.');setRefresh(n=>n+1);await onChanged?.();}}/>}
    <div className="receiptCopies"><button onClick={()=>openA4(doc(row,true))}>معاينة وصل الزبون</button><button onClick={()=>openA4(doc(row,false))}>معاينة الوصل المخزني</button><button onClick={()=>saveA4(doc(row,true),'وصل-زبون-'+receiptNumber(row))}>حفظ PDF الزبون</button><button onClick={()=>saveA4(doc(row,false),'وصل-مخزني-'+receiptNumber(row))}>حفظ PDF المخزن</button><button onClick={()=>shareA4('وصل-زبون-'+receiptNumber(row),'فاتورة '+receiptNumber(row)+' - '+(row.party_name||'زبون نقدي'),doc(row,true))}>مشاركة PDF الزبون</button><button onClick={()=>shareA4('وصل-مخزني-'+receiptNumber(row),'وصل مخزني '+receiptNumber(row),doc(row,false))}>مشاركة PDF المخزن</button></div>
    {row.kind==='system'&&onFollow&&<button className="workflowSecondary archiveFollow" onClick={()=>onFollow(String(row.id))}>متابعة ملف التنصيب</button>}
    {row.canDelete&&<button className="dangerMini archiveDelete" disabled={deleting!==null} onClick={()=>remove(row)}>{deleting===row.id?'جاري مراجعة الحذف…':'حذف الوصل'}</button>}

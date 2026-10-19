@@ -18,9 +18,9 @@ test('customer system copy shows system total without exposing material costs',(
 test('wholesale customer copy uses saved selling prices',()=>{
  const d=salesDocument({...row,kind:'sale'},true);assert.match(d.body,/80,000/);assert.match(d.body,/960,000/);
 });
-test('closing-all grants workflow and history only, engineers remain blocked from history',()=>{
+test('legacy global flags do not grant staff workflow or history access',()=>{
  const p={active:true,user_type:'admin_staff',permissions:{installationsAll:true}};
- assert.equal(canOpenPage(p,'installations'),true);assert.equal(canOpenPage(p,'salesHistory'),true);
+ assert.equal(canOpenPage(p,'installations'),false);assert.equal(canOpenPage(p,'salesHistory'),false);
  assert.equal(canOpenPage(p,'cash'),false);assert.equal(canOpenPage(p,'sale'),false);
  assert.equal(canOpenPage({...p,user_type:'installer'},'salesHistory'),false);
 });
