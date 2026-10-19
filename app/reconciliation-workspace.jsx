@@ -17,11 +17,11 @@ export function OpeningBalanceFields(){
  const [amount,setAmount]=useState('');
  return <div className="openingFields"><label className="reconcileCheck"><input type="checkbox" name="hasOpening" checked={enabled} onChange={e=>setEnabled(e.target.checked)}/>رصيد افتتاحي إن وجد</label>{enabled&&<div className="reconcilePair"><label>مبلغ الرصيد الافتتاحي · د.ع<MoneyInput aria-label="مبلغ الرصيد الافتتاحي" name="openingAmount" value={amount} onChange={setAmount} required placeholder="مثال: 2,000,000"/></label><label>اتجاه الرصيد<select name="openingDirection"><option value="1">لنا على العميل</option><option value="-1">للعميل عندنا</option></select></label></div>}</div>;
 }
-export function StockReconciliation({products,onChanged}){
+export function StockReconciliation({products,onChanged,warehouseId}){
  const [query,setQuery]=useState(''),[selected,setSelected]=useState(null),[actual,setActual]=useState(''),[note,setNote]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');const reconcile=useReconciliation();
  const choose=id=>{setSelected(products.find(p=>String(p.id)===id)||null);setActual('');setError('');setMessage('')};
  async function submit(e){e.preventDefault();if(busy||!selected)return;setBusy(true);setError('');setMessage('');try{
-  await reconcile('stock_balance',{productId:selected.id,expected:Number(selected.qty),actual:Number(actual),note});
+  await reconcile('stock_balance',{warehouseId:Number(warehouseId),productId:selected.id,expected:Number(selected.qty),actual:Number(actual),note});
   setSelected(null);setActual('');setNote('');setMessage('تم حفظ تسوية الرصيد وإضافتها إلى حركة المواد.');
   try{await onChanged()}catch{setError('تم الحفظ؛ تعذر تحديث الشاشة. حدّث البيانات قبل أي تسوية جديدة.')}
  }catch(e){setError(e.message||'تعذر حفظ التسوية')}finally{setBusy(false)}}

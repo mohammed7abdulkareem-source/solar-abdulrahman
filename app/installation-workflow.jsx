@@ -44,7 +44,7 @@ function JobCard({job,engineer,busy,change}){
  const index=stages.findIndex(([s])=>s===job.installationStatus),report=job.installationReport||{};
  const phone=String(job.customerPhone||'').replace(/[^+0-9]/g,'');
  return <article className="workflowJob">
-  <header><div><small>ملف #{receiptNumber(job)}</small><h3>{job.party||'عميل منظومة'}</h3></div><span className={'workflowStatus '+job.installationStatus}>{job.installationStatus==='closed'?'ملف مغلق':job.warehouseStatus!=='ready'?'بانتظار التجهيز':engineer?(stages[index]?.[1]||job.installationStatus):'بانتظار اعتماد المصاريف'}</span></header>
+  <header><div><small>ملف #{receiptNumber(job)}</small><h3>{job.party||'عميل منظومة'}</h3>{job.warehouseName&&<small className="orderWarehouseLabel">{job.warehouseName}</small>}</div><span className={'workflowStatus '+job.installationStatus}>{job.installationStatus==='closed'?'ملف مغلق':job.warehouseStatus!=='ready'?'بانتظار التجهيز':engineer?(stages[index]?.[1]||job.installationStatus):'بانتظار اعتماد المصاريف'}</span></header>
   <ol className="workflowSteps" aria-label="مراحل التنصيب">{displayStages.map(([stage,label],i)=><li key={stage} className={i<=(engineer?index:officeIndex)?'reached':''} aria-current={i===(engineer?index:officeIndex)?'step':undefined}><span>{i<(engineer?index:officeIndex)?'✓':i+1}</span><small>{label}</small></li>)}</ol>
   <WarehouseBadge status={job.warehouseStatus} compact/>
   <div className="jobDetails"><div><small>موعد التنصيب</small><b>{job.installDate||'لم يحدد'} • {job.installTime?.slice(0,5)||'الوقت غير محدد'}</b></div><div><small>مهندس التنصيب</small><b>{job.installerName||'غير مسند'}</b></div><div className="jobAddress"><small>العنوان</small><b>{job.customerAddress||'العنوان غير محدد'}</b></div></div>

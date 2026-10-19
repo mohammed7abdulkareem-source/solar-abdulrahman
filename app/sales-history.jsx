@@ -34,7 +34,7 @@ export default function SalesHistory({profile,a4,openA4,saveA4,shareA4,onFollow,
   {loading?<div className="empty">جاري تحميل المبيعات…</div>:<><p className="archiveCount">{formatMoney(result.count)} فاتورة ضمن صلاحياتك</p>
   {!result.rows.length?<div className="empty">لا توجد مبيعات ضمن هذا الاختيار</div>:result.rows.map(row=><article className="card archiveInvoice" key={row.id}>
    <header><div><small>{row.kind==='system'?'بيع منظومة':'بيع جملة'} · #{receiptNumber(row)}</small><h3>{row.party_name||'زبون نقدي'}</h3><small>{new Date(row.created_at).toLocaleDateString('ar-IQ',{timeZone:'Asia/Baghdad'})} · {row.creatorName||'—'}</small></div><b>{formatMoney(row.total)} د.ع</b></header>
-   <p className="archiveStatus"><WarehouseBadge status={preparation[row.id]||row.warehouse_status} compact/></p>
+   <p className="archiveStatus">{row.warehouse_name&&<small className="orderWarehouseLabel">{row.warehouse_name}</small>}<WarehouseBadge status={preparation[row.id]||row.warehouse_status} compact/></p>
    {row.kind==='system'&&<p className="archiveStatus">{statusLabel[row.installation_status]||'غير محدد'} · المهندس: {row.installerName||'غير محدد'}</p>}
    <details><summary>تفاصيل المواد ({row.items.length})</summary>{row.items.map((item,i)=><div className="archiveLine" key={i}><span>{item.product_name}<small>{[item.brand_name,item.category].filter(Boolean).join(' · ')}</small></span><b>× {formatMoney(item.qty)}</b></div>)}</details>
    {(profile?.is_admin||(row.created_by===profile?.id&&profile?.permissions?.[row.kind]))&&<WarrantyManage invoiceId={row.id} onChanged={async()=>{setMessage('تم حفظ الضمان. رمز الوصل نفسه يعرض آخر تحديث.');setRefresh(n=>n+1);await onChanged?.();}}/>}

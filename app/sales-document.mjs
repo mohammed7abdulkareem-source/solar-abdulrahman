@@ -19,9 +19,11 @@ export function invoiceAccountDocument(row){
 export function salesDocument(row,customer=true){
  const system=row.kind==='system',items=row.items||[];
  const meta=[['رقم الفاتورة',receiptNumber(row)],['التاريخ',invoiceDate(row.created_at)],['الزبون',row.party_name||'زبون نقدي'],['المسؤول',row.creatorName||'—']];
+ const warehouseName=row.warehouseName||row.warehouse_name;
+ if(row.draft&&warehouseName)meta.push(['المخزن',warehouseName]);
  if(customer)meta.push(['طريقة الدفع',system?'آجل':row.cash||row.payment_mode==='cash'||row.mode==='cash'?'نقدي':'آجل']);
  if(system)meta.push(['المهندس',row.installerName||'غير محدد'],['الهاتف',row.customer_phone||'—'],['العنوان',row.customer_address||'—'],['الموعد',[row.install_date,row.install_time?.slice(0,5)].filter(Boolean).join(' • ')||'يحدد لاحقاً']);
- if(!row.draft)meta.push(['تجهيز المخزن',(row.warehouse_status||row.warehouseStatus)==='ready'?'✓ تم التجهيز':'بانتظار التجهيز']);
+ if(!row.draft)meta.push([warehouseName?'المخزن':'تجهيز المخزن',[warehouseName,(row.warehouse_status||row.warehouseStatus)==='ready'?'✓ تم التجهيز':'بانتظار التجهيز'].filter(Boolean).join(' • ')]);
  const prices=customer&&!system;
  const safeToken=row.warehouseQrToken||row.warehouse_qr_token,token=customer?(row.warrantyToken||row.warranty_token||safeToken):safeToken;
  const qr=!row.draft&&token?warrantyQrSvg(token):'';
