@@ -6,6 +6,7 @@ insert into profiles(id,display_name,username,is_admin,user_type,permissions) va
 ('00000000-0000-0000-0000-000000003592','Seller B','seller_b',false,'admin_staff','{"sale":true,"system":true,"salesHistory":true,"warehouse":true,"stockMovement":true}'),
 ('00000000-0000-0000-0000-000000003593','Warehouse','isolation_warehouse',false,'warehouse','{}'),
 ('00000000-0000-0000-0000-000000003594','Assigned Engineer','isolation_engineer',false,'installer','{}');
+insert into solar_private.warehouse_access(user_id,all_warehouses,warehouse_ids) values('00000000-0000-0000-0000-000000003593',true,'{}');
 insert into customers(id,name,customer_type,owner_id) values(-359001,'PRIVATE_A_CUSTOMER','wholesale','00000000-0000-0000-0000-000000003591'),(-359002,'PRIVATE_B_CUSTOMER','system','00000000-0000-0000-0000-000000003592');
 insert into products(id,code,name,qty,cost) values(-359001,'SCOPE-SHARED','Shared inventory material',100,100);
 insert into suppliers(id,name) values(-359001,'Shared supplier');
@@ -63,7 +64,7 @@ end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003593',true);
 do $$declare r jsonb;begin
  if exists(select 1 from transactions) or exists(select 1 from transaction_items) then raise exception 'warehouse raw financial tables';end if;
- r:=public.solar_warehouse_orders('','',0);if(r->>'count')::integer<>5 or r::text ~ '"(total|price|cost|profit|invoiceAccount)"' then raise exception 'dedicated warehouse lost redacted fulfilment';end if;
+ r:=public.solar_warehouse_orders('PRIVATE_','',0);if(r->>'count')::integer<>5 or r::text ~ '"(total|price|cost|profit|invoiceAccount)"' then raise exception 'dedicated warehouse lost redacted fulfilment';end if;
  r:=public.solar_stock_movements();if jsonb_array_length(r)<>8 then raise exception 'dedicated stock movement count';end if;
  begin perform public.solar_sales_history();raise exception 'warehouse financial archive';exception when insufficient_privilege then null;end;
 end $$;
@@ -75,7 +76,7 @@ end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003590',true);
 do $$declare r jsonb;begin
  r:=public.solar_sales_history();if(r->>'count')::integer<>5 then raise exception 'admin archive';end if;
- r:=public.solar_warehouse_orders('','',0);if(r->>'count')::integer<>5 then raise exception 'admin warehouse';end if;
+ r:=public.solar_warehouse_orders('PRIVATE_','',0);if(r->>'count')::integer<>5 then raise exception 'admin warehouse';end if;
  if(select count(*) from transactions where id in(-359011,-359012,-359021,-359022,-359023,-359024,-359025))<>7 then raise exception 'admin raw data';end if;
  if jsonb_array_length(public.solar_installation_jobs())<>2 or not solar_private.can_close_installation('00000000-0000-0000-0000-000000003592') then raise exception 'admin oversight';end if;
 end $$;

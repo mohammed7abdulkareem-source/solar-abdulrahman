@@ -1,15 +1,17 @@
 'use client';
 import {Children,useEffect,useRef,useState} from 'react';
 import AppIcon from './app-icons';
+import {useInvoiceOperation} from './operation-controls';
 import {normalizeSearch} from './party-search-utils.mjs';
 import MoneyInput from './money-input';
 import {formatMoney} from './money-format.mjs';
 import {moneyInput} from './supplier-utils.mjs';
 import ReportActions from './report-actions';
 const number=value=>Number(value||0).toLocaleString('en-US',{maximumFractionDigits:2});
-export function InvoiceShell({title,children,saving=false,editing=null,className='',currency='IQD'}){
+export function InvoiceShell({title,children,saving=false,editing=null,className='',currency='IQD',kind='sale'}){
+ const {paused,reload}=useInvoiceOperation(kind);
  const all=Children.toArray(children),checkout=all.filter(c=>[InvoiceSummary,InvoiceActions].includes(c.type)),body=all.filter(c=>!checkout.includes(c));
- return <section className={'invoiceWorkspace '+className} aria-label={title}><header className="deskHeader"><div><small>المبيعات والمشتريات / {editing?'مراجعة الفاتورة':'فاتورة جديدة'}</small><h1>{title}</h1></div><div className="deskHeaderMeta"><span>{editing?'تعديل فاتورة #'+editing.number:'فاتورة جديدة'}</span><time>{new Date(editing?.date||Date.now()).toLocaleDateString('en-GB',{timeZone:'Asia/Baghdad'})}</time><span>{currency==='USD'?'الدولار الأمريكي · USD':'الدينار العراقي · IQD'}</span></div></header><fieldset className="deskForm" disabled={saving}><div className="deskMain">{body}</div>{checkout.length>0&&<aside className="deskCheckout"><h2>ملخص الفاتورة</h2>{checkout}</aside>}</fieldset></section>;
+ return <section className={'invoiceWorkspace '+className} aria-label={title}><header className="deskHeader"><div><small>المبيعات والمشتريات / {editing?'مراجعة الفاتورة':'فاتورة جديدة'}</small><h1>{title}</h1></div><div className="deskHeaderMeta"><span>{editing?'تعديل فاتورة #'+editing.number:'فاتورة جديدة'}</span><time>{new Date(editing?.date||Date.now()).toLocaleDateString('en-GB',{timeZone:'Asia/Baghdad'})}</time><span>{currency==='USD'?'الدولار الأمريكي · USD':'الدينار العراقي · IQD'}</span></div></header>{paused&&<div className="operationPausedNotice" role="alert"><div><b>{kind==='purchase'?'الشراء متوقف مؤقتًا':'البيع متوقف مؤقتًا'}</b><span>أوقفت الإدارة هذا القسم مؤقتًا.</span></div><button type="button" onClick={reload}>تحديث الحالة</button></div>}<fieldset className="deskForm" disabled={saving||paused}><div className="deskMain">{body}</div>{checkout.length>0&&<aside className="deskCheckout"><h2>ملخص الفاتورة</h2>{checkout}</aside>}</fieldset></section>;
 }
 export function InvoiceField({label,children,className=''}){return <div className={'deskField '+className}><div className="deskLabel">{label}</div>{children}</div>}
 export function InvoiceCatalog({products,items,query,onQuery,onAdd,availableOnly=false}){

@@ -11,7 +11,7 @@ const groups=[
  {id:'inventory',title:'المخزون والمواد',description:'المواد والمخازن والحركة والتنصيبات',icon:'warehouse',color:'orange',ids:['products','stock','stockMovement','warehouse','installations','brands']},
  {id:'finance',title:'المالية والحسابات',description:'الصندوق والقاصات والتقارير المالية',icon:'coins',color:'violet',ids:['cash','capital','cashTransfers','profit','exchangeRate']},
  {id:'reports',title:'التقارير والإدارة',description:'التحصيل والضمان',icon:'chart',color:'rose',ids:['tahseel','warranty']},
- {id:'settings',title:'الإعدادات والنظام',description:'المستخدمون والتحديثات',icon:'settings',color:'slate',ids:['users','updates']}
+ {id:'settings',title:'الإعدادات والنظام',description:'المستخدمون والتحديثات',icon:'settings',color:'slate',ids:['users','operationControl','updates']}
 ];
 const all=sections.flatMap(([,rows])=>rows),labels=new Map(all);
 export default function GroupedSectionDirectory({profile,order=[],query='',onNavigate}){

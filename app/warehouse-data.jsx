@@ -16,8 +16,8 @@ export function useInventoryRequest(){
   catch(error){if(error.code)attempt.current=null;throw error;}
  };
 }
-export function useWarehouseInventory({aggregate=false,versionKey}={}){
- const [warehouseId,setWarehouse]=useState(''),[version,setVersion]=useState(0),[data,setData]=useState(null),[loaded,setLoaded]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
+export function useWarehouseInventory({aggregate=false,versionKey,initialWarehouseId}={}){
+ const [warehouseId,setWarehouse]=useState(()=>initialWarehouseId?String(initialWarehouseId):''),[version,setVersion]=useState(0),[data,setData]=useState(null),[loaded,setLoaded]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const generation=useRef(0);
  const refresh=useCallback(()=>setVersion(v=>v+1),[]);
  useEffect(()=>{const id=++generation.current;let live=true;setLoading(true);setError('');

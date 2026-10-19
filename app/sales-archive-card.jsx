@@ -13,7 +13,7 @@ function CopyActions({row,customer,doc,openA4,saveA4,shareA4}){
   <button type="button" className={'saleHistoryAction '+(customer?'customerPreview':'warehousePreview')} aria-label={customer?'معاينة وصل الزبون':'معاينة الوصل المخزني'} onClick={()=>openA4(doc(row,customer))}><span className="saleHistoryActionIcon"><AppIcon name={customer?'eye':'warehouse'} size={21}/></span><span>معاينة<br/>{copy}</span></button>
  </div>;
 }
-export default function SalesArchiveCard({row,profile,warehouseStatus,doc,openA4,saveA4,shareA4,onFollow,onDelete,deleting,onWarrantyChanged}){
+export default function SalesArchiveCard({row,profile,warehouseStatus,doc,openA4,saveA4,shareA4,onFollow,onDelete,deleting,onWarrantyChanged,onEdit}){
  const system=row.kind==='system',items=row.items||[],date=new Date(row.created_at).toLocaleDateString('en-CA',{timeZone:'Asia/Baghdad'}).replaceAll('-','/');
  return <article className="card archiveInvoice saleHistoryCard" aria-label={(system?'بيع منظومة':'بيع جملة')+' رقم '+receiptNumber(row)}>
   <header className="saleHistoryHeader">
@@ -27,7 +27,7 @@ export default function SalesArchiveCard({row,profile,warehouseStatus,doc,openA4
   {system&&<div className="saleHistoryInstallation"><AppIcon name="tools" size={15}/><span>{statusLabel[row.installation_status]||'غير محدد'} · المهندس: {row.installerName||'غير محدد'}</span></div>}
   <details className="saleHistoryMaterials"><summary><span><AppIcon name="package" size={19}/>تفاصيل المواد ({items.length})</span><AppIcon name="chevron" size={17}/></summary><div className="saleHistoryMaterialRows">{items.map((item,i)=><div className="archiveLine" key={item.id||i}><span>{item.product_name}<small>{[item.brand_name,item.category].filter(Boolean).join(' · ')}</small></span><b>× <bdi>{formatMoney(item.qty)}</bdi></b></div>)}</div></details>
   <div className="saleHistoryCopies"><CopyActions {...{row,doc,openA4,saveA4,shareA4}} customer/><CopyActions {...{row,doc,openA4,saveA4,shareA4}} customer={false}/></div>
-  {((profile?.is_admin||(row.created_by===profile?.id&&profile?.permissions?.[row.kind]))||(system&&onFollow))&&<div className="saleHistoryUtilities">
+  {((profile?.is_admin||(row.created_by===profile?.id&&profile?.permissions?.[row.kind]))||(system&&onFollow)||onEdit)&&<div className="saleHistoryUtilities">{onEdit&&<button type="button" className="saleHistoryEdit" disabled={deleting!==null} onClick={()=>onEdit(row)}><AppIcon name="edit" size={16}/>تعديل الفاتورة</button>}
    {(profile?.is_admin||(row.created_by===profile?.id&&profile?.permissions?.[row.kind]))&&<WarrantyManage invoiceId={row.id} onChanged={onWarrantyChanged}/>}
    {system&&onFollow&&<button type="button" className="workflowSecondary archiveFollow" onClick={()=>onFollow(String(row.id))}><AppIcon name="tools" size={15}/>متابعة ملف التنصيب</button>}
   </div>}

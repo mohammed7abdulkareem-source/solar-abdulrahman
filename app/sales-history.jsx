@@ -2,14 +2,17 @@
 import {useEffect,useState} from 'react';
 import {useWarehouseStatuses} from './warehouse-badge';
 import SalesArchiveCard from './sales-archive-card';
+import CurrencyInvoice from './currency-invoice';
+import SystemInvoiceEditor from './system-invoice-editor';
+import {canEditArchivedInvoice,archiveInvoiceDraft} from './invoice-edit-utils.mjs';
 import {supabase} from './supabase';
 import {salesDocument,statusLabel,formatMoney} from './sales-document.mjs';
 import {deleteSale} from './delete-sale';
 import {receiptQuery,receiptNumber} from './supplier-utils.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 
-export default function SalesHistory({profile,customers=[],a4,openA4,saveA4,shareA4,onFollow,onChanged}){
- const [deleting,setDeleting]=useState(null),[message,setMessage]=useState('');
+export default function SalesHistory({profile,customers=[],products=[],staff=[],onUpdateInvoice,a4,openA4,saveA4,shareA4,onFollow,onChanged}){
+ const [editing,setEditing]=useState(null),[editItems,setEditItems]=useState([]),[editSearch,setEditSearch]=useState(''),[deleting,setDeleting]=useState(null),[message,setMessage]=useState('');
  async function remove(row){if(deleting!==null)return;setDeleting(row.id);setError('');setMessage('');try{if(await deleteSale(row.id)){setMessage('تم حذف الفاتورة وإعادة المواد وتصحيح الحساب.');setOffset(0);setRefresh(n=>n+1);await onChanged?.()}}catch(e){setError(e.message)}finally{setDeleting(null)}}
  const [query,setQuery]=useState(''),[search,setSearch]=useState(''),[kind,setKind]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[status,setStatus]=useState(''),[offset,setOffset]=useState(0),[refresh,setRefresh]=useState(0);
  const [result,setResult]=useState({rows:[],count:0}),[loading,setLoading]=useState(true),[error,setError]=useState('');
@@ -22,6 +25,9 @@ export default function SalesHistory({profile,customers=[],a4,openA4,saveA4,shar
  const preparation=useWarehouseStatuses(result.rows,()=>setRefresh(n=>n+1));
  const change=(setter,value)=>{setter(value);setOffset(0)};
  const doc=(row,customer)=>{const party=customers.find(c=>row.party_id!=null?String(c.id)===String(row.party_id):c.name===row.party_name);const d=salesDocument({...row,customerPhone:row.customer_phone||row.customerPhone||party?.phone},customer);return a4(d.title,d.body,d.total,d.subtitle)};
+ const finishEdit=()=>{setEditing(null);setMessage('تم حفظ تعديل الفاتورة وتصحيح حسابها والمخزون.');setRefresh(n=>n+1);};
+ const edit=row=>{if(!canEditArchivedInvoice(profile,row)||!onUpdateInvoice)return;const draft=archiveInvoiceDraft(row);setEditing(draft);setEditItems([]);setEditSearch('');window.scrollTo({top:0,behavior:'instant'});};
+ if(editing)return editing.kind==='system'?<SystemInvoiceEditor key={editing.id} original={editing} customers={customers} staff={staff} products={products} onUpdate={onUpdateInvoice} onSaved={finishEdit} onCancel={()=>setEditing(null)} a4={a4}/>:<CurrencyInvoice key={editing.id} kind="sale" contact={{display_name:editing.creatorName,phone:editing.creatorPhone}} products={products} parties={customers} initialInvoice={editing} items={editItems} setItems={setEditItems} search={editSearch} setSearch={setEditSearch} onUpdateInvoice={async(old,changes)=>{const ok=await onUpdateInvoice(old,changes);if(ok)finishEdit();return ok;}} onCancel={()=>setEditing(null)} a4={a4} openA4={openA4} saveA4={saveA4} shareA4={shareA4}/>;
  return <section className="salesArchive"><p className="archiveCount">{profile?.is_admin?'الإدارة — جميع وصولات المستخدمين':'وصولاتك فقط — بيانات باقي المستخدمين محمية'}</p>
   <form className="card form" onSubmit={e=>{e.preventDefault();const q=normalizeSearch(query);change(setSearch,/^[#\d,٬\s]+$/.test(q)?receiptQuery(q):query.trim());setRefresh(n=>n+1)}}>
    <label>بحث برقم الوصل أو اسم الزبون<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="رقم الوصل / اسم الزبون"/></label>
@@ -32,7 +38,7 @@ export default function SalesHistory({profile,customers=[],a4,openA4,saveA4,shar
   </form>
   {error&&<div className="workflowError" role="alert">{error}</div>}{message&&<div className="workflowSuccess" role="status">{message}</div>}
   {loading?<div className="empty">جاري تحميل المبيعات…</div>:<><p className="archiveCount">{formatMoney(result.count)} فاتورة ضمن صلاحياتك</p>
-  {!result.rows.length?<div className="empty">لا توجد مبيعات ضمن هذا الاختيار</div>:result.rows.map(row=><SalesArchiveCard key={row.id} row={row} profile={profile} warehouseStatus={preparation[row.id]||row.warehouse_status} doc={doc} openA4={openA4} saveA4={saveA4} shareA4={shareA4} onFollow={onFollow} onDelete={remove} deleting={deleting} onWarrantyChanged={async()=>{setMessage('تم حفظ الضمان. رمز الوصل نفسه يعرض آخر تحديث.');setRefresh(n=>n+1);await onChanged?.();}}/>)}
+  {!result.rows.length?<div className="empty">لا توجد مبيعات ضمن هذا الاختيار</div>:result.rows.map(row=><SalesArchiveCard key={row.id} row={row} profile={profile} warehouseStatus={preparation[row.id]||row.warehouse_status} doc={doc} openA4={openA4} saveA4={saveA4} shareA4={shareA4} onFollow={onFollow} onDelete={remove} deleting={deleting} onEdit={onUpdateInvoice&&canEditArchivedInvoice(profile,row)?edit:undefined} onWarrantyChanged={async()=>{setMessage('تم حفظ الضمان. رمز الوصل نفسه يعرض آخر تحديث.');setRefresh(n=>n+1);await onChanged?.();}}/>)}
   <div className="archivePagination"><button disabled={offset===0} onClick={()=>setOffset(Math.max(0,offset-30))}>السابق</button><span>{Math.floor(offset/30)+1} / {Math.max(1,Math.ceil(result.count/30))}</span><button disabled={offset+30>=result.count} onClick={()=>setOffset(offset+30)}>التالي</button></div></>}
  </section>;
 }

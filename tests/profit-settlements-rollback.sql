@@ -5,6 +5,7 @@ insert into profiles(id,display_name,username,is_admin,permissions) values
 ('00000000-0000-0000-0000-000000003431','صاحب الأرباح','profit_staff',false,'{"profit":true,"profitSettlement":true}'),
 ('00000000-0000-0000-0000-000000003432','آخر','profit_other',false,'{"profit":true}'),
 ('00000000-0000-0000-0000-000000003433','بدون صلاحية','profit_none',false,'{}');
+insert into suppliers(id,name,account_currency) values(-343005,'مورد بقية أرباح الاختبار','IQD');
 insert into transactions(id,kind,total,subtotal,profit,fx_pricing,cash,payment_mode,created_by,cashbox_user_id,created_at) values
 (-343001,'sale',1000000,1000000,300000,true,false,'credit','00000000-0000-0000-0000-000000003431','00000000-0000-0000-0000-000000003431',now()-interval '1 day'),
 (-343002,'sale',700000,700000,200000,true,false,'credit','00000000-0000-0000-0000-000000003432','00000000-0000-0000-0000-000000003432',now()-interval '1 day');
@@ -22,12 +23,13 @@ do $$declare c jsonb;r jsonb;b jsonb;d jsonb;old_result jsonb;req uuid:=gen_rand
  if public.solar_profit_workspace('request',req,b)<>r then raise exception 'request replay';end if;
  begin perform public.solar_profit_workspace('request',gen_random_uuid(),b);raise exception 'duplicate pending allowed';exception when raise_exception then if sqlerrm='duplicate pending allowed' then raise;end if;end;
  c:=public.solar_profit_workspace('overview');d:=c->'requests'->0;
- b:=jsonb_build_object('id',req,'expectedToken',d->>'token','share',75000,'cashOwnerId','00000000-0000-0000-0000-000000003430','collectionConfirmed',true);
+ b:=jsonb_build_object('id',req,'expectedToken',d->>'token','share',75000,'cashOwnerId','00000000-0000-0000-0000-000000003431','collectionConfirmed',true,'settlementModel','owner_debit_supplier_charge','supplierId',-343005,'supplierToken',(select x->>'token' from jsonb_array_elements(public.solar_profit_workspace('overview')->'suppliers')x where(x->>'id')::bigint=-343005),'supplierRate',1);
  begin perform public.solar_profit_workspace('approve',gen_random_uuid(),b);raise exception 'staff approval allowed';exception when insufficient_privilege then null;end;
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003430',true);
+ b:=b||jsonb_build_object('supplierToken',(select x->>'token' from jsonb_array_elements(public.solar_profit_workspace('overview')->'suppliers')x where(x->>'id')::bigint=-343005));
  begin perform public.solar_profit_workspace('approve',gen_random_uuid(),b||'{"collectionConfirmed":false}');raise exception 'unconfirmed allowed';exception when raise_exception then if sqlerrm='unconfirmed allowed' then raise;end if;end;
  begin perform public.solar_profit_workspace('approve',gen_random_uuid(),b||'{"share":300001}');raise exception 'excess share allowed';exception when raise_exception then if sqlerrm='excess share allowed' then raise;end if;end;
- begin perform public.solar_profit_workspace('approve',gen_random_uuid(),b||'{"cashOwnerId":"00000000-0000-0000-0000-000000003432"}');raise exception 'overdraft allowed';exception when sqlstate 'P0002' then null;end;
+ begin perform public.solar_profit_workspace('approve',gen_random_uuid(),b||'{"cashOwnerId":"00000000-0000-0000-0000-000000003432"}');raise exception 'other cashbox allowed';exception when insufficient_privilege then null;end;
  old_result:=public.solar_profit_workspace('approve',decision,b);
  if public.solar_profit_workspace('approve',decision,b)<>old_result then raise exception 'decision replay';end if;
  begin perform public.solar_profit_workspace('approve',gen_random_uuid(),b);raise exception 'paid twice';exception when serialization_failure or sqlstate 'PT409' then null;end;
@@ -39,7 +41,7 @@ do $$declare c jsonb;r jsonb;b jsonb;d jsonb;old_result jsonb;req uuid:=gen_rand
 end $$;
 reset role;
 do $$begin
- if solar_private.cash_balance('00000000-0000-0000-0000-000000003430')<>925000 then raise exception 'payer cash';end if;
+ if solar_private.cash_balance('00000000-0000-0000-0000-000000003430')<>1000000 then raise exception 'admin cash changed';end if;
  if(select count(*) from transactions where profit_settlement_id is not null)<>1 then raise exception 'expense duplicated';end if;
  if(select sum(total) from transactions where cash_purpose='expense')<>75000 then raise exception 'company expense';end if;
  if(select profit from transactions where id=-343001)<>300000 then raise exception 'source invoice changed';end if;
@@ -70,7 +72,7 @@ do $$declare c jsonb;r jsonb;begin
 end $$;
 reset role;
 do $$begin
- if solar_private.cash_balance('00000000-0000-0000-0000-000000003430')<>925000 then raise exception 'failed approval changed cash';end if;
+ if solar_private.cash_balance('00000000-0000-0000-0000-000000003430')<>1000000 then raise exception 'failed approval changed cash';end if;
  if(select count(*) from transactions where profit_settlement_id is not null)<>1 then raise exception 'failed approval expense';end if;
  raise notice 'PASS own-only profits, credit sales, periods, request/review permissions, exact retry, single expense/payout, cash guard, historical snapshot, correction/deletion, stale approval and rejection';
 end $$;
@@ -84,13 +86,13 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003430',true);
 do $$declare c jsonb;r jsonb;begin
  c:=public.solar_profit_workspace('overview');select x into r from jsonb_array_elements(c->'requests')x where x->>'id'='00000000-0000-0000-0000-000000003440';
- perform public.solar_profit_workspace('approve',gen_random_uuid(),jsonb_build_object('id',r->>'id','expectedToken',r->>'token','share',50000,'cashOwnerId','00000000-0000-0000-0000-000000003430','collectionConfirmed',true));
+ perform public.solar_profit_workspace('approve',gen_random_uuid(),jsonb_build_object('id',r->>'id','expectedToken',r->>'token','share',50000,'cashOwnerId','00000000-0000-0000-0000-000000003431','collectionConfirmed',true,'settlementModel','owner_debit_supplier_charge','supplierId',-343005,'supplierToken',(select x->>'token' from jsonb_array_elements(public.solar_profit_workspace('overview')->'suppliers')x where(x->>'id')::bigint=-343005),'supplierRate',1));
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003431',true);
  if(public.solar_profit_workspace('overview')->>'available')::numeric<>100000 then raise exception 'new business accidentally closed';end if;
 end $$;
 reset role;
 do $$begin
- if solar_private.cash_balance('00000000-0000-0000-0000-000000003430')<>875000 then raise exception 'new business payout cash';end if;
+ if solar_private.cash_balance('00000000-0000-0000-0000-000000003430')<>1000000 then raise exception 'new business payout cash';end if;
  if has_table_privilege('authenticated','solar_private.profit_settlements','select') or has_table_privilege('authenticated','solar_private.profit_checkpoints','update') then raise exception 'audit table exposed';end if;
  raise notice 'PASS period filters, new business after request stays open, private audit access denied';
 end $$;

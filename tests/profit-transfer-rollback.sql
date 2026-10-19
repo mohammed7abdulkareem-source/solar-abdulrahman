@@ -5,6 +5,7 @@ insert into profiles(id,display_name,is_admin,user_type,permissions) values
 ('00000000-0000-0000-0000-000000003531','صاحب الفواتير',false,'admin_staff','{"profit":true,"profitSettlement":true}'),
 ('00000000-0000-0000-0000-000000003532','المستفيد',false,'admin_staff','{"profit":true,"profitSettlement":true}'),
 ('00000000-0000-0000-0000-000000003533','مخزن',false,'warehouse','{}');
+insert into suppliers(id,name,account_currency) values(-353003,'مورد ربح التحويل','IQD');
 insert into transactions(id,kind,party_name,total,subtotal,profit,fx_pricing,cash,payment_mode,created_by,cashbox_user_id) values
 (353001,'sale','عميل سري أ',100000,100000,20000,true,false,'credit','00000000-0000-0000-0000-000000003531','00000000-0000-0000-0000-000000003531'),
 (353002,'sale','عميل سري ب',150000,150000,30000,true,false,'credit','00000000-0000-0000-0000-000000003531','00000000-0000-0000-0000-000000003531');
@@ -52,7 +53,7 @@ select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003530'
 select public.solar_cash_save(gen_random_uuid(),'{"ownerId":"00000000-0000-0000-0000-000000003530","mode":"capital_deposit","currency":"IQD","amount":100000,"note":"تمويل تسوية الاختبار"}');
 do $$declare r jsonb;begin
  r:=public.solar_profit_workspace('overview',null,'{"ownerId":"00000000-0000-0000-0000-000000003532"}')->'requests'->0;
- perform public.solar_profit_workspace('approve',gen_random_uuid(),jsonb_build_object('id',r->>'id','expectedToken',r->>'token','share',5000,'cashOwnerId','00000000-0000-0000-0000-000000003530','collectionConfirmed',true));
+ perform public.solar_profit_workspace('approve',gen_random_uuid(),jsonb_build_object('id',r->>'id','expectedToken',r->>'token','share',5000,'cashOwnerId','00000000-0000-0000-0000-000000003532','collectionConfirmed',true,'settlementModel','owner_debit_supplier_charge','supplierId',-353003,'supplierToken',(select s->>'token' from jsonb_array_elements(public.solar_profit_workspace('overview')->'suppliers')s where(s->>'id')::bigint=-353003),'supplierRate',1));
  r:=public.solar_profit_workspace('overview',null,'{"ownerId":"00000000-0000-0000-0000-000000003532"}');
  if(r->>'available')::numeric<>0 then raise exception 'transferred profit settlement was not closed';end if;
 end$$;
