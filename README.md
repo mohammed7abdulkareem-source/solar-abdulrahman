@@ -480,3 +480,10 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Switch at the top between grouped sections and the existing columns. Persist each active user's view across devices, preserving their column counts and custom order. Column/order editing retains its separate permission; view selection cannot grant access or modify another user's settings. The original columns retain their dashboard summaries.
 - Print documents under **شركة عزم الشرق**, while the application, installation name and preview controls remain **عبدالرحمن سولار**. Existing document details, warranty QR, fixed account snapshots and warehouse price privacy remain intact.
 - Add the new solar app artwork to the application header, PNG install icons, Apple touch icon, manifest and notifications. The personal-view migration changes presentation metadata only.
+
+### V3.56.0 — corrected section groups and clearer colors
+
+- Put wholesale/system sales, previous sales, direct customer creation, both customer payment pages, debtors, statements and customers in the requested sales-group order. Keep that order stable in the grouped design while retaining saved column layouts.
+- Move cash handover and profit reports to finance, installations to inventory, and collection to reports/administration. Use stronger category headers and clearer card borders/text while retaining small icons and the view switch.
+- Add an **إضافة زبون** shortcut that opens the existing customer form directly. It uses the existing customer-create/manage permissions, owner assignment, duplicate validation and save flow; warehouse/installer or unpermitted users cannot open it.
+- No database migration or production financial-data edits are included.

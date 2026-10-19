@@ -19,6 +19,7 @@ export function canOpenPage(profile, page) {
   if (isAdministrator(profile)) return true;
   if (['users','updates'].includes(page)) return false;
   if (page === 'profit') return !!(profile.permissions?.profit || profile.permissions?.profitSettlement);
+  if (page === 'customerCreate') return !!(profile.permissions?.customerCreate || profile.permissions?.customers);
   if (page === 'customers') return !!(profile.permissions?.customers || profile.permissions?.customerCreate);
   if (page === 'tahseel') return profile.permissions?.tahseel !== undefined ? !!profile.permissions.tahseel : !!profile.permissions?.system;
   if (page === 'cashTransfers') return !!(profile.permissions?.cashTransferSend || profile.permissions?.financeReceive);

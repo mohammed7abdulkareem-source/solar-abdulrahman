@@ -30,6 +30,9 @@ test('permissions fail closed and staff only opens granted pages',()=>{
 test('create-only customer permission opens the own-customer workspace without unrelated permissions',()=>{
  const creator={active:true,permissions:{customerCreate:true}};
  assert.equal(canOpenPage(creator,'customers'),true);
+ assert.equal(canOpenPage(creator,'customerCreate'),true);
+ assert.equal(canOpenPage({active:true,permissions:{customers:true}},'customerCreate'),true);
+ for(const p of [{active:true,permissions:{}},{...creator,active:false},{...creator,user_type:'warehouse'},{...creator,user_type:'installer'}])assert.equal(canOpenPage(p,'customerCreate'),false);
  for(const page of ['users','cash','customerStatement','customerReconcile'])assert.equal(canOpenPage(creator,page),false);
  assert.equal(canOpenPage({active:true,permissions:{}},'customers'),false);
  assert.equal(canOpenPage({...creator,user_type:'warehouse'},'customers'),false);

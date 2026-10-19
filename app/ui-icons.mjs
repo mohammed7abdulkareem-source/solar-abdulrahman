@@ -1,4 +1,5 @@
 export const iconPaths={
+ userAdd:'M9 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8ZM2 21v-2a7 7 0 0 1 14 0v2m3-15v8m-4-4h8',
  settings:'m10 2 4 0 1 3 3 1 3-1 2 4-2 2 0 3 2 2-2 4-3-1-3 1-1 3h-4l-1-3-3-1-3 1-2-4 2-2v-3l-2-2 2-4 3 1 3-1 1-3Zm2 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8',
  coins:'M3 5a6 2 0 1 0 12 0 6 2 0 1 0-12 0M3 5v4c0 1.1 2.7 2 6 2s6-.9 6-2V5M3 9v4c0 1.1 2.7 2 6 2m-6-2v4c0 1.1 2.7 2 6 2m5-6a4 1.5 0 1 0 8 0 4 1.5 0 1 0-8 0m0 0v4c0 .8 1.8 1.5 4 1.5s4-.7 4-1.5v-4m-8 4v3c0 .8 1.8 1.5 4 1.5s4-.7 4-1.5v-3',
  building:'M8 9V3h8v6M5 9h14v12H5V9Zm5 12v-5h4v5M8 12h1m6 0h1M11 6h2',
@@ -26,6 +27,6 @@ export const iconPaths={
  tag:'M3 3h8l10 10-8 8L3 11V3Zm4 4h.01',power:'M12 3v9M6.4 6.4a8 8 0 1 0 11.2 0',info:'M12 8h.01M12 11v6m9-5a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
  edit:'m16 3 5 5-12 12-6 1 1-6L16 3Zm-2 2 5 5',trash:'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7',panel:'m3 7 16-4 3 13-16 4L3 7Zm4 0 3 12m2-14 3 12m2-13 3 12M5 12l16-4M8 20v3m11-6v6',battery:'M9 2h6v2M7 4h10v18H7V4Zm6 4-3 5h4l-3 5'
 };
-const aliases={customerCreate:'user',exchangeRateEdit:'exchange',stockAdjust:'package',customerReconcile:'document',tahseelFull:'calculator',menu:'grid',preview:'eye',logout:'power',sale:'receipt',system:'sun',stock:'package',products:'package',purchase:'truck',suppliers:'truck',brands:'tag',customers:'user',customerDebts:'users',supplierBalances:'wallet',profit:'chart',capital:'banknote',paymentsGroup:'banknote',customerPayment:'banknote',systemPayment:'banknote',supplierPayment:'banknote',customerStatement:'document',supplierStatement:'document',cashTransfers:'exchange',exchangeRate:'exchange',stockMovement:'exchange',cash:'wallet',installations:'tools',updates:'refresh',tahseel:'calculator',salesHistory:'receipt'};
+const aliases={customerCreate:'userAdd',exchangeRateEdit:'exchange',stockAdjust:'package',customerReconcile:'document',tahseelFull:'calculator',menu:'grid',preview:'eye',logout:'power',sale:'receipt',system:'sun',stock:'package',products:'package',purchase:'truck',suppliers:'truck',brands:'tag',customers:'user',customerDebts:'users',supplierBalances:'wallet',profit:'chart',capital:'banknote',paymentsGroup:'banknote',customerPayment:'banknote',systemPayment:'banknote',supplierPayment:'banknote',customerStatement:'document',supplierStatement:'document',cashTransfers:'exchange',exchangeRate:'exchange',stockMovement:'exchange',cash:'wallet',installations:'tools',updates:'refresh',tahseel:'calculator',salesHistory:'receipt'};
 export const iconPath=name=>iconPaths[aliases[name]||name]||iconPaths.document;
 export const iconSvg=name=>'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+iconPath(name)+'"/></svg>';
