@@ -14,17 +14,18 @@ do $$declare main bigint:=solar_private.primary_warehouse();sayada bigint; r jso
  select id into sayada from solar_private.warehouses where code='SAYADA';
  r:=public.solar_inventory('manage');if jsonb_array_length(r->'warehouses')<>2 then raise exception 'warehouse management context';end if;
  if(select qty from solar_private.warehouse_stocks where warehouse_id=main and product_id=-350001)<>10 then raise exception 'initial stock not in main';end if;
- r:=public.solar_inventory('access_save',gen_random_uuid(),jsonb_build_object('userId','00000000-0000-0000-0000-000000003501','all',true,'ids','[]'::jsonb,'canTransfer',true,'revision',0));
+ r:=public.solar_inventory('access_save',gen_random_uuid(),jsonb_build_object('userId','00000000-0000-0000-0000-000000003501','all',true,'ids','[]'::jsonb,'transferDirections','{"fromPrimary":true,"toPrimary":true,"other":true}'::jsonb,'revision',0));
  perform public.solar_inventory('access_save',gen_random_uuid(),jsonb_build_object('userId','00000000-0000-0000-0000-000000003503','all',false,'ids',jsonb_build_array(sayada),'canTransfer',false,'revision',0));
  select cost into before_cost from products where id=-350001;select count(*) into before_tx from transactions;
  payload:=jsonb_build_object('fromId',main,'toId',sayada,'items',jsonb_build_array(jsonb_build_object('productId',-350001,'qty',3,'revision',0)),'note','Transfer at book cost');
  r:=public.solar_inventory('transfer',request,payload);
  if public.solar_inventory('transfer',request,payload)<>r then raise exception 'idempotent transfer result changed';end if;
+ perform public.solar_inventory('prepare_transfer',gen_random_uuid(),jsonb_build_object('id',request,'expectedRevision',0));
  if(select qty from solar_private.warehouse_stocks where warehouse_id=sayada and product_id=-350001)<>3 or(select qty from products where id=-350001)<>10 or(select cost from products where id=-350001)<>before_cost or(select count(*) from transactions)<>before_tx then raise exception 'transfer changed company accounting or repeated';end if;
  if(select (items->0->>'unitCost')::numeric from solar_private.stock_transfers where id=request)<>100 then raise exception 'transfer cost not frozen';end if;
  begin perform public.solar_inventory('transfer',request,payload||'{"note":"changed"}');raise exception 'changed replay allowed';exception when sqlstate 'PT409' then null;end;
  begin
-  perform public.solar_inventory('transfer',gen_random_uuid(),jsonb_build_object('fromId',main,'toId',sayada,'items',jsonb_build_array(jsonb_build_object('productId',-350002,'qty',1,'revision',0),jsonb_build_object('productId',-350001,'qty',99,'revision',1))));
+  perform public.solar_inventory('transfer',gen_random_uuid(),jsonb_build_object('fromId',main,'toId',sayada,'items',jsonb_build_array(jsonb_build_object('productId',-350002,'qty',1,'revision',0),jsonb_build_object('productId',-350001,'qty',99,'revision',2))));
   raise exception 'insufficient transfer allowed';
  exception when sqlstate 'PT409' then null;end;
  if(select qty from solar_private.warehouse_stocks where warehouse_id=main and product_id=-350002)<>2 then raise exception 'partial transfer survived rollback';end if;
@@ -97,8 +98,9 @@ do $$declare r jsonb;main bigint:=solar_private.primary_warehouse();sayada bigin
  r:=public.solar_inventory('warehouse_save',gen_random_uuid(),'{"name":"Future test warehouse"}');future:=(r->>'id')::bigint;
  if not solar_private.warehouse_access_allowed('00000000-0000-0000-0000-000000003501',future) or solar_private.warehouse_access_allowed('00000000-0000-0000-0000-000000003502',future) then raise exception 'future warehouse access incorrect';end if;
  r:=public.solar_inventory('transfer',request,jsonb_build_object('fromId',main,'toId',future,'items',jsonb_build_array(jsonb_build_object('productId',-350002,'qty',1,'revision',(select revision from solar_private.warehouse_stocks where product_id=-350002 and warehouse_id=main)))));
+ perform public.solar_inventory('prepare_transfer',gen_random_uuid(),jsonb_build_object('id',request,'expectedRevision',0));
  begin perform public.solar_inventory('warehouse_save',gen_random_uuid(),jsonb_build_object('id',future,'name','Future test warehouse','revision',0,'active',false));raise exception 'nonempty warehouse deactivated';exception when raise_exception then if sqlerrm='nonempty warehouse deactivated' then raise;end if;end;
- perform public.solar_inventory('reverse_transfer',gen_random_uuid(),jsonb_build_object('id',request));
+ perform public.solar_inventory('reverse_transfer',gen_random_uuid(),jsonb_build_object('id',request,'expectedRevision',1));
  if(select qty from solar_private.warehouse_stocks where product_id=-350002 and warehouse_id=main)<>1 or(select qty from solar_private.warehouse_stocks where product_id=-350002 and warehouse_id=future)<>0 then raise exception 'transfer reversal incorrect';end if;
  perform public.solar_inventory('warehouse_save',gen_random_uuid(),jsonb_build_object('id',future,'name','Future test warehouse','revision',0,'active',false));
  -- The admin only changes metadata via the protected catalog; no scoped quantity overwrites the company balance.

@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import {capitalAccounts,capitalStockReport,capitalCashReport,capitalDebtReport} from '../app/capital-reports.mjs';
 import {cashRowsFor,cashBalance} from '../app/access-utils.mjs';
 
+test('stock reserved for an unprepared transfer remains company inventory capital',()=>{
+ const r=capitalStockReport([{name:'محجوز',qty:0,reservedQty:5,bookQty:5,cost:100},{name:'متاح',qty:3,reservedQty:2,bookQty:5,cost:200}]);
+ assert.equal(r.total,1500);assert.match(r.body,/محجوز/);assert.match(r.body,/مجموع الكميات: 10/);
+});
+
 test('capital debt reports include opening/reconciliation and exclude settled cash invoices',()=>{
  const parties=[{id:1,name:'عميل <اختبار>',phone:'123'}];
  const tx=[{kind:'sale',partyId:1,total:1000},{kind:'sale',partyId:1,total:5000,cash:true},{kind:'customer_payment',party:'عميل <اختبار>',total:200},{kind:'customer_payment',partyId:1,mode:'opening_balance',total:-300},{kind:'customer_payment',partyId:1,mode:'account_reconciliation',total:100}];

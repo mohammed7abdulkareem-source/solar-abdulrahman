@@ -23,7 +23,7 @@ export function capitalAccounts(tx,parties=[],supplier=false){
  return {rows,net,total:Math.max(0,net)};
 }
 export function capitalStockReport(products){
- const rows=products.filter(p=>Number(p.qty)>0),total=rows.reduce((sum,p)=>sum+Number(p.qty)*Number(p.cost||0),0);
+ const rows=products.map(p=>({...p,qty:p.bookQty??p.qty})).filter(p=>Number(p.qty)>0),total=rows.reduce((sum,p)=>sum+Number(p.qty)*Number(p.cost||0),0);
  return {title:'كشف المخزون بالكلفة',total,body:table(['ت','الكود','المادة / البراند / الصنف','العدد','الكلفة د.ع','المجموع د.ع'],rows.map((p,i)=>[i+1,e(p.code),'<strong>'+e(p.name)+'</strong><br>'+e([p.brand,p.category].filter(Boolean).join(' • ')),money(p.qty),money(p.cost),money(Number(p.qty)*Number(p.cost||0))]),[7,10,28,10,21,24])+'<div data-pdf-end class="documentCounts">عدد الأصناف: '+rows.length+' • مجموع الكميات: '+money(rows.reduce((sum,p)=>sum+Number(p.qty),0))+'</div>'};
 }
 export function capitalDebtReport(accounts,supplier=false){

@@ -12,7 +12,7 @@ function Icon({name='movement'}){
 }
 const emptyFilters={warehouse:'',query:'',product:'',customer:'',from:'',to:''};
 const dayInBaghdad=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Baghdad',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const label=r=>r.kind==='transfer_return_in'?'إلغاء نقل / دخول':r.kind==='transfer_return_out'?'إلغاء نقل / خروج':r.kind==='transfer_in'?'نقل وارد':r.kind==='transfer_out'?'نقل صادر':r.kind==='stock_adjustment'?'تسوية رصيد':r.kind==='purchase'?'شراء':r.kind==='system'?'بيع منظومة':'بيع جملة';
+const label=r=>r.kind==='transfer_reserved'?'حجز لطلب نقل':r.kind==='transfer_cancelled'?'إلغاء حجز النقل':r.kind==='transfer_return_in'?'إلغاء نقل / دخول':r.kind==='transfer_return_out'?'إلغاء نقل / خروج':r.kind==='transfer_in'?'نقل وارد':r.kind==='transfer_out'?'نقل صادر':r.kind==='stock_adjustment'?'تسوية رصيد':r.kind==='purchase'?'شراء':r.kind==='system'?'بيع منظومة':'بيع جملة';
 export default function StockMovements({a4,openA4,shareA4}){
  const inventory=useWarehouseInventory({aggregate:true});
  const [tab,setTab]=useState('materials'),[draft,setDraft]=useState(emptyFilters),[applied,setApplied]=useState(emptyFilters),[direction,setDirection]=useState('all'),[preset,setPreset]=useState('all'),[stock,setStock]=useState([]),[rows,setRows]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[exportError,setExportError]=useState(''),[exporting,setExporting]=useState(false),[page,setPage]=useState(0);const request=useRef(0);

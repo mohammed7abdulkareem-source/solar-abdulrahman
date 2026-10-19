@@ -23,3 +23,13 @@ test('warehouse push requests audible notification and routes ready systems to t
  handlers.notificationclick({notification:{data:{userId:uid,event:'warehouse_ready',invoiceKind:'system',jobId:2},close(){}},waitUntil:p=>done=p});await done;
  assert.equal(new URL(opened[0]).searchParams.get('section'),'installations');
 });
+
+test('stock transfer push opens source preparation without opening cash transfers',async()=>{
+ const handlers={},shown=[],opened=[],uid='11111111-1111-1111-1111-111111111111',id='33333333-3333-3333-3333-333333333333';
+ const context=vm.createContext({URL,self:{location:{origin:'https://solar.example'},addEventListener:(n,fn)=>handlers[n]=fn,registration:{showNotification:async(t,o)=>shown.push({t,o})},clients:{matchAll:async()=>[],openWindow:async url=>opened.push(url)}}});
+ vm.runInContext(readFileSync(new URL('../public/sw.js',import.meta.url),'utf8'),context);vm.runInContext('pushIdentity=async()=>"'+uid+'"',context);
+ let done;handlers.push({data:{json:()=>({id:'notice',userId:uid,event:'stock_transfer_pending',stockTransferId:id})},waitUntil:p=>done=p});await done;
+ assert.equal(shown[0].o.silent,false);assert.equal(shown[0].o.data.stockTransferId,id);assert.equal(shown[0].o.renotify,true);
+ handlers.notificationclick({notification:{data:shown[0].o.data,close(){}},waitUntil:p=>done=p});await done;
+ assert.equal(new URL(opened[0]).searchParams.get('section'),'warehouse');assert.equal(new URL(opened[0]).searchParams.get('stockTransfer'),id);assert.equal(new URL(opened[0]).searchParams.get('transfer'),null);
+});

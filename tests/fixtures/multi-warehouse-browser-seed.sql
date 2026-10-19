@@ -16,5 +16,5 @@ insert into customers(id,name,phone,customer_type,owner_id) values(-350001,'زب
 insert into suppliers(id,name,account_currency) values(-350001,'مورد الدولار','USD');
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003500',false);
 select public.solar_inventory('access_save',gen_random_uuid(),jsonb_build_object('userId','00000000-0000-0000-0000-000000003503','all',false,'ids',jsonb_build_array((select id from solar_private.warehouses where code='SAYADA')),'revision',0));
-create function public.solar_staff_directory() returns jsonb language sql stable security definer set search_path='' as $$select jsonb_agg(jsonb_build_object('id',id,'display_name',display_name,'username',username,'user_type',user_type)) from public.profiles where active and solar_private.role_name() in('admin','staff')$$;
+create or replace function public.solar_staff_directory() returns jsonb language sql stable security definer set search_path='' as $$select jsonb_agg(jsonb_build_object('id',id,'display_name',display_name,'username',username,'user_type',user_type)) from public.profiles where active and solar_private.role_name() in('admin','staff')$$;
 revoke all on function public.solar_staff_directory() from public,anon;grant execute on function public.solar_staff_directory() to authenticated;
