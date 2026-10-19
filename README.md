@@ -416,3 +416,10 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Custom business conflicts use `PT409` instead of `40001`. PostgREST 14 retries a custom serialization error indefinitely; true PostgreSQL serialization errors remain unchanged. UI supports both conflict codes during rollout.
 - Payment amount inputs span both form columns, use a large green numeric field, and place the full-amount action below the input so the complete number stays visible on phones.
 - Apply `20261018235418_reserved_transaction_ids.sql` before the frontend. Verified the previous failure and fixed posting, exactly-once retries, stale conflicts and reservation guards in isolated rollback tests. Production repair changes functions only.
+
+### V3.48.0
+- Sales customer receipts show the previous account balance, invoice amount, amount paid on this invoice, final account and last previous cash receipt with its date and receipt number. The protected invoice write captures this context atomically; later receipts and corrections to earlier movements do not rewrite an issued snapshot. Authorized changes to invoice price or cash/credit mode update only the invoice contribution.
+- Historical invoice snapshots are reconstructed from retained movements preceding their original date/ID and identified as such on the printout. Missing customer links show unavailable balances instead of invented zeros.
+- Wholesale, system and warehouse PDFs use high contrast type, clearer table borders, explicit material/service warranty durations and inclusive coverage dates. QR stays at the top and scans from the actual PDF. Long material/warranty tables flow across complete pages.
+- Warehouse copies retain no financial fields. A separate random warehouse QR opens a non-financial verification response and never exposes the customer certificate token, prices or account summary. Anonymous customer verification remains available as before.
+- Apply `20261019100754_invoice_account_print_snapshot.sql` before the frontend. It adds protected print metadata only; existing monetary values, inventory quantities and cash ledger entries remain unchanged.

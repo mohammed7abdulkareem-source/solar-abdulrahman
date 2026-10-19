@@ -1,4 +1,5 @@
 import QRCode from 'qrcode/lib/core/qrcode.js';
+import {escapeHtml as escape,invoiceDate,warrantyLastDay} from './document-format.mjs';
 export const blankWarranty=()=>({enabled:false,items:[],maintenance:{duration:'',unit:'months'},notes:''});
 export function warrantyPolicy(value,items){const w=value||blankWarranty();return {...w,enabled:!!w.enabled,items:items.map(i=>({id:i.id,...(w.items||[]).find(r=>String(r.id)===String(i.id)),duration:(w.items||[]).find(r=>String(r.id)===String(i.id))?.duration??'',unit:(w.items||[]).find(r=>String(r.id)===String(i.id))?.unit||'months'})),maintenance:w.maintenance||{duration:'',unit:'months'}};}
 export function warrantyError(value,items){
@@ -15,9 +16,9 @@ export function warrantyQrSvg(token){
  return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 '+(n+pad*2)+' '+(n+pad*2)+'" width="116" height="116" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path fill="#000" d="'+parts.join('')+'"/></svg>';
 }
 export const termLabel=t=>Number(t?.duration)>0?t.duration+' '+({days:'يوم',months:'شهر',years:'سنة'})[t.unit]:'بدون ضمان';
-const escape=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function warrantyDocument(row){
- const w=row.warranty||{enabled:false},token=row.warrantyToken||row.warranty_token;
- if(!w.enabled)return '<p style="font-size:11px;color:#657886">هذه الفاتورة بدون ضمان محدد.</p>';
- return '<div style="display:flex;align-items:center;gap:16px;border:1px solid #d9e8e3;padding:10px;margin:0 0 12px;break-inside:avoid">'+(!row.draft&&token?warrantyQrSvg(token):'')+'<div><b>ضمان المواد والصيانة</b><p style="font-size:11px;margin:5px 0">'+(row.draft?'مسودة ضمان — يصدر رمز التحقق بعد حفظ الوصل.':'امسح رمز QR للتحقق من الضمان والمدة المتبقية.')+'</p><p style="font-size:11px;margin:5px 0">يبدأ الضمان من تاريخ الوصل. ضمان الصيانة: '+escape(termLabel(w.maintenance))+'</p>'+((w.items||[]).map(term=>{const item=(row.items||[]).find(i=>String(i.product_id??i.id)===String(term.id));return item?'<div style="font-size:11px">'+escape(item.product_name||item.name)+' — '+escape(termLabel(term))+'</div>':'';}).join(''))+(w.notes?'<p style="font-size:11px">'+escape(w.notes)+'</p>':'')+'</div></div>';
+export function warrantyDocument(row,{hasQr=false}={}){
+ const w=row.warranty||{enabled:false};
+ if(!w.enabled)return '<div class="warrantyNone"><b>حالة الضمان:</b> هذه الفاتورة بدون ضمان محدد للمواد أو الصيانة.</div>';
+ const line=(name,term)=>'<tr><td>'+escape(name)+'</td><td>'+escape(termLabel(term))+'</td><td class="documentNumber">'+(warrantyLastDay(row.created_at,term)||'—')+'</td></tr>';
+ return '<section class="invoiceWarranty"><h3>ضمان المواد والصيانة'+(row.draft?' — مسودة':'')+'</h3><p class="warrantyStart">بداية الضمان: <b dir="ltr">'+invoiceDate(row.created_at)+'</b> — من تاريخ هذه الفاتورة.</p><table data-pdf-paginate class="warrantyTable"><colgroup><col style="width:50%"><col style="width:23%"><col style="width:27%"></colgroup><thead><tr><th>المادة / الخدمة</th><th>مدة الضمان</th><th>آخر يوم مشمول</th></tr></thead><tbody>'+((row.items||[]).map(item=>line(item.product_name||item.name,(w.items||[]).find(t=>String(t.id)===String(item.product_id??item.id)))).join(''))+line('ضمان الصيانة',w.maintenance)+'</tbody></table><p class="warrantyHint">'+(row.draft?'يصدر رمز التحقق بعد حفظ الوصل.':hasQr?'امسح رمز QR أعلى الوصل لمعرفة حالة الضمان والمدة المتبقية وقت الفحص.':'الضمان يشمل المواد والخدمات التي حُددت لها مدة فقط.')+'</p>'+(w.notes?'<div class="notes warrantyNotes" data-pdf-end><b>شروط وملاحظات الضمان:</b><br>'+escape(w.notes)+'</div>':'')+'</section>';
 }
