@@ -4,6 +4,7 @@ insert into profiles(id,display_name,username,is_admin,permissions) values
 ('00000000-0000-0000-0000-000000003400','مدير المورد','supplier_admin',true,'{}'),
 ('00000000-0000-0000-0000-000000003401','موظف المورد','supplier_staff',false,'{"supplierPayment":true,"supplierStatement":true,"cash":true,"exchangeRateEdit":true}'),
 ('00000000-0000-0000-0000-000000003402','موظف آخر','supplier_other',false,'{"supplierPayment":true}');
+update profiles set phone='07700003401' where id='00000000-0000-0000-0000-000000003401';
 insert into suppliers(id,name,account_currency) values(-340001,'مورد اختبار الدولار','USD');
 insert into solar_private.supplier_fx_entries(supplier_id,owner_id,currency,revision,delta,book_delta,rate,note) values(-340001,'00000000-0000-0000-0000-000000003401','USD',0,1000,1500000,1500,'افتتاحي للاختبار');
 set local role authenticated;
@@ -21,8 +22,10 @@ select public.solar_cash_save(gen_random_uuid(),'{"ownerId":"00000000-0000-0000-
 do $$declare c jsonb;r jsonb;b jsonb;rid uuid:=gen_random_uuid();delid uuid:=gen_random_uuid();replacement_id bigint;begin
  c:=public.solar_supplier_payment_manage('list',null,'{"query":"مورد اختبار"}');if jsonb_array_length(c->'rows')<>2 then raise exception 'history list';end if;
  c:=public.solar_supplier_payment_manage('get',null,'{"id":-340101}');
+ if c->>'creatorPhone' is distinct from '07700003401' then raise exception 'supplier receipt contact';end if;
  if(c->>'balance')::numeric<>850 or(c->>'cashBalance')::numeric<>900 then raise exception 'initial balance';end if;
  r:=public.solar_supplier_payment_manage('update',gen_random_uuid(),jsonb_build_object('id',-340101,'expectedToken',c->>'token','amount',100,'rate',1500,'notes','ملاحظات فقط'));if not(r->>'notesOnly')::boolean or(r->'replacement'->>'id')::bigint<>-340101 or(r->>'balance')::numeric<>850 or(r->>'cashBalance')::numeric<>900 then raise exception 'notes changed balances';end if;
+ if r->'replacement'->>'creatorPhone' is distinct from '07700003401' then raise exception 'replacement contact lost original creator';end if;
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003401',true);
  begin perform public.solar_fx('payment','00000000-0000-0000-0000-000000003410','{"paymentId":-340101,"supplierId":-340001,"amount":100,"currency":"USD","rate":1500,"accountRevision":0,"mode":"cash","note":"تسديد قديم"}');raise exception 'notes stale replay';exception when serialization_failure or sqlstate 'PT409' then null;end;
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003400',true);

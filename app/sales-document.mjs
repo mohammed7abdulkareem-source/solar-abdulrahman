@@ -19,6 +19,7 @@ export function invoiceAccountDocument(row){
 export function salesDocument(row,customer=true){
  const system=row.kind==='system',items=row.items||[];
  const meta=[['رقم الفاتورة',receiptNumber(row)],['التاريخ',invoiceDate(row.created_at)],['الزبون',row.party_name||'زبون نقدي'],['المسؤول',row.creatorName||'—']];
+ if(row.creatorPhone)meta.push(['هاتف المسؤول',row.creatorPhone]);
  const warehouseName=row.warehouseName||row.warehouse_name;
  if(row.draft&&warehouseName)meta.push(['المخزن',warehouseName]);
  if(customer)meta.push(['طريقة الدفع',system?'آجل':row.cash||row.payment_mode==='cash'||row.mode==='cash'?'نقدي':'آجل']);
@@ -29,7 +30,7 @@ export function salesDocument(row,customer=true){
  const qr=!row.draft&&token?warrantyQrSvg(token):'';
  const rows=items.map((i,index)=>'<tr><td class="documentNumber">'+String(index+1)+'</td><td class="materialName"><b>'+escape(i.product_name)+'</b>'+([i.brand_name,i.category].filter(Boolean).length?'<br><small>'+escape([i.brand_name,i.category].filter(Boolean).join(' • '))+'</small>':'')+'</td><td class="documentNumber">'+formatMoney(i.qty)+'</td>'+(prices?'<td class="documentNumber">'+formatMoney(i.price)+'</td><td class="documentNumber">'+formatMoney(Number(i.qty)*Number(i.price))+'</td>':'')+'</tr>').join('');
  const cols=prices?[6,40,10,22,22]:[7,76,17];
- const body='<section class="salesDocument"><div class="invoiceIntro"><div class="meta">'+meta.map(([k,v])=>'<div><b>'+k+':</b> '+escape(v)+'</div>').join('')+'</div>'+(qr?'<div class="invoiceQr">'+qr+'<b>فحص الفاتورة والضمان</b><small>رقم '+escape(receiptNumber(row))+'</small></div>':'')+'</div><table class="invoiceItems" data-pdf-paginate><colgroup>'+cols.map(n=>'<col style="width:'+n+'%">').join('')+'</colgroup><thead><tr><th>ت</th><th>تفاصيل المادة / البراند</th><th>العدد</th>'+(prices?'<th>سعر الوحدة د.ع</th><th>المجموع د.ع</th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table><div class="documentCounts"><span>عدد الفقرات: <b>'+items.length+'</b></span><span>مجموع الكميات: <b class="documentNumber">'+formatMoney(items.reduce((sum,i)=>sum+Number(i.qty||0),0))+'</b></span></div>'+
+ const body='<section class="salesDocument"><div class="invoiceIntro"><div class="meta">'+meta.map(([k,v])=>'<div><b>'+k+':</b> '+(k==='هاتف المسؤول'?'<bdi dir="ltr">'+escape(v)+'</bdi>':escape(v))+'</div>').join('')+'</div>'+(qr?'<div class="invoiceQr">'+qr+'<b>فحص الفاتورة والضمان</b><small>رقم '+escape(receiptNumber(row))+'</small></div>':'')+'</div><table class="invoiceItems" data-pdf-paginate><colgroup>'+cols.map(n=>'<col style="width:'+n+'%">').join('')+'</colgroup><thead><tr><th>ت</th><th>تفاصيل المادة / البراند</th><th>العدد</th>'+(prices?'<th>سعر الوحدة د.ع</th><th>المجموع د.ع</th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table><div class="documentCounts"><span>عدد الفقرات: <b>'+items.length+'</b></span><span>مجموع الكميات: <b class="documentNumber">'+formatMoney(items.reduce((sum,i)=>sum+Number(i.qty||0),0))+'</b></span></div>'+
  (customer&&!system&&Number(row.expenses)>0?'<div class="notes">المصاريف الإضافية: '+money(row.expenses)+'</div>':'')+
  (customer?invoiceAccountDocument(row):'')+warrantyDocument(row,{hasQr:!!qr})+
  (!customer&&row.preparedBy?'<div class="notes"><b>مسؤول التجهيز:</b> '+escape(row.preparedBy)+'</div>':'')+
