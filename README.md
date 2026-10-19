@@ -466,3 +466,10 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Present compact, readable figures and matching PDF reports on mobile and desktop. Keep the screen neutral for either sign, without deficit commentary or historical-balance explanations, following the owner's final direction.
 - Reject identical noncash old-balance entries under the posting lock while preserving distinct documented debts and request replay. This migration does not change any financial record or restore earlier balances; the owner's latest corrections remain authoritative.
 - Verified with 107 Node tests, capital/currency/payment/privacy/warehouse rollback scenarios, a concurrent duplicate-entry check, real local PostgREST/Chromium mobile/desktop and PDF flows, and a production build. Browser fixtures are local-only and must never run on a hosted database.
+
+### V3.54.0 — compact previous-sales cards
+
+- Match the supplied receipt-card reference: blue invoice amount, customer and author/date, warehouse preparation status, expandable material details, and separate customer/warehouse document actions.
+- Use small SVG icons and compact action groups on phones and laptops; wrap the two groups on narrow phones. Keep the existing warranty editor, installation follow-up, deletion confirmation and server-enforced permissions.
+- Customer and warehouse preview, PDF saving and sharing still use the existing document generators, including the fixed account snapshot, original contact and warranty QR. Warehouse documents retain their copy without prices.
+- This release changes presentation only; it contains no database migration or financial-data edits.
