@@ -458,3 +458,11 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Sale and system material search shows free stock in the selected warehouse. Zero stock and fully reserved transfers stay hidden; purchase search retains all materials.
 - Administrators can select multiple invoices, preview their combined profit and assign it to another active financial user. Company profit, original invoice authorship, customer debt, prices and cash remain unchanged. Attribution is audited, idempotent and included in reset backups. Pending/settled profit cannot be reassigned.
 - Verification: local PostgreSQL migrations and rollback suites, real PostgREST/Chromium flows at mobile and desktop sizes, receipt PDF preview, shared phone validation, and the existing financial/document regression suite.
+
+### V3.53.0 — consistent capital balances
+
+- Calculate capital and its detail reports from one read-only, authorized database snapshot, using current supplier currency revisions, fixed IQD book costs, owned stock including transfer reservations, and the canonical cash ledger.
+- Retain customer advances and supplier prepayments on their respective gross sides. A failed refresh shows an error instead of a zero balance. Staff receive their own financial movements and permitted warehouse stock; company capital remains an administrative view.
+- Present compact, readable figures and matching PDF reports on mobile and desktop. Keep the screen neutral for either sign, without deficit commentary or historical-balance explanations, following the owner's final direction.
+- Reject identical noncash old-balance entries under the posting lock while preserving distinct documented debts and request replay. This migration does not change any financial record or restore earlier balances; the owner's latest corrections remain authoritative.
+- Verified with 107 Node tests, capital/currency/payment/privacy/warehouse rollback scenarios, a concurrent duplicate-entry check, real local PostgREST/Chromium mobile/desktop and PDF flows, and a production build. Browser fixtures are local-only and must never run on a hosted database.

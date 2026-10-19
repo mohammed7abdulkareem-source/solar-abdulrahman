@@ -20,7 +20,7 @@ export function capitalAccounts(tx,parties=[],supplier=false){
  }
  const rows=[...accounts.values()].filter(r=>r.balance!==0).sort((a,b)=>b.balance-a.balance||a.name.localeCompare(b.name,'ar'));
  const net=rounded(rows.reduce((sum,r)=>sum+r.balance,0));
- return {rows,net,total:Math.max(0,net)};
+ return {rows,net,total:rounded(rows.reduce((sum,r)=>sum+Math.max(0,r.balance),0)),credit:rounded(rows.reduce((sum,r)=>sum+Math.max(0,-r.balance),0))};
 }
 export function capitalStockReport(products){
  const rows=products.map(p=>({...p,qty:p.bookQty??p.qty})).filter(p=>Number(p.qty)>0),total=rows.reduce((sum,p)=>sum+Number(p.qty)*Number(p.cost||0),0);
@@ -28,9 +28,10 @@ export function capitalStockReport(products){
 }
 export function capitalDebtReport(accounts,supplier=false){
  const title=supplier?'كشف ديون الموردين علينا':'كشف ديون العملاء لنا';
- return {title,total:accounts.total,body:table(['ت',supplier?'المورد':'العميل','الهاتف',supplier?'علينا د.ع':'لنا د.ع',supplier?'لنا د.ع':'للعميل د.ع'],accounts.rows.map((r,i)=>[i+1,e(r.name),e(r.phone),money(Math.max(0,r.balance)),money(Math.max(0,-r.balance))]),[7,30,17,23,23])+'<div data-pdf-end class="notes">عدد الحسابات: '+accounts.rows.length+'<br>صافي الأرصدة: '+money(accounts.net)+' د.ع<br>المبلغ في رأس المال هو صافي الأرصدة الموجب بعد طرح الأرصدة الدائنة. الفواتير النقدية المسددة لا تدخل ضمن الديون.</div>'};
+ const currency=supplier&&accounts.rows.some(r=>r.currency);
+ return {title,total:accounts.total,body:table(['ت',supplier?'المورد':'العميل','الهاتف',...(currency?['الرصيد بعملة الحساب']:[]),supplier?'علينا د.ع':'لنا د.ع',supplier?'لنا د.ع':'للعميل د.ع'],accounts.rows.map((r,i)=>[i+1,e(r.name),e(r.phone),...(currency?[money(r.amount)+' '+(r.currency==='USD'?'$':'د.ع')]:[]),money(Math.max(0,r.balance)),money(Math.max(0,-r.balance))]),currency?[6,22,13,19,20,20]:[7,30,17,23,23])+'<div data-pdf-end class="notes">عدد الحسابات: '+accounts.rows.length+'<br>صافي الأرصدة بالقيمة الدفترية: '+money(accounts.net)+' د.ع</div>'};
 }
-const cashLabels={supplier_payment_refund:'إرجاع تسديد مورد ملغى',cash_reconcile:'تسوية قاصة إدارية',buy_usd:'شراء دولار من الدينار',sell_usd:'بيع دولار إلى الدينار',sale:'بيع نقدي',system:'بيع منظومة',purchase:'شراء نقدي',customer_payment:'تسديد عميل',system_payment:'تسديد منظومة',supplier_payment:'تسديد مورد',cash_income:'إيداع بالصندوق',cash_expense:'مصروف من الصندوق',capital:'رأس مال',profit_distribution:'توزيع أرباح',installation_payout:'دفع مصاريف تنصيب',installation_refund:'استرجاع فرق التنصيب',handover_expense:'مصروف قبل تسليم القاصة',transfer_out:'إرسال أموال',transfer_in:'استلام أموال',transfer_refund:'إرجاع تحويل',transfer_transit:'أموال قيد التسليم'};
+const cashLabels={capital_deposit:'إيداع رأس مال',capital_withdraw:'سحب رأس مال',deposit:'إيداع دولار',withdraw:'سحب دولار',expense:'مصروف',supplier_payment_refund:'إرجاع تسديد مورد ملغى',cash_reconcile:'تسوية قاصة إدارية',buy_usd:'شراء دولار من الدينار',sell_usd:'بيع دولار إلى الدينار',sale:'بيع نقدي',system:'بيع منظومة',purchase:'شراء نقدي',customer_payment:'تسديد عميل',system_payment:'تسديد منظومة',supplier_payment:'تسديد مورد',cash_income:'إيداع بالصندوق',cash_expense:'مصروف من الصندوق',capital:'رأس مال',profit_distribution:'توزيع أرباح',installation_payout:'دفع مصاريف تنصيب',installation_refund:'استرجاع فرق التنصيب',handover_expense:'مصروف قبل تسليم القاصة',transfer_out:'إرسال أموال',transfer_in:'استلام أموال',transfer_refund:'إرجاع تحويل',transfer_transit:'أموال قيد التسليم'};
 // Receives the same cash-owner-scoped rows used by the capital tile.
 export function capitalCashReport(rows,staff=[]){
  let total=0,incoming=0,outgoing=0;
