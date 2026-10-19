@@ -487,3 +487,12 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Move cash handover and profit reports to finance, installations to inventory, and collection to reports/administration. Use stronger category headers and clearer card borders/text while retaining small icons and the view switch.
 - Add an **إضافة زبون** shortcut that opens the existing customer form directly. It uses the existing customer-create/manage permissions, owner assignment, duplicate validation and save flow; warehouse/installer or unpermitted users cannot open it.
 - No database migration or production financial-data edits are included.
+
+
+### V3.57.0 — compact, readable invoice entry and clear receipt contacts
+
+- Number invoice materials visibly and group quantity, selling price and line total in one compact phone row. Strengthen material, brand and cost text contrast. Newly added materials appear first and receive quantity focus; Enter continues to price and back to search. Keep stock filtering, decimals, purchase costing and warranty rules.
+- Group the sales payment method and preparation warehouse below the customer, with distinct credit/cash/warehouse colors. Keep the invoice currency in the header and the purchase currency selector.
+- Print the original responsible user's name and phone together opposite the customer's name and phone. Use only the authorized customer list to fill a missing customer contact in sales-history printing; an editor's contact never replaces a different invoice author's contact.
+- Preserve the fixed issue-time previous balance, invoice/paid/final amounts, last actual payment with its date and receipt number, and warranty/QR details. Warehouse copies keep their financial privacy.
+- Verified with real local PostgREST/PostgreSQL saves and PDF previews on 320/390-pixel phones and a laptop. No database migration or production financial-data edits.

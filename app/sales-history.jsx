@@ -8,7 +8,7 @@ import {deleteSale} from './delete-sale';
 import {receiptQuery,receiptNumber} from './supplier-utils.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 
-export default function SalesHistory({profile,a4,openA4,saveA4,shareA4,onFollow,onChanged}){
+export default function SalesHistory({profile,customers=[],a4,openA4,saveA4,shareA4,onFollow,onChanged}){
  const [deleting,setDeleting]=useState(null),[message,setMessage]=useState('');
  async function remove(row){if(deleting!==null)return;setDeleting(row.id);setError('');setMessage('');try{if(await deleteSale(row.id)){setMessage('تم حذف الفاتورة وإعادة المواد وتصحيح الحساب.');setOffset(0);setRefresh(n=>n+1);await onChanged?.()}}catch(e){setError(e.message)}finally{setDeleting(null)}}
  const [query,setQuery]=useState(''),[search,setSearch]=useState(''),[kind,setKind]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[status,setStatus]=useState(''),[offset,setOffset]=useState(0),[refresh,setRefresh]=useState(0);
@@ -21,7 +21,7 @@ export default function SalesHistory({profile,a4,openA4,saveA4,shareA4,onFollow,
  },[search,kind,from,to,status,offset,refresh]);
  const preparation=useWarehouseStatuses(result.rows,()=>setRefresh(n=>n+1));
  const change=(setter,value)=>{setter(value);setOffset(0)};
- const doc=(row,customer)=>{const d=salesDocument(row,customer);return a4(d.title,d.body,d.total,d.subtitle)};
+ const doc=(row,customer)=>{const party=customers.find(c=>row.party_id!=null?String(c.id)===String(row.party_id):c.name===row.party_name);const d=salesDocument({...row,customerPhone:row.customer_phone||row.customerPhone||party?.phone},customer);return a4(d.title,d.body,d.total,d.subtitle)};
  return <section className="salesArchive"><p className="archiveCount">{profile?.is_admin?'الإدارة — جميع وصولات المستخدمين':'وصولاتك فقط — بيانات باقي المستخدمين محمية'}</p>
   <form className="card form" onSubmit={e=>{e.preventDefault();const q=normalizeSearch(query);change(setSearch,/^[#\d,٬\s]+$/.test(q)?receiptQuery(q):query.trim());setRefresh(n=>n+1)}}>
    <label>بحث برقم الوصل أو اسم الزبون<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="رقم الوصل / اسم الزبون"/></label>

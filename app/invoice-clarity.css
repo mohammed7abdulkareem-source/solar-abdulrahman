@@ -1,0 +1,57 @@
+/* Invoice editing: readable materials and compact numeric rows on phones. */
+.premiumSolar .appContent .invoiceWorkspace .deskSaleMeta{grid-template-columns:minmax(0,2fr) minmax(0,1fr) minmax(0,1.4fr);align-items:start}
+.premiumSolar .appContent .invoiceWorkspace .deskSaleMeta>.deskField:first-child{grid-column:auto}
+.premiumSolar .appContent .invoiceWorkspace .deskPaymentField,.premiumSolar .appContent .invoiceWorkspace .deskSaleMeta>.warehouseLocationField{padding:10px;border:1px solid #b7c9df;border-radius:10px;gap:7px!important;margin:0;font-size:13px!important;line-height:1.5}
+.premiumSolar .appContent .invoiceWorkspace .deskPaymentField.credit{background:#fff6e4;border-color:#e8c478}
+.premiumSolar .appContent .invoiceWorkspace .deskPaymentField.credit :is(.deskLabel,select){color:#78440b!important}
+.premiumSolar .appContent .invoiceWorkspace .deskPaymentField.cash{background:#e9f7ed;border-color:#8bc9a2}
+.premiumSolar .appContent .invoiceWorkspace .deskPaymentField.cash :is(.deskLabel,select){color:#145b38!important}
+.premiumSolar .appContent .invoiceWorkspace .deskSaleMeta>.warehouseLocationField{background:#eaf2ff;border-color:#98b9eb;color:#184780!important}
+.premiumSolar .appContent .invoiceWorkspace .deskSaleMeta>.warehouseLocationField select{background:#fff!important;border-color:#8eb3e8!important;color:#153f76!important;min-height:44px!important;font-weight:700}
+.premiumSolar .appContent .invoiceWorkspace .deskPaymentField select{background:#fff!important;font-weight:800;border-color:currentColor!important;min-height:44px!important}
+.premiumSolar .appContent .invoiceWorkspace .deskTable{table-layout:fixed}
+.premiumSolar .appContent .invoiceWorkspace .deskTable :is(th,td){color:#182d40!important;padding:10px 7px!important}
+.premiumSolar .appContent .invoiceWorkspace .deskTable th{background:#e7eef6!important;color:#253e56!important;font-size:12px;font-weight:700}
+.premiumSolar .appContent .invoiceWorkspace .deskTable :is(th:first-child,td.deskIndex){display:table-cell!important;width:32px;color:#1d5881!important;font-weight:800;text-align:center}
+.premiumSolar .appContent .invoiceWorkspace .deskTable th:nth-child(2){width:30%}
+.premiumSolar .appContent .invoiceWorkspace .deskTable th:nth-child(3){width:55px}
+.premiumSolar .appContent .invoiceWorkspace .deskTable th:nth-child(4){width:65px}
+.premiumSolar .appContent .invoiceWorkspace .deskTable th:last-child{width:38px}
+.premiumSolar .appContent .invoiceWorkspace .deskTable .deskMaterial{padding:10px 7px!important}
+.premiumSolar .appContent .invoiceWorkspace .deskMaterial>b{font-size:15px;line-height:1.6;color:#102c3e!important;font-weight:800;overflow-wrap:anywhere}
+.premiumSolar .appContent .invoiceWorkspace .deskMaterial small{color:#42576b!important;font-size:12px;line-height:1.7}
+.premiumSolar .appContent .invoiceWorkspace .deskMaterial .deskUnitCost{display:inline-block;background:#fff4d9;border:1px solid #e9cc86;color:#684307!important;padding:2px 6px;border-radius:5px;margin-top:4px;font-weight:600;font-size:12px}
+.premiumSolar .appContent .invoiceWorkspace .deskUnitCost bdi{font-weight:800;white-space:nowrap}
+.premiumSolar .appContent .invoiceWorkspace .deskMaterial .deskWarning{color:#b42318!important;font-weight:700}
+.premiumSolar .appContent .invoiceWorkspace .deskProductDetails{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:center}
+.premiumSolar .appContent .invoiceWorkspace .deskMaterial .deskInlineStock{display:none}
+.premiumSolar .appContent .invoiceWorkspace .deskTable input{background:#fff!important;color:#102c3e!important;border:1px solid #91a9be!important;border-radius:7px;max-width:none;min-height:40px!important;font-size:16px!important;font-weight:700;padding:6px!important;font-variant-numeric:tabular-nums}
+.premiumSolar .appContent .invoiceWorkspace .deskTable .deskLineSum b{color:#096148!important;font-size:14px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.premiumSolar .appContent .invoiceWorkspace .deskTable input[aria-invalid=true]{border-color:#c52b20!important}
+@media(max-width:800px){
+ .premiumSolar .appContent .invoiceWorkspace .deskSaleMeta{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px!important;padding:12px!important}
+ .premiumSolar .appContent .invoiceWorkspace .deskSaleMeta>.deskField:first-child{grid-column:1/-1}
+ .premiumSolar .appContent .invoiceWorkspace .deskSaleMeta .deskLabel{font-size:12px}
+ .premiumSolar .appContent .invoiceWorkspace .deskSaleMeta>.warehouseLocationField{font-size:12px!important;padding:8px}
+ .premiumSolar .appContent .invoiceWorkspace .deskSaleMeta .deskPaymentField{padding:8px}
+ .premiumSolar .appContent .invoiceWorkspace .deskSaleMeta select{font-size:14px!important;padding:8px 5px!important}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable,.premiumSolar .appContent .invoiceWorkspace .deskTable tbody{display:block!important;width:100%}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable thead{display:none!important}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable tbody tr{display:grid!important;grid-template-columns:minmax(0,.65fr) minmax(0,1.25fr) minmax(0,1.2fr);gap:8px;padding:12px!important;position:relative;border-bottom:1px solid #c8d7e2;background:#fff}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable tbody tr:nth-child(even){background:#f5f8fc}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable tbody tr:last-child{border-bottom:0}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable tr>td{display:block!important;min-width:0;padding:0!important;border:0!important;width:auto}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable tr>.deskIndex{position:absolute;inset-inline-start:10px;top:12px;display:grid!important;place-items:center;width:26px;height:26px;background:#dfedfa;border:1px solid #a8c8e5;border-radius:6px;font-size:12px}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable tr>.deskMaterial{grid-column:1/-1;padding:0 34px 0 30px!important}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable tr>.deskStock{display:none!important}
+ .premiumSolar .appContent .invoiceWorkspace .deskMaterial>b{font-size:15px;line-height:1.6}
+ .premiumSolar .appContent .invoiceWorkspace .deskMaterial .deskInlineStock{display:inline;color:#245c48!important;font-size:11px;font-weight:600}
+ .premiumSolar .appContent .invoiceWorkspace .deskProductIdentity{font-size:11px}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable tr>:is(.deskQuantity,.deskUnitPrice,.deskLineSum){grid-column:auto!important;display:flex!important;flex-direction:column;gap:4px;align-items:stretch;justify-content:flex-start;background:transparent!important;border-radius:0;text-align:center}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable td[data-label]:before{content:attr(data-label);display:block;color:#344d62!important;font-size:11px;line-height:1.5;font-weight:600;margin:0;text-align:center}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable .deskUnitPrice>b{display:flex;align-items:center;justify-content:center;min-height:40px;border:1px solid #b6c9d8;border-radius:7px;background:#edf3f8;font-size:13px;color:#102c3e}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable .deskLineSum>b{display:flex;align-items:center;justify-content:center;min-height:40px;padding:6px 3px;background:#e5f5ed;border:1px solid #9dceb8;border-radius:7px;font-size:13px;overflow:auto}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable tr>.deskRemoveCell{position:absolute;left:auto;right:auto;inset-inline-end:8px;top:10px}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable .deskRemove{display:grid;place-items:center;width:28px;min-height:30px!important;padding:0;color:#a42b24;background:#fff1ef;border-color:#e6b6af;font-size:20px}
+ .premiumSolar .appContent .invoiceWorkspace .deskTable .deskOver{background:#fff3ee}
+}
