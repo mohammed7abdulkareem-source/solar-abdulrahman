@@ -42,6 +42,12 @@ do $$declare r jsonb;a jsonb;p jsonb;begin
  r:=public.solar_invoice_save(gen_random_uuid(),p||jsonb_build_object('mode','cash','invoiceId',r->'id','expectedRevision',r->'pricingRevision','expectedWarrantyRevision',r->'warrantyRevision'));
  a:=r->'invoiceAccount';if(a->>'previousBalance')::numeric<>2250000 or(a->>'paidNow')::numeric<>150000 or(a->>'balanceAfter')::numeric<>2250000 or(a->'lastPayment'->>'amount')::numeric<>300000 then raise exception 'cash edit broke fixed prior context %',a;end if;
 end $$;
+reset role;
+create temporary table issued_before_rename as select invoice_account data from transactions where id=current_setting('test.invoice_id')::bigint;
+update transactions set party_name='Invoice Customer Renamed' where id=current_setting('test.invoice_id')::bigint;
+do $$begin if (select invoice_account from transactions where id=current_setting('test.invoice_id')::bigint)<>(select data from issued_before_rename) then raise exception 'customer rename rewrote fixed snapshot';end if;end $$;
+update transactions set party_name='Invoice Customer' where id=current_setting('test.invoice_id')::bigint;
+set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003481',true);
 do $$declare q jsonb;begin
  q:=public.solar_warehouse_orders('Invoice Customer','',0);
@@ -49,5 +55,7 @@ do $$declare q jsonb;begin
  if not exists(select 1 from jsonb_array_elements(q->'rows')r where (r->>'id')::bigint=current_setting('test.invoice_id')::bigint and r->>'warehouseQrToken' is not null and (r->'warranty'->>'enabled')::boolean) then raise exception 'warehouse document lacks verification data';end if;
 end $$;
 reset role;
+update transactions set party_id=-348002,party_name='Other Account' where id=current_setting('test.invoice_id')::bigint;
+do $$declare a jsonb;begin select invoice_account into a from transactions where id=current_setting('test.invoice_id')::bigint;if(a->>'customerId')::bigint<>-348002 or(a->>'previousBalance')::numeric<>-9999999 or(a->'lastPayment'->>'amount')::numeric<>9999999 then raise exception 'account reassignment retained another customer context %',a;end if;end $$;
 do $$begin raise notice 'PASS issue-time previous account, real prior payment, excluded opening/additions/other accounts, atomic replay, fixed history after later edits, cash mode edit, protected metadata, separate safe warehouse QR';end $$;
 rollback;
