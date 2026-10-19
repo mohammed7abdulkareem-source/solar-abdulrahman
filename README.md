@@ -473,3 +473,10 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Use small SVG icons and compact action groups on phones and laptops; wrap the two groups on narrow phones. Keep the existing warranty editor, installation follow-up, deletion confirmation and server-enforced permissions.
 - Customer and warehouse preview, PDF saving and sharing still use the existing document generators, including the fixed account snapshot, original contact and warranty QR. Warehouse documents retain their copy without prices.
 - This release changes presentation only; it contains no database migration or financial-data edits.
+
+### V3.55.0 — grouped sections and company documents
+
+- Add a compact category design with green sales, blue purchases, orange inventory, violet finance, rose reports and slate settings, using small icons and responsive rows. Each permitted route appears once; groups can collapse and search keeps the existing permission checks.
+- Switch at the top between grouped sections and the existing columns. Persist each active user's view across devices, preserving their column counts and custom order. Column/order editing retains its separate permission; view selection cannot grant access or modify another user's settings. The original columns retain their dashboard summaries.
+- Print documents under **شركة عزم الشرق**, while the application, installation name and preview controls remain **عبدالرحمن سولار**. Existing document details, warranty QR, fixed account snapshots and warehouse price privacy remain intact.
+- Add the new solar app artwork to the application header, PNG install icons, Apple touch icon, manifest and notifications. The personal-view migration changes presentation metadata only.

@@ -1,5 +1,5 @@
-const CACHE='abdulrahman-solar-v3-54-0';
-const CORE=['/manifest.webmanifest','/icon.svg'];
+const CACHE='abdulrahman-solar-v3-55-0';
+const CORE=['/manifest.webmanifest','/icon-192.png','/icon-512.png','/apple-touch-icon.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('abdulrahman-solar-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))});
 // Never cache authenticated data or HTML; an offline screen must not show stale accounts.
@@ -34,7 +34,7 @@ self.addEventListener('push',event=>{
   let data;try{data=event.data?.json()}catch{return}
   if(!data?.userId||await pushIdentity()!==data.userId)return;
   await self.registration.showNotification(data.title||'عبدالرحمن سولار',{
-   body:data.body||'لديك تحديث جديد في البرنامج',icon:'/icon.svg',badge:'/icon.svg',
+   body:data.body||'لديك تحديث جديد في البرنامج',icon:'/icon-192.png',badge:'/icon-192.png',
    tag:'solar-'+data.id,lang:'ar',dir:'rtl',data:{jobId:data.jobId,userId:data.userId,transferId:data.transferId,stockTransferId:data.stockTransferId,event:data.event,invoiceKind:data.invoiceKind},silent:false,vibrate:[200,90,200],renotify:!!(data.event?.startsWith('warehouse_')||data.event?.startsWith('stock_transfer_'))
   });
  })());

@@ -21,7 +21,8 @@ import './profit-settlements.css';
 import './warranty.css';
 import './inventory.css';
 import './sales-history.css';
+import './grouped-sections.css';
 import PWARegister from './pwa-register';
-export const metadata={title:'عبدالرحمن سولار',description:'إدارة فرع الطاقة الشمسية',manifest:'/manifest.webmanifest',icons:{icon:'/icon.svg',apple:'/icon.svg'}};
+export const metadata={title:'عبدالرحمن سولار',description:'إدارة فرع الطاقة الشمسية',manifest:'/manifest.webmanifest',icons:{icon:[{url:'/icon-192.png',sizes:'192x192',type:'image/png'},{url:'/icon-512.png',sizes:'512x512',type:'image/png'}],apple:[{url:'/apple-touch-icon.png',sizes:'180x180',type:'image/png'}]}};
 export const viewport={width:'device-width',initialScale:1,viewportFit:'cover',themeColor:'#123c48'};
 export default function Layout({children}){return <html lang="ar" dir="rtl"><body className="premiumSolar">{children}<PWARegister/></body></html>}
