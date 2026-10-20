@@ -520,3 +520,11 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Record external profit once as cash income with its own purpose, receipt and description. Credit the selected physical currency and count the fixed IQD value in the owner's period profit, company profit and settlement entitlement. USD entries keep their issue-time rate; ordinary deposits, capital and cash transfers stay outside profit.
 - Customer lists start with positive debts, excluding zero and prepaid balances; the existing account filter and complete customer search for invoice entry remain available.
 - New permissions start disabled for staff unless explicitly granted. Existing balances, historical transactions and prior permissions are not rewritten.
+
+
+### V3.61.0 — scoped global quick search
+
+- A persistent bottom Search action and desktop Ctrl+K open a compact Arabic quick lookup from every workspace. Search customers by name/phone, materials by name/code/brand, suppliers and permitted sections.
+- Customer results show the canonical current balance, including settled accounts, and open the account directly. Materials show available stock, reservations and an expandable breakdown of permitted warehouses. Last recorded unit selling price is explicitly separate from book cost; unpriced system bundles do not override a known unit price.
+- The bounded read-only RPC rechecks the active profile, ownership, role, permissions and warehouse access on every request. Warehouse users never receive prices or customer/supplier accounts; installers receive section shortcuts only. No stored balances or invoice history are changed.
+- Typing is debounced and obsolete requests are cancelled; clear, empty, loading, retry and keyboard flows are supported. Validation covers SQL rollback isolation/revocation, Node tests and real Chromium against local PostgREST at mobile/desktop sizes.
