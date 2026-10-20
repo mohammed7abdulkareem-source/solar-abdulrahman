@@ -14,8 +14,8 @@ test('pending transfer empties sender, does not credit receiver or lose company 
  rows.push({cash:true,kind:'transfer_transit',cashDelta:-900},{cash:true,cashboxUserId:'receiver',kind:'transfer_in',cashDelta:900});
  assert.equal(cashBalance(rows,'receiver'),900);assert.equal(cashBalance(rows,null,true),900);
 });
-test('finance permissions only grant transfer page; engineers cannot access it',()=>{
+test('receiving permission grants own cash view and transfers; engineers cannot access them',()=>{
  const staff={active:true,user_type:'admin_staff',permissions:{financeReceive:true}};
- assert.equal(canOpenPage(staff,'cashTransfers'),true);assert.equal(canOpenPage(staff,'users'),false);assert.equal(canOpenPage(staff,'cash'),false);
+ assert.equal(canOpenPage(staff,'cashTransfers'),true);assert.equal(canOpenPage(staff,'users'),false);assert.equal(canOpenPage(staff,'cash'),true);
  assert.equal(canOpenPage({...staff,user_type:'installer',is_admin:true},'cashTransfers'),false);
 });

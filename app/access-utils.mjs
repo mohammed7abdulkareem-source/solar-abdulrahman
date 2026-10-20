@@ -18,6 +18,7 @@ export function canOpenPage(profile, page) {
   if (isWarehouse(profile)) return ['warehouse','stock','stockMovement'].includes(page);
   if (isAdministrator(profile)) return true;
   if (['users','updates','operationControl'].includes(page)) return false;
+  if (page === 'cash') return !!profile.permissions?.cash || ['cashDeposit','cashExpense','cashExchange','cashExternalProfit','cashAdminTools','cashTransferSend','financeReceive'].some(key=>profile.permissions?.[key]===true);
   if (page === 'profit') return !!(profile.permissions?.profit || profile.permissions?.profitSettlement);
   if (page === 'customerCreate') return !!(profile.permissions?.customerCreate || profile.permissions?.customers);
   if (page === 'customers') return !!(profile.permissions?.customers || profile.permissions?.customerCreate);

@@ -512,3 +512,11 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - New wholesale, system and purchase invoices use the existing locked transaction-ID allocator, which skips IDs reserved by deleted receipts and data resets. This fixes purchase saves reporting “Deleted invoice cannot be recreated” when a removed receipt immediately follows the highest live transaction ID.
 - Preserve deletion guards, invoice ownership, retries and edit IDs. No historical transaction, stock, cash, supplier balance or deleted receipt is changed by the migration.
 - Reproduced the exact failure before the fix and verified IQD purchases with allocated expenses, USD conversion, supplier debt, weighted stock cost, ownership, replay/edit behavior and sales/system compatibility against local PostgreSQL.
+
+
+### V3.60.0 — independent cash rights and external profits
+
+- Separate cash viewing, deposits, expenses, sending, receiving, currency exchange, external-profit entry and cash administration in user permissions. A cash-view grant alone allows no posting. Check the current grant inside protected RPCs and legacy exchange/handover paths; expenses before handover need their own grant. Non-administrative cash administration applies only to the user's own cashbox, without exposing other cashbox names or balances.
+- Record external profit once as cash income with its own purpose, receipt and description. Credit the selected physical currency and count the fixed IQD value in the owner's period profit, company profit and settlement entitlement. USD entries keep their issue-time rate; ordinary deposits, capital and cash transfers stay outside profit.
+- Customer lists start with positive debts, excluding zero and prepaid balances; the existing account filter and complete customer search for invoice entry remain available.
+- New permissions start disabled for staff unless explicitly granted. Existing balances, historical transactions and prior permissions are not rewritten.
