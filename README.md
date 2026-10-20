@@ -505,3 +505,10 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Put pending requests first with clear amounts, optional percentage entry, supplier/cash previews, decision confirmation and permanent statement records. Notify administration on request and the requester on decision through the in-app inbox and mobile push outbox. Staff see only their own settlements; supplier account totals remain administrative.
 - Add administrative settings to independently pause or resume wholesale sales, system sales and purchasing for every account. Enforce pauses in the database as well as open invoice forms; preserve drafts, permit confirmation of already-committed requests, and notify all active users on each state change. All three operations remain enabled when the migration is applied.
 - Verified with 109 Node checks, 11 financial/privacy/document rollback suites, fresh local migrations, and real PostgreSQL/PostgREST/Chromium workflows at 320/390-pixel phone and 1366-pixel desktop widths. Verification fixtures never access production financial data.
+
+
+### V3.59.0 — purchases skip reserved receipt identifiers
+
+- New wholesale, system and purchase invoices use the existing locked transaction-ID allocator, which skips IDs reserved by deleted receipts and data resets. This fixes purchase saves reporting “Deleted invoice cannot be recreated” when a removed receipt immediately follows the highest live transaction ID.
+- Preserve deletion guards, invoice ownership, retries and edit IDs. No historical transaction, stock, cash, supplier balance or deleted receipt is changed by the migration.
+- Reproduced the exact failure before the fix and verified IQD purchases with allocated expenses, USD conversion, supplier debt, weighted stock cost, ownership, replay/edit behavior and sales/system compatibility against local PostgreSQL.
