@@ -528,3 +528,11 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Customer results show the canonical current balance, including settled accounts, and open the account directly. Materials show available stock, reservations and an expandable breakdown of permitted warehouses. Last recorded unit selling price is explicitly separate from book cost; unpriced system bundles do not override a known unit price.
 - The bounded read-only RPC rechecks the active profile, ownership, role, permissions and warehouse access on every request. Warehouse users never receive prices or customer/supplier accounts; installers receive section shortcuts only. No stored balances or invoice history are changed.
 - Typing is debounced and obsolete requests are cancelled; clear, empty, loading, retry and keyboard flows are supported. Validation covers SQL rollback isolation/revocation, Node tests and real Chromium against local PostgREST at mobile/desktop sizes.
+
+
+### V3.62.0 — visible profit rejection and cash movement details
+
+- Every pending profit request has a visible Reject action. A focused confirmation dialog requires a reason, needs no share or supplier, preserves request identity for uncertain retries, and uses the existing audited rejection/notification flow. Rejected requests retain their profit entitlement and display the reason in history.
+- Every cash movement has a compact expandable Details action, including older transaction, transfer, installation, exchange and reconciliation entries. A protected read-only RPC returns the permitted cashbox, actor, linked receipt/items, transfer parties and status, and balances before/after. No cost/profit fields or other users' cashboxes are exposed through this view.
+- Historical reset receipts add a dated divider per cashbox/reset, shared by both currency rows and reproduced in exported cash statements. The original reconciliation snapshots are used without changing balances or posting history.
+- Validation covers rollback SQL for rejection/replay/notifications, all cash source families, own-only access and live revocation; Node document/boundary tests; and Chromium through real local PostgREST on mobile and desktop.
