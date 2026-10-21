@@ -536,3 +536,11 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Every cash movement has a compact expandable Details action, including older transaction, transfer, installation, exchange and reconciliation entries. A protected read-only RPC returns the permitted cashbox, actor, linked receipt/items, transfer parties and status, and balances before/after. No cost/profit fields or other users' cashboxes are exposed through this view.
 - Historical reset receipts add a dated divider per cashbox/reset, shared by both currency rows and reproduced in exported cash statements. The original reconciliation snapshots are used without changing balances or posting history.
 - Validation covers rollback SQL for rejection/replay/notifications, all cash source families, own-only access and live revocation; Node document/boundary tests; and Chromium through real local PostgREST on mobile and desktop.
+
+
+### V3.63.0 — original customer receipts and complete period exports
+
+- Customer account sales, payments and statement rows open the saved customer receipt with original item snapshots, quantities, selling prices, author contact, invoice account snapshot and warranty/QR. System copies retain their quantity-only material presentation. Statement-only users can read their own customer copies without create/edit privileges; costs, profit and cashbox balances are excluded.
+- Sales/payment lists export every matching receipt in the selected Baghdad date period/search, including records beyond the first 30 visible movements, in one PDF with each receipt's original heading, contents and footer. Batches above 100 receipts require a shorter period and never silently truncate.
+- Statement PDF, preview and share actions are directly visible. Opening a receipt from the statement returns to the same statement and date/search filters. Excel export and supplier account behavior remain available.
+- PDF preparation supports multiple independent A4 sheets while retaining whole-row pagination within each invoice. Validation covers read-only SQL ownership/date/snapshot tests, document/PDF unit tests, Chromium against local PostgREST, and actual shared/downloaded PDFs on mobile/tablet. No financial posting routine is changed.

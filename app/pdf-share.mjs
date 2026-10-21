@@ -105,19 +105,21 @@ export async function createPdfDocument(html){
   await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('استغرق تجهيز الصفحة وقتاً طويلاً')),20000);frame.onload=()=>{clearTimeout(timer);resolve();};frame.srcdoc=html;});
   const doc=frame.contentDocument;if(!doc)throw new Error('تعذر قراءة صفحة الوصل');
   await doc.fonts?.ready;
-  doc.querySelector('.previewNav')?.remove();doc.querySelector('.actions')?.remove();
-  const sheet=doc.querySelector('.sheet')||doc.body;
+  doc.querySelectorAll('.previewNav,.actions').forEach(node=>node.remove());
+  const sheets=[...doc.querySelectorAll('.sheet')];if(!sheets.length)sheets.push(doc.body);
   // SVG foreignObject has no HTML body ancestor. Freeze inherited typography
   // so rasterized rows have exactly the same height as the pagination layout.
+  for(const sheet of sheets){
   const typography=doc.defaultView.getComputedStyle(sheet);
   for(const property of ['font-size','font-family','font-weight','line-height','letter-spacing','color']){
    sheet.style.setProperty(property,typography.getPropertyValue(property));
   }
   sheet.style.setProperty('width','190mm','important');sheet.style.setProperty('max-width','none','important');sheet.style.setProperty('min-height','0','important');sheet.style.setProperty('margin','0 auto','important');sheet.style.setProperty('padding','0','important');
+  }
   doc.documentElement.style.cssText+=';width:794px!important;min-height:0!important;overflow:visible!important;background:#fff!important';
   doc.body.style.cssText+=';width:794px!important;min-height:0!important;margin:0!important;padding:0!important;overflow:visible!important;background:#fff!important';
   const styles=[...doc.querySelectorAll('style')];
-  const reports=reportPages(sheet,doc),images=[];
+  const reports=sheets.flatMap(sheet=>reportPages(sheet,doc)),images=[];
   for(const page of reports){const body=page.cloneNode(true);body.height=CSS_PAGE_HEIGHT;images.push(await jpegPage(doc,body,styles,0,CSS_PAGE_HEIGHT));}
   return {blob:makePdfObjects(images),pages:images};
  }finally{frame.remove();}
