@@ -24,7 +24,9 @@ do $$declare r jsonb;begin
  if r->>'mode'<>'premium' or r->>'mobileColumns'<>'3' or r->'order'<>'["cash","sale"]' then raise exception 'premium lost column preferences';end if;
  r:=public.solar_section_layout('view','{"mode":"desk","expectedRevision":8}');
  if r->>'mode'<>'desk' then raise exception 'desk not saved';end if;
- r:=public.solar_section_layout('view','{"mode":"groups","expectedRevision":9}');
+ r:=public.solar_section_layout('view','{"mode":"solar","expectedRevision":9}');
+ if r->>'mode'<>'solar' or r->>'mobileColumns'<>'3' or r->'order'<>'["cash","sale"]' then raise exception 'solar design lost columns/order';end if;
+ r:=public.solar_section_layout('view','{"mode":"groups","expectedRevision":10}');
 
 end$$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003552',true);

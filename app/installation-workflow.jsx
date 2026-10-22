@@ -1,9 +1,10 @@
 'use client';
+import {createPortal} from 'react-dom';
 import AppIcon from './app-icons';
 import WarehouseBadge from './warehouse-badge';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import InstallationCalendar from './installation-calendar';
-import {installationStages as stages,installationIndex,installationLocalDay} from './installation-utils.mjs';
+import {installationStages as stages,installationIndex,installationLocalDay,installationMatchesStatus} from './installation-utils.mjs';
 import {saveRequest} from './save-request.mjs';
 import {unlockNotificationSound,playNotificationSound} from './notification-sound.mjs';
 import {supabase} from './supabase';
@@ -13,9 +14,10 @@ const rawMoney=value=>String(value??'').replace(/,/g,'').trim();
 const moneyValue=value=>rawMoney(value)===''?'':fmt(rawMoney(value));
 const dateText=value=>value?new Date(value).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad',dateStyle:'short',timeStyle:'short'}):'';
 export default function InstallationWorkflow({profile,onChanged,selectedJob=''}){
- const [jobs,setJobs]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[status,setStatus]=useState(selectedJob?'all':'open'),[query,setQuery]=useState(selectedJob),[busy,setBusy]=useState(null),[message,setMessage]=useState('');
+ const [jobs,setJobs]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[status,setStatus]=useState(selectedJob?'all':'open'),[query,setQuery]=useState(selectedJob),[busy,setBusy]=useState(null),[message,setMessage]=useState(''),[toast,setToast]=useState(false);
  const engineer=profile?.user_type==='installer';
- const request=useRef({seq:0,controller:null}),actionBusy=useRef(false);
+ useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(false),6500);return()=>clearTimeout(timer);},[toast]);
+ const request=useRef({seq:0,controller:null}),actionBusy=useRef(false),resultsHeading=useRef(null);
  const [showCalendar,setShowCalendar]=useState(!selectedJob);
  const refresh=useCallback(async()=>{
   request.current.controller?.abort();const controller=new AbortController(),seq=++request.current.seq;request.current.controller=controller;const timer=setTimeout(()=>controller.abort(),12000);
@@ -29,6 +31,7 @@ export default function InstallationWorkflow({profile,onChanged,selectedJob=''})
    const {error}=await saveRequest(signal=>supabase.rpc('solar_installation_action',{job_id:job.id,expected_revision:job.installationRevision,action,payload}).abortSignal(signal));
    if(error)throw error;
    setMessage({start:'تم بدء التنصيب وتحديث المرحلة للجميع.',complete:'تم إنهاء التنصيب وإرسال التقرير للمراجعة.',close:'تم إغلاق الملف وتحديث المرحلة عند المهندس.',reopen:'تمت إعادة فتح الملف للمراجعة.'}[action]);
+   if(action==='close')setToast(true);
    void playNotificationSound();
    await refresh().catch(()=>setError('تم حفظ الخطوة. تعذر تحديث القائمة؛ اضغط تحديث لرؤية آخر حالة.'));
    if(onChanged)void Promise.resolve().then(onChanged).catch(()=>{});
@@ -38,15 +41,20 @@ export default function InstallationWorkflow({profile,onChanged,selectedJob=''})
  }
  useEffect(()=>{const update=()=>{if(document.visibilityState==='visible'&&!actionBusy.current)refresh().catch(()=>{});};const timer=setInterval(update,5000);window.addEventListener('solar-notification',update);window.addEventListener('focus',update);document.addEventListener('visibilitychange',update);return()=>{clearInterval(timer);window.removeEventListener('solar-notification',update);window.removeEventListener('focus',update);document.removeEventListener('visibilitychange',update);};},[refresh]);
  const today=installationLocalDay(Date.now());
- const visible=jobs.filter(j=>(status==='all'||(status==='open'?j.installationStatus!=='closed':j.installationStatus===status))&&(!query||[j.party,j.customerPhone,j.customerAddress,j.installerName,j.creatorName,String(j.receiptNo),...(selectedJob?[String(j.id)]:[])].join(' ').includes(query.trim())));
+ const summaries=[['today','مواعيد اليوم'],['in_progress','قيد التنفيذ'],['completed','بانتظار المراجعة'],['closed','مكتملة ومغلقة']].map(([key,label])=>({key,label,count:jobs.filter(j=>installationMatchesStatus(j,key,today)).length}));
+ const resultsTitle=summaries.find(s=>s.key===status)?.label||stages.find(([key])=>key===status)?.[1]||(status==='all'?'جميع التنصيبات':'التنصيبات المفتوحة');
+ function selectSummary(key){setStatus(key);setQuery('');setShowCalendar(false);requestAnimationFrame(()=>{resultsHeading.current?.focus({preventScroll:true});resultsHeading.current?.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});});}
+ const visible=jobs.filter(j=>installationMatchesStatus(j,status,today)&&(!query||[j.party,j.customerPhone,j.customerAddress,j.installerName,j.creatorName,String(j.receiptNo),...(selectedJob?[String(j.id)]:[])].join(' ').includes(query.trim())));
  return <div className="workflow installationRefresh">
+  {toast&&createPortal(<div className="installationActionToast" role="status"><AppIcon name="check" size={22}/><div><b>تم الغلق</b><span>تم اعتماد المصاريف وإغلاق ملف التنصيب بنجاح.</span></div><button type="button" aria-label="إغلاق تنبيه الغلق" onClick={()=>setToast(false)}>×</button></div>,document.body)}
   <div className="workflowHero"><div><small>متابعة التنفيذ خطوة بخطوة</small><h2>{engineer?'مهامي الميدانية':'إدارة التنصيبات'}</h2><p>{engineer?'المواعيد والمواد وإنجاز خطواتك بمكان واحد':'جدول مشترك ومراحل موحّدة مع مهندس التنصيب'}</p></div><span aria-hidden="true"><AppIcon name="tools" size={26}/></span></div>
-  <div className="workflowStats"><div><b>{jobs.filter(j=>j.installDate===today&&j.installationStatus!=='closed').length}</b><span>مواعيد اليوم</span></div><div><b>{jobs.filter(j=>j.installationStatus==='in_progress').length}</b><span>قيد التنفيذ</span></div><div><b>{jobs.filter(j=>j.installationStatus==='completed').length}</b><span>بانتظار المراجعة</span></div><div><b>{jobs.filter(j=>j.installationStatus==='closed').length}</b><span>مكتملة ومغلقة</span></div></div>
+  <div className="workflowStats" role="group" aria-label="ملخص حالات التنصيب">{summaries.map(({key,label,count})=><button type="button" key={key} aria-pressed={status===key} disabled={loading} onClick={()=>selectSummary(key)}><b>{loading?'—':fmt(count)}</b><span>{label}</span></button>)}</div>
   <button className="installationCalendarToggle" aria-expanded={showCalendar} onClick={()=>setShowCalendar(v=>!v)}><AppIcon name="calendar" size={19}/> جدول مواعيد المهندسين <span>{showCalendar?'إخفاء':'عرض الحجوزات'}</span></button>
   {showCalendar&&<InstallationCalendar/>}
   <div className="workflowSearch"><input aria-label="بحث بالتنصيبات" value={query} onChange={e=>setQuery(e.target.value)} placeholder="بحث بالزبون، المستخدم أو الهاتف…"/><button disabled={loading||busy!==null} onClick={async()=>{setLoading(true);setError('');try{await refresh()}catch{setError('تعذر التحديث. تحقق من الاتصال.')}finally{setLoading(false)}}}>تحديث</button></div>
   <div className="statusTabs" aria-label="تصفية المهام">{[['open','المفتوحة'],...stages,['all','الكل']].map(([value,label])=><button key={value} aria-pressed={status===value} onClick={()=>setStatus(value)}>{label}</button>)}</div>
   {error&&<div className="workflowError" role="alert">{error}</div>}{message&&<div className="workflowSuccess" role="status">{message}</div>}
+  <div className="installationResultsHeading"><h3 ref={resultsHeading} tabIndex={-1}>{resultsTitle}</h3><span aria-live="polite">{loading?'جاري التحميل…':visible.length+' ملف'}</span></div>
   {loading?<div className="empty">جاري تحميل المهام…</div>:!visible.length?<div className="workflowEmpty"><span>✓</span><h3>لا توجد مهام ضمن هذا الاختيار</h3><p>{engineer?'تظهر المهمة هنا عندما تسندها الإدارة إليك.':'يمكن إسناد مهمة من فاتورة بيع المنظومة.'}</p></div>:visible.map(job=><JobCard key={job.id+':'+job.installationRevision} job={job} engineer={engineer} busy={busy!==null} change={change}/>)}
  </div>;
 }
@@ -56,6 +64,7 @@ function JobCard({job,engineer,busy,change}){
  const phone=String(job.customerPhone||'').replace(/[^+0-9]/g,'');
  return <article className="workflowJob">
   <header><div><small>ملف #{receiptNumber(job)}</small><h3>{job.party||'عميل منظومة'}</h3>{job.warehouseName&&<small className="orderWarehouseLabel">{job.warehouseName}</small>}</div><span className={'workflowStatus '+job.installationStatus}>{stages[index][1]}</span></header>
+  {!engineer&&job.sellingPrice!=null&&Number.isFinite(Number(job.sellingPrice))&&<div className="jobSalePrice"><span>سعر بيع المنظومة</span><strong><bdi>{fmt(job.sellingPrice)}</bdi> <small>د.ع</small></strong></div>}
   <div className="jobResponsible"><AppIcon name="user" size={17}/><span>المستخدم المسؤول <b>{job.creatorName||'غير محدد'}</b></span>{creatorPhone&&<a href={'tel:'+creatorPhone} aria-label={'اتصال بالمسؤول '+job.creatorName}><AppIcon name="phone" size={16}/><bdi>{job.creatorPhone}</bdi></a>}</div>
   <ol className="workflowSteps" aria-label="مراحل التنصيب">{stages.map(([stage,label],i)=><li key={stage} className={i<=index?'reached':''} aria-current={i===index?'step':undefined}><span>{i<index||job.installationStatus==='closed'?'✓':i+1}</span><small>{label}</small></li>)}</ol>
   <WarehouseBadge status={job.warehouseStatus} compact/>
