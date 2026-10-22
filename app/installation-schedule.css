@@ -20,7 +20,7 @@
 .installationRefresh .workflowStatus.completed{background:#eee4ff;color:#6439a0}
 .installationRefresh .workflowStatus.closed{background:#d4f3e4;color:#126343}
 .installationRefresh .jobResponsible{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;margin-top:13px;background:#edf5fe;border:1px solid #cddff2;border-radius:10px;font-size:12px;color:#274f73}
-.jobResponsible span{display:grid;gap:3px}.jobResponsible b{font-size:14px;color:#123e68}.jobResponsible a{margin-inline-start:auto;display:flex;align-items:center;gap:5px;color:#125d98;text-decoration:none;font-size:13px}
+.jobResponsible>span:not(.phoneContacts){display:grid;gap:3px}.jobResponsible b{font-size:14px;color:#123e68}.jobResponsible a{margin-inline-start:auto;display:flex;align-items:center;gap:5px;color:#125d98;text-decoration:none;font-size:13px}
 .installationRefresh .workflowSteps{margin:19px 0}.installationRefresh .workflowSteps small{font-size:12px;color:#48616c}.installationRefresh .workflowSteps .reached small{color:#087660;font-weight:700}.installationRefresh .workflowSteps [aria-current=step] small{color:#104e83}
 .installationRefresh .jobDetails{background:#f2f7fb;border:1px solid #dce7ee;gap:10px;padding:12px}
 .installationRefresh .jobDetails small{color:#4b6472;font-size:12px}.installationRefresh .jobDetails b{color:#183c50;font-size:14px}

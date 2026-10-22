@@ -1,4 +1,5 @@
 'use client';
+import PhoneActions from './phone-actions';
 import {createPortal} from 'react-dom';
 import AppIcon from './app-icons';
 import WarehouseBadge from './warehouse-badge';
@@ -60,16 +61,14 @@ export default function InstallationWorkflow({profile,onChanged,selectedJob=''})
 }
 function JobCard({job,engineer,busy,change}){
  const index=installationIndex(job.installationStatus),report=job.installationReport||{};
- const creatorPhone=String(job.creatorPhone||'').replace(/[^+0-9]/g,'');
- const phone=String(job.customerPhone||'').replace(/[^+0-9]/g,'');
  return <article className="workflowJob">
   <header><div><small>ملف #{receiptNumber(job)}</small><h3>{job.party||'عميل منظومة'}</h3>{job.warehouseName&&<small className="orderWarehouseLabel">{job.warehouseName}</small>}</div><span className={'workflowStatus '+job.installationStatus}>{stages[index][1]}</span></header>
   {!engineer&&job.sellingPrice!=null&&Number.isFinite(Number(job.sellingPrice))&&<div className="jobSalePrice"><span>سعر بيع المنظومة</span><strong><bdi>{fmt(job.sellingPrice)}</bdi> <small>د.ع</small></strong></div>}
-  <div className="jobResponsible"><AppIcon name="user" size={17}/><span>المستخدم المسؤول <b>{job.creatorName||'غير محدد'}</b></span>{creatorPhone&&<a href={'tel:'+creatorPhone} aria-label={'اتصال بالمسؤول '+job.creatorName}><AppIcon name="phone" size={16}/><bdi>{job.creatorPhone}</bdi></a>}</div>
+  <div className="jobResponsible"><AppIcon name="user" size={17}/><span>المستخدم المسؤول <b>{job.creatorName||'غير محدد'}</b></span><PhoneActions phone={job.creatorPhone} label={'بالمسؤول '+job.creatorName}/></div>
   <ol className="workflowSteps" aria-label="مراحل التنصيب">{stages.map(([stage,label],i)=><li key={stage} className={i<=index?'reached':''} aria-current={i===index?'step':undefined}><span>{i<index||job.installationStatus==='closed'?'✓':i+1}</span><small>{label}</small></li>)}</ol>
   <WarehouseBadge status={job.warehouseStatus} compact/>
   <div className="jobDetails"><div><small>موعد التنصيب</small><b>{job.installDate||'لم يحدد'} • {job.installTime?.slice(0,5)||'الوقت غير محدد'}</b></div><div><small>مهندس التنصيب</small><b>{job.installerName||'غير مسند'}</b></div><div className="jobAddress"><small>العنوان</small><b>{job.customerAddress||'العنوان غير محدد'}</b></div></div>
-  <div className="jobContact">{phone?<a href={'tel:'+phone}>اتصال بالزبون · {job.customerPhone}</a>:<span>رقم الهاتف غير متوفر</span>}</div>
+  <div className="jobContact">{job.customerPhone?<PhoneActions phone={job.customerPhone} label={'بالزبون '+job.party}/>:<span>رقم الهاتف غير متوفر</span>}</div>
   <details className="jobMaterials" open><summary>مواد التنصيب <span>{job.items?.length||0} مادة</span></summary>{job.items?.length?job.items.map((item,i)=><div key={item.id||i}><span>{item.name}{item.brand&&<small>{item.brand}</small>}</span><b>× {fmt(item.qty)}</b></div>):<p>لا توجد مواد مسجلة</p>}</details>
   <div className="jobTimes">{job.installationStartedAt&&<span>بدء العمل: {dateText(job.installationStartedAt)}</span>}{job.installationCompletedAt&&<span>إرسال التقرير: {dateText(job.installationCompletedAt)}</span>}{job.installationClosedAt&&<span>إغلاق الملف: {dateText(job.installationClosedAt)}</span>}</div>
   {engineer&&job.installationStatus==='pending'&&<button className="workflowPrimary" disabled={busy||job.warehouseStatus!=='ready'} onClick={()=>change(job,'start')}>بدء التنصيب</button>}

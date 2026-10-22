@@ -1,4 +1,5 @@
 'use client';
+import PhoneActions from './phone-actions';
 import {useEffect,useMemo,useState} from 'react';
 import AppIcon from './app-icons';
 import ReportActions from './report-actions';
@@ -32,6 +33,7 @@ export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,
  return <section className="miniPartyAccount miniParty" data-party-type={account.type}>
   <header className="miniPageHead"><button type="button" className="miniIcon" aria-label={view==='overview'?'رجوع للقائمة':'رجوع للحساب'} onClick={back}><AppIcon name="arrow" size={19}/></button><h1>{title}</h1><button type="button" className="miniIcon" aria-label="تحديث الحساب" onClick={onRefresh}><AppIcon name="refresh" size={18}/></button></header>
   {view!=='detail'&&<div className="miniIdentity"><span className="miniAvatar">{partyInitials(account.name)}</span><div><h2>{account.name}</h2><small>{supplier?'عملة الحساب: '+currency:(account.customerType==='wholesale'?'جملة':'مفرد · منظومات')}{account.ownerName?' · '+account.ownerName:''}</small></div><span className="miniCurrency">{currency}</span></div>}
+  {account.phone&&<div className="miniIdentityPhone"><PhoneActions phone={account.phone} label={account.name}/></div>}
   {view!=='detail'&&view!=='match'&&<div className="miniPeriod"><div className="miniDates"><label>من<input aria-label="من تاريخ" type="date" value={from} max={to||undefined} onChange={e=>{setFrom(e.target.value);setDays('');}}/></label><label>إلى<input aria-label="إلى تاريخ" type="date" value={to} min={from||undefined} onChange={e=>{setTo(e.target.value);setDays('');}}/></label></div><div className="miniSegments" aria-label="فترة الحساب">{[['7','7 أيام'],['30','30 يوم'],['90','3 أشهر'],['all','كل الفترة']].map(([key,label])=><button type="button" key={key} aria-pressed={days===key} onClick={()=>chooseDays(key)}>{label}</button>)}</div>{extraControls}</div>}
   {invalid&&<p className="miniAlert" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية.</p>}
   {view==='overview'&&<>

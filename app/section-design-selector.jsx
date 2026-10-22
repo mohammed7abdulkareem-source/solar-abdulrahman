@@ -2,7 +2,7 @@
 import {useEffect,useRef,useState} from 'react';
 import {supabase} from './supabase';
 import AppIcon from './app-icons';
-export const sectionDesigns=[['groups','التصميم المجمّع','document','أقسام مرتبة ضمن مجموعات'],['columns','تصميم الأعمدة','grid','أيقونات مع ترتيب وأعمدة حسب رغبتك'],['premium','تصميم بريميوم','sun','بطاقات أنيقة بألوان عميقة'],['desk','تصميم المكتب','building','قائمة صغيرة ووصول سريع'],['solar','أفق سولار','sun','مساحة شمسية بتصميم مختلف بالكامل']];
+export const sectionDesigns=[['groups','التصميم المجمّع','document','أقسام مرتبة ضمن مجموعات'],['columns','تصميم الأعمدة','grid','أيقونات مع ترتيب وأعمدة حسب رغبتك'],['premium','تصميم بريميوم','sun','واجهة داكنة وذهبية ومساحة عمل مميزة'],['desk','تصميم المكتب','building','قائمة صغيرة ووصول سريع'],['solar','أفق سولار','sun','مساحة شمسية بتصميم مختلف بالكامل']];
 export default function SectionDesignSelector({state}){
  const {layout,setLayout,loading,error,setError}=state,[open,setOpen]=useState(false),[busy,setBusy]=useState(false),dock=useRef(null),lock=useRef(false);
  useEffect(()=>{if(!open)return;const outside=e=>{if(!dock.current?.contains(e.target))setOpen(false);},escape=e=>{if(e.key==='Escape'){setOpen(false);dock.current?.querySelector('button')?.focus();}};document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape);return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape);};},[open]);

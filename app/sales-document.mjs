@@ -1,3 +1,4 @@
+import {phoneContactDocument} from './phone-contact-utils.mjs';
 import {warrantyDocument,warrantyQrSvg} from './warranty-utils.mjs';
 import {receiptNumber} from './supplier-utils.mjs';
 import {escapeHtml as escape,invoiceDate} from './document-format.mjs';
@@ -20,7 +21,7 @@ export function salesDocument(row,customer=true){
  const system=row.kind==='system',items=row.items||[];
  const meta=[['رقم الفاتورة',receiptNumber(row)],['التاريخ',invoiceDate(row.created_at)]];
  const customerPhone=row.customer_phone||row.customerPhone;
- const contacts='<div class="invoicePartyContacts"><div class="invoiceCustomerContact"><small>الزبون</small><b>'+escape(row.party_name||'زبون نقدي')+'</b>'+(customerPhone?'<span>هاتف الزبون: <bdi dir="ltr">'+escape(customerPhone)+'</bdi></span>':'')+'</div><div class="invoiceSellerContact"><small>مسؤول الفاتورة</small><b>'+escape(row.creatorName||'—')+'</b>'+(row.creatorPhone?'<span>هاتف المسؤول: <strong><bdi dir="ltr">'+escape(row.creatorPhone)+'</bdi></strong></span>':'')+'</div></div>';
+ const contacts='<div class="invoicePartyContacts"><div class="invoiceCustomerContact"><small>الزبون</small><b>'+escape(row.party_name||'زبون نقدي')+'</b>'+(customerPhone?'<span>هاتف الزبون: '+phoneContactDocument(customerPhone)+'</span>':'')+'</div><div class="invoiceSellerContact"><small>مسؤول الفاتورة</small><b>'+escape(row.creatorName||'—')+'</b>'+(row.creatorPhone?'<span>هاتف المسؤول: <strong>'+phoneContactDocument(row.creatorPhone)+'</strong></span>':'')+'</div></div>';
  const warehouseName=row.warehouseName||row.warehouse_name;
  if(row.draft&&warehouseName)meta.push(['المخزن',warehouseName]);
  if(customer)meta.push(['طريقة الدفع',system?'آجل':row.cash||row.payment_mode==='cash'||row.mode==='cash'?'نقدي':'آجل']);
