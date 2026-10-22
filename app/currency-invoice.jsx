@@ -12,15 +12,17 @@ import {convertAmount,currencyLabel} from './fx-utils.mjs';
 import {purchaseDisplayTotal} from './money-format.mjs';
 import MoneyInput from './money-input';
 import WarrantyEditor from './warranty-editor';
-import ReportActions from './report-actions';
-import {blankWarranty,warrantyPolicy,warrantyError,warrantyUrl} from './warranty-utils.mjs';
+import {blankWarranty,warrantyPolicy,warrantyError} from './warranty-utils.mjs';
+import {unlockNotificationSound,playNotificationSound} from './notification-sound.mjs';
+import {savedSaleInvoice} from './invoice-save-result.mjs';
+import SavedSaleReceipt from './saved-sale-receipt';
 
 const blank=kind=>({party:'',currency:'IQD',exchangeRate:'',cashCurrency:'IQD',mode:'credit',notes:'',expenses:'',warranty:blankWarranty()});
 export default function CurrencyInvoice({contact,kind,products:catalogProducts,parties,items,setItems,search,setSearch,onSave,onUpdateInvoice,history=[],renderHistory,initialInvoice,initialParty='',onCancel,canEditRate=false,a4,openA4,saveA4,shareA4}){
  const [meta,setMeta]=useState(()=>{const party=parties.find(p=>p.name===initialParty);return {...blank(kind),party:initialParty,...(kind==='purchase'&&party?{currency:party.accountCurrency||'IQD',cashCurrency:party.accountCurrency||'IQD'}:{})};}),[saving,setSaving]=useState(false),[editing,setEditing]=useState(null),[backup,setBackup]=useState(null),[error,setError]=useState(''),[settings,setSettings]=useState(null),[saved,setSaved]=useState(null);
  const catalogVersion=useMemo(()=>JSON.stringify(catalogProducts||[]),[catalogProducts]);
  const inventory=useWarehouseInventory({versionKey:catalogVersion}),products=inventory.products;
- const opened=useRef(false),partySeeded=useRef(!initialParty||kind!=='purchase'||parties.some(p=>p.name===initialParty));
+ const opened=useRef(false),saveLock=useRef(false),partySeeded=useRef(!initialParty||kind!=='purchase'||parties.some(p=>p.name===initialParty));
  useEffect(()=>{if(partySeeded.current)return;const party=parties.find(p=>p.name===initialParty);if(!party)return;partySeeded.current=true;setMeta(m=>({...m,currency:party.accountCurrency||'IQD',cashCurrency:party.accountCurrency||'IQD'}));},[initialParty,kind,parties]);
  useEffect(()=>{let live=true;if(kind==='purchase')loadExchangeRate().then(data=>{if(live){setSettings(data);setMeta(m=>({...m,exchangeRate:m.exchangeRate|| (data.rate==null?'':String(data.rate))}));}}).catch(()=>{if(live)setError('تعذر تحميل الصرف المعتمد؛ حدّث البيانات قبل حفظ الشراء.');});return()=>{live=false;};},[kind]);
  useEffect(()=>{if(initialInvoice&&!opened.current){opened.current=true;beginEdit(initialInvoice);}},[initialInvoice]);
@@ -28,7 +30,7 @@ export default function CurrencyInvoice({contact,kind,products:catalogProducts,p
   if(saving)return;
   if(editing&&!confirm('ترك التعديل الحالي وفتح فاتورة أخرى؟'))return;
   if(!editing)setBackup({items:items.map(i=>({...i})),meta:{...meta},search,warehouseId:inventory.warehouseId});
-  setEditing(invoice);inventory.setWarehouse(String(invoice.warehouseId||invoice.warehouse_id||''));setError('');
+  setSaved(null);setEditing(invoice);inventory.setWarehouse(String(invoice.warehouseId||invoice.warehouse_id||''));setError('');
   setItems((invoice.items||[]).map(i=>({...i,price:kind==='purchase'?(i.sourcePrice??i.price):i.price,code:(products.find(p=>p.id===i.id)||catalogProducts?.find(p=>p.id===i.id))?.code||i.code||''})));
   setMeta({warranty:invoice.warranty||blankWarranty(),party:parties.find(p=>p.id===invoice.partyId)?.name||invoice.party||'',currency:invoice.sourceCurrency||'IQD',exchangeRate:String(invoice.marketRate>1?invoice.marketRate:invoice.sourceCurrency==='USD'?invoice.exchangeRate:settings?.rate||''),cashCurrency:invoice.cashCurrency||'IQD',mode:invoice.cash?'cash':'credit',notes:invoice.notes||'',expenses:String(invoice.expenses||'')});setSearch('');
   window.scrollTo({top:0,behavior:'instant'});
@@ -49,7 +51,7 @@ export default function CurrencyInvoice({contact,kind,products:catalogProducts,p
  const display=kind==='purchase'?purchaseDisplayTotal(draft):{currency:'IQD',value:amounts.total};
  function document(priced=true){const d=kind==='purchase'?supplierDocument(draft):salesDocument({...draft,party_name:draft.party,created_at:draft.date,items:amounts.items.map(i=>({...i,product_name:i.name,brand_name:i.brand}))},priced);return a4(d.title,d.body,d.total,editing?'تعديل فاتورة #'+receiptNumber(editing)+' — غير محفوظ':d.subtitle);}
  async function save(){
-  if(saving)return;setError('');
+  if(saveLock.current||saving)return;setError('');
   if(!inventory.ready||!inventory.warehouseId){setError(inventory.error||'اختر المخزن وانتظر تحميل رصيده');return;}
   const invalid=(kind==='sale'?warrantyError(meta.warranty,items):'')||validation||invoiceError(items,availableProducts,kind);
   if(invalid){setError(invalid);return;}
@@ -57,13 +59,15 @@ export default function CurrencyInvoice({contact,kind,products:catalogProducts,p
   if(meta.mode==='credit'&&!meta.party){setError('اختر العميل أو المورد للفاتورة الآجلة');return;}
   if(!Number.isFinite(Number(meta.expenses||0))||Number(meta.expenses||0)<0){setError('أدخل مصاريف صحيحة بالدينار');return;}
   if(kind==='purchase'&&!amounts.sourceSubtotal&&Number(meta.expenses)>0){setError('لا يمكن توزيع المصاريف على أسعار مجموعها صفر');return;}
-  setSaving(true);
+  saveLock.current=true;setSaving(true);
+  if(kind==='sale'&&!editing)void unlockNotificationSound();
   try{
    if(editing){const original=editing;const ok=await onUpdateInvoice(original,{...original,...meta,warehouseId:Number(inventory.warehouseId),warranty:warrantyPolicy(meta.warranty,items),...fxMeta,sourceCurrency:meta.currency,exchangeRate:rate,items,expenses:Number(meta.expenses||0)});if(ok){inventory.refresh();restore();}}
-   else{const ok=await onSave({...meta,warehouseId:Number(inventory.warehouseId),warranty:warrantyPolicy(meta.warranty,items),...fxMeta,sourceCurrency:kind==='purchase'?meta.currency:'IQD',exchangeRate:rate},items);if(ok){inventory.refresh();if(kind==='sale'&&ok.receiptNo){const d=salesDocument({...draft,...ok,draft:false,party_name:meta.party,created_at:ok.date||draft.date,items:amounts.items.map(i=>({...i,product_name:i.name,brand_name:i.brand}))});setSaved({html:a4(d.title,d.body,d.total,d.subtitle),number:ok.receiptNo,token:ok.warrantyToken});}setItems([]);setMeta(m=>({...blank(kind),currency:m.currency,exchangeRate:m.exchangeRate}));setSearch('');}}
+   else{const ok=await onSave({...meta,warehouseId:Number(inventory.warehouseId),warranty:warrantyPolicy(meta.warranty,items),...fxMeta,sourceCurrency:kind==='purchase'?meta.currency:'IQD',exchangeRate:rate},items);if(ok){inventory.refresh();if(kind==='sale'&&ok.receiptNo){setSaved(savedSaleInvoice(draft,ok));void playNotificationSound();window.scrollTo({top:0,behavior:'instant'});}setItems([]);setMeta(m=>({...blank(kind),currency:m.currency,exchangeRate:m.exchangeRate}));setSearch('');}}
   }catch(e){setError(e.message||'تعذر حفظ الفاتورة؛ أعد المحاولة بنفس البيانات.');}
-  finally{setSaving(false);}
+  finally{saveLock.current=false;setSaving(false);}
  }
+ if(kind==='sale'&&saved)return <><SavedSaleReceipt invoice={saved} a4={a4} onNew={()=>{setSaved(null);setError('');window.scrollTo({top:0,behavior:'instant'});}}/>{renderHistory?.(beginEdit)}</>;
  return <><InvoiceShell kind={kind} title={kind==='purchase'?'فاتورة شراء':'فاتورة بيع جملة'} currency={kind==='purchase'?meta.currency:'IQD'} saving={saving} className={kind==='sale'?'saleWorkspace':''} editing={editing?{number:receiptNumber(editing),date:editing.date}:null}>
   {kind==='purchase'&&<WarehouseField inventory={inventory} disabled={saving||!!editing} label="مخزن استلام المشتريات"/>}
   <div className={'deskMeta '+(kind==='sale'?'deskSaleMeta':'')}><InvoiceField label={kind==='purchase'?'المورد':'العميل'}><PartySearch rows={parties} value={meta.party} onChange={chooseParty}/></InvoiceField><InvoiceField label="طريقة الدفع" className={'deskPaymentField '+meta.mode}><select aria-label="طريقة الدفع" disabled={!!editing&&kind!=='sale'} value={meta.mode} onChange={e=>change('mode',e.target.value)}><option value="credit">آجل</option><option value="cash">نقدي</option></select></InvoiceField>{kind==='purchase'?<InvoiceField label="عملة الفاتورة"><select aria-label="عملة الشراء" value={meta.currency} onChange={e=>setMeta(m=>({...m,currency:e.target.value,exchangeRate:e.target.value==='USD'&&(!m.exchangeRate||m.exchangeRate==='1')?String(settings?.rate||''):m.exchangeRate}))}><option value="IQD">دينار · IQD</option><option value="USD">دولار · USD</option></select></InvoiceField>:<WarehouseField inventory={inventory} disabled={saving||!!editing} label="مخزن تجهيز الفاتورة"/>}</div>
@@ -74,6 +78,6 @@ export default function CurrencyInvoice({contact,kind,products:catalogProducts,p
   {kind==='sale'&&<WarrantyEditor value={meta.warranty} items={items} onChange={w=>change('warranty',w)}/>}
   <InvoiceSummary entries={[["عدد الأصناف",items.length],["مجموع الكميات",money(items.reduce((sum,i)=>sum+Number(i.qty||0),0))],["مجموع المواد",money(amounts.sourceSubtotal,meta.currency)+(kind==='purchase'&&meta.currency==='USD'?' $':' د.ع')],...(kind==='purchase'&&meta.currency==='USD'?[["المواد بالدينار",money(amounts.subtotal)+' د.ع']]:[]),["المصاريف",money(amounts.expenses)+' د.ع']]} total={display.value} currency={display.currency} secondary={display.currency==='USD'?'كلفة المخزون بالدينار: '+money(amounts.total)+' د.ع':''}/>
   {error&&<p className="workflowError" role="alert">{error}</p>}
-  <InvoiceActions documentHtml={document()} documentName={'فاتورة-'+kind+(editing?'-'+receiptNumber(editing):'-مسودة')} saving={saving} onSave={save} saveLabel={editing?'حفظ التعديل':'حفظ الوصل'} onCancel={editing?restore:undefined} onPreview={()=>openA4(document())} onPdf={()=>saveA4(document(),'فاتورة-'+kind)} onShare={()=>shareA4('فاتورة-'+kind,'الإجمالي: '+money(display.value,display.currency)+' '+currencyLabel(display.currency),document())} onClear={()=>{if(confirm('تفريغ مواد الفاتورة الحالية؟'))setItems([]);}}>{kind==='sale'&&<><button onClick={()=>openA4(document(false))}>معاينة نسخة المخزن</button><button onClick={()=>saveA4(document(false),'فاتورة-مخزنية')}>حفظ نسخة المخزن</button></>}</InvoiceActions>
- </InvoiceShell>{saved&&<section className="warrantySaved"><h2>تم حفظ فاتورة #{saved.number}</h2>{saved.token&&<a target="_blank" rel="noopener noreferrer" href={warrantyUrl(saved.token)}>فتح شهادة الضمان</a>}<ReportActions enabled html={saved.html} filename={'فاتورة-بيع-'+saved.number}/><button onClick={()=>setSaved(null)}>إغلاق</button></section>}{renderHistory?.(beginEdit)}</>;
+  <InvoiceActions documentHtml={document()} documentName={'فاتورة-'+kind+(editing?'-'+receiptNumber(editing):'-مسودة')} documentEnabled={kind!=='sale'||!!editing} documentNotice={kind==='sale'&&!editing?'احفظ الفاتورة وأرسلها للمخزن لعرض نسخة الزبون الكاملة مع الحساب السابق وآخر تسديد.':''} saving={saving} onSave={save} saveLabel={editing?'حفظ التعديل':kind==='sale'?'حفظ وإرسال للمخزن':'حفظ الوصل'} onCancel={editing?restore:undefined} onPreview={()=>openA4(document())} onPdf={()=>saveA4(document(),'فاتورة-'+kind)} onShare={()=>shareA4('فاتورة-'+kind,'الإجمالي: '+money(display.value,display.currency)+' '+currencyLabel(display.currency),document())} onClear={()=>{if(confirm('تفريغ مواد الفاتورة الحالية؟'))setItems([]);}}>{kind==='sale'&&editing&&<><button onClick={()=>openA4(document(false))}>معاينة نسخة المخزن</button><button onClick={()=>saveA4(document(false),'فاتورة-مخزنية')}>حفظ نسخة المخزن</button></>}</InvoiceActions>
+ </InvoiceShell>{renderHistory?.(beginEdit)}</>;
 }

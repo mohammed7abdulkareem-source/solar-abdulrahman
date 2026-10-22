@@ -544,3 +544,9 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Sales/payment lists export every matching receipt in the selected Baghdad date period/search, including records beyond the first 30 visible movements, in one PDF with each receipt's original heading, contents and footer. Batches above 100 receipts require a shorter period and never silently truncate.
 - Statement PDF, preview and share actions are directly visible. Opening a receipt from the statement returns to the same statement and date/search filters. Excel export and supplier account behavior remain available.
 - PDF preparation supports multiple independent A4 sheets while retaining whole-row pagination within each invoice. Validation covers read-only SQL ownership/date/snapshot tests, document/PDF unit tests, Chromium against local PostgREST, and actual shared/downloaded PDFs on mobile/tablet. No financial posting routine is changed.
+
+# V3.64.0
+
+- New wholesale sales open a dedicated saved receipt after the protected save succeeds, with the committed receipt number, total, issue-time account and last payment, warranty and QR. Customer preview, PDF and sharing use this retained receipt even after the editor resets; a separate button starts the next invoice.
+- Customer exports are disabled before saving a new sale. Saving shows “تم حفظ الفاتورة وإرسالها للمخزن” and plays one confirmation sound after acknowledgment; failures retain the form for the existing idempotent retry. Warehouse copies stay without prices or customer balances.
+- No database, accounting, stock-posting or notification routing changes.
