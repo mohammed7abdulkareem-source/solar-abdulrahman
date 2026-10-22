@@ -6,6 +6,7 @@ import CurrencyInvoice from './currency-invoice';
 import SystemInvoiceEditor from './system-invoice-editor';
 import {canEditArchivedInvoice,archiveInvoiceDraft} from './invoice-edit-utils.mjs';
 import {supabase} from './supabase';
+import WarehousePricing from './warehouse-pricing';
 import {salesDocument,statusLabel,formatMoney} from './sales-document.mjs';
 import {deleteSale} from './delete-sale';
 import {receiptQuery,receiptNumber} from './supplier-utils.mjs';
@@ -28,7 +29,7 @@ export default function SalesHistory({profile,customers=[],products=[],staff=[],
  const finishEdit=()=>{setEditing(null);setMessage('تم حفظ تعديل الفاتورة وتصحيح حسابها والمخزون.');setRefresh(n=>n+1);};
  const edit=row=>{if(!canEditArchivedInvoice(profile,row)||!onUpdateInvoice)return;const draft=archiveInvoiceDraft(row);setEditing(draft);setEditItems([]);setEditSearch('');window.scrollTo({top:0,behavior:'instant'});};
  if(editing)return editing.kind==='system'?<SystemInvoiceEditor key={editing.id} original={editing} customers={customers} staff={staff} products={products} onUpdate={onUpdateInvoice} onSaved={finishEdit} onCancel={()=>setEditing(null)} a4={a4}/>:<CurrencyInvoice key={editing.id} kind="sale" contact={{display_name:editing.creatorName,phone:editing.creatorPhone}} products={products} parties={customers} initialInvoice={editing} items={editItems} setItems={setEditItems} search={editSearch} setSearch={setEditSearch} onUpdateInvoice={async(old,changes)=>{const ok=await onUpdateInvoice(old,changes);if(ok)finishEdit();return ok;}} onCancel={()=>setEditing(null)} a4={a4} openA4={openA4} saveA4={saveA4} shareA4={shareA4}/>;
- return <section className="salesArchive"><p className="archiveCount">{profile?.is_admin?'الإدارة — جميع وصولات المستخدمين':'وصولاتك فقط — بيانات باقي المستخدمين محمية'}</p>
+ return <section className="salesArchive"><WarehousePricing profile={profile} onChanged={()=>{setRefresh(n=>n+1);onChanged?.();}}/><p className="archiveCount">{profile?.is_admin?'الإدارة — جميع وصولات المستخدمين':'وصولاتك فقط — بيانات باقي المستخدمين محمية'}</p>
   <form className="card form" onSubmit={e=>{e.preventDefault();const q=normalizeSearch(query);change(setSearch,/^[#\d,٬\s]+$/.test(q)?receiptQuery(q):query.trim());setRefresh(n=>n+1)}}>
    <label>بحث برقم الوصل أو اسم الزبون<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="رقم الوصل / اسم الزبون"/></label>
    <div className="archiveFilters"><label>نوع البيع<select value={kind} onChange={e=>{change(setKind,e.target.value);setStatus('')}}><option value="">الجملة والمنظومات</option><option value="sale">بيع جملة</option><option value="system">بيع منظومات</option></select></label>
