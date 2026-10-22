@@ -1,13 +1,17 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useCallback,useEffect,useState} from 'react';
 import {supabase} from './supabase';
 import AppIcon from './app-icons';
 import {defaultSectionLayout,orderedSections,moveSection} from './section-layout-utils.mjs';
 export function useSectionLayout(userId){
- const [layout,setLayout]=useState(defaultSectionLayout),[error,setError]=useState(''),[loading,setLoading]=useState(true);
- useEffect(()=>{let live=true;setLayout(defaultSectionLayout);setLoading(true);supabase.rpc('solar_section_layout',{action:'get'}).then(({data,error})=>{if(live){if(error)setError('تعذر تحميل ترتيب الأقسام.');else{setLayout({...defaultSectionLayout,...data});setError('');}}}).catch(()=>live&&setError('تعذر تحميل ترتيب الأقسام.')).finally(()=>live&&setLoading(false));return()=>{live=false;};},[userId]);
+ const [layout,updateLayout]=useState(defaultSectionLayout),[error,setError]=useState(''),[loading,setLoading]=useState(true);
+ const setLayout=useCallback(next=>{updateLayout(next);window.dispatchEvent(new CustomEvent('solar-section-layout',{detail:{userId,layout:next}}));},[userId]);
+ useEffect(()=>{let live=true;updateLayout(defaultSectionLayout);setLoading(true);setError('');
+  const receive=e=>{if(e.detail?.userId===userId)updateLayout(current=>e.detail.layout.revision>=current.revision?e.detail.layout:current);};window.addEventListener('solar-section-layout',receive);
+  supabase.rpc('solar_section_layout',{action:'get'}).then(({data,error})=>{if(live){if(error)setError('تعذر تحميل ترتيب الأقسام.');else{updateLayout(current=>data.revision>=current.revision?{...defaultSectionLayout,...data}:current);setError('');}}}).catch(()=>live&&setError('تعذر تحميل ترتيب الأقسام.')).finally(()=>live&&setLoading(false));return()=>{live=false;window.removeEventListener('solar-section-layout',receive);};},[userId]);
  return {layout,setLayout,error,setError,loading};
 }
+
 export default function SectionLayoutEditor({layout,rows,onSaved,onCancel}){
  const [mobile,setMobile]=useState(layout.mobileColumns),[desktop,setDesktop]=useState(layout.desktopColumns),[order,setOrder]=useState(()=>orderedSections(rows,layout.order).map(r=>r[0])),[busy,setBusy]=useState(false),[error,setError]=useState(''),[dragging,setDragging]=useState(''),[picked,setPicked]=useState('');
  const names=new Map(rows);

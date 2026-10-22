@@ -20,6 +20,12 @@ do $$declare r jsonb;begin
  begin perform public.solar_section_layout('view','{"mode":"groups","expectedRevision":5}');raise exception 'stale view overwritten';exception when sqlstate 'PT409' then null;end;
  r:=public.solar_section_layout('view','{"mode":"groups","expectedRevision":6}');
  if public.solar_section_layout()<>r or r->>'mobileColumns'<>'3' or r->'order'<> '["cash","sale"]' then raise exception 'cross-device state not persisted';end if;
+ r:=public.solar_section_layout('view','{"mode":"premium","expectedRevision":7}');
+ if r->>'mode'<>'premium' or r->>'mobileColumns'<>'3' or r->'order'<>'["cash","sale"]' then raise exception 'premium lost column preferences';end if;
+ r:=public.solar_section_layout('view','{"mode":"desk","expectedRevision":8}');
+ if r->>'mode'<>'desk' then raise exception 'desk not saved';end if;
+ r:=public.solar_section_layout('view','{"mode":"groups","expectedRevision":9}');
+
 end$$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003552',true);
 do $$declare r jsonb;begin

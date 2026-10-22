@@ -1,0 +1,16 @@
+'use client';
+import {useRef,useState} from 'react';
+import {supabase} from './supabase';
+import {saveRequest} from './save-request.mjs';
+const groups=[['staff','الإداريون'],['installers','قسم التنصيب'],['warehouse','مسؤولو المخازن'],['all','الجميع']];
+export default function AdminAnnouncement({onSent}){
+ const [open,setOpen]=useState(false),[target,setTarget]=useState('all'),[title,setTitle]=useState(''),[body,setBody]=useState(''),[preview,setPreview]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[success,setSuccess]=useState('');
+ const sending=useRef(false),attempt=useRef(null);
+ const payload={target,heading:title.trim(),message:body.trim()},key=JSON.stringify(payload),locked=!!attempt.current;
+ async function run(send){if(sending.current)return;sending.current=true;setBusy(true);setError('');setSuccess('');
+  try{if(send&&!attempt.current)attempt.current={id:crypto.randomUUID(),payload,key};const actual=send?attempt.current:{payload};
+   const {data,error}=await saveRequest(signal=>supabase.rpc('solar_admin_announcement',{action:send?'send':'preview',...actual.payload,request_id:send?actual.id:null}).abortSignal(signal));if(error)throw error;
+   if(send){attempt.current=null;setPreview(null);setTitle('');setBody('');setSuccess('تم إرسال الإشعار إلى '+data.recipients+' مستلم.');if(onSent)void Promise.resolve().then(onSent).catch(()=>{});}else setPreview({...data,key});
+  }catch(e){if(send&&e.code)attempt.current=null;setError(e.message||'تعذر تأكيد الإرسال. أعد المحاولة بنفس الرسالة.');}finally{sending.current=false;setBusy(false);}}
+ return <section className="adminAnnouncement"><button className="adminAnnouncementToggle" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open}>إرسال إشعار من الإدارة <span>{open?'−':'＋'}</span></button>{open&&<form onSubmit={e=>{e.preventDefault();run(false);}}><label>إلى<select aria-label="فئة مستلمي الإشعار" disabled={busy||locked} value={target} onChange={e=>{setTarget(e.target.value);setPreview(null);}}>{groups.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select></label><label>عنوان الإشعار<input aria-label="عنوان إشعار الإدارة" required maxLength={120} disabled={busy||locked} value={title} onChange={e=>{setTitle(e.target.value);setPreview(null);}}/></label><label>الرسالة<textarea aria-label="رسالة الإدارة" required maxLength={2000} rows={3} disabled={busy||locked} value={body} onChange={e=>{setBody(e.target.value);setPreview(null);}}/></label>{preview?.key===key&&<div className="adminAnnouncementPreview"><small>{groups.find(([v])=>v===target)?.[1]} · {preview.recipients} مستلم</small><b>{preview.title}</b><p>{preview.message}</p><small>من: {preview.sender}</small></div>}{error&&<p className="pushMessage error" role="alert">{error}</p>}{success&&<p className="pushMessage" role="status">{success}</p>}{locked?<button type="button" disabled={busy} onClick={()=>run(true)}>{busy?'جاري التأكيد…':'إعادة تأكيد إرسال نفس الإشعار'}</button>:preview?.key===key?<div className="adminAnnouncementActions"><button type="button" disabled={busy||!preview.recipients} onClick={()=>run(true)}>{busy?'جاري الإرسال…':'إرسال الإشعار'}</button><button type="button" disabled={busy} onClick={()=>setPreview(null)}>تعديل الرسالة</button></div>:<button disabled={busy}>{busy?'جاري التحضير…':'معاينة الإشعار'}</button>}</form>}</section>;
+}
