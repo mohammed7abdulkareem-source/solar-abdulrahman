@@ -1,5 +1,6 @@
 -- Run against the isolated fixture database, never against production.
 begin;
+update solar_private.exchange_settings set rate=null,revision=0,updated_at=null,updated_by=null where id;
 insert into public.profiles(id,display_name,is_admin,permissions,user_type) values
  ('00000000-0000-0000-0000-000000003310','FX Admin',true,'{}','admin_staff'),
  ('00000000-0000-0000-0000-000000003311','FX Buyer',false,'{"purchase":true,"sale":true,"system":true,"salesDeleteOwn":true}','admin_staff'),
@@ -7,6 +8,7 @@ insert into public.profiles(id,display_name,is_admin,permissions,user_type) valu
 insert into public.suppliers(id,name) values(-3310,'FX Supplier');
 insert into public.customers(id,name,customer_type,owner_id) values(-3310,'FX Customer','wholesale','00000000-0000-0000-0000-000000003311');
 insert into public.products(id,code,name,qty,cost) values(-3310,'FX-3310','FX Panel',10,100000),(-3311,'FX-3311','FX Battery',0,0);
+insert into solar_private.warehouse_access(user_id,all_warehouses) values('00000000-0000-0000-0000-000000003311',true);
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003311',true);
 do $$begin
@@ -47,7 +49,7 @@ do $$declare response jsonb;begin
  response:=public.solar_invoice_save('00000000-0000-0000-0000-000000033104','{"kind":"purchase","mode":"credit","party":"FX Supplier","sourceCurrency":"IQD","exchangeRate":1,"expenses":0,"items":[{"id":-3310,"qty":5,"price":150000}]}');
  if not exists(select 1 from public.products where id=-3310 and qty=20 and cost=120000) then raise exception 'FAIL mixed currency weighted average';end if;
  if not exists(select 1 from public.transactions where id=current_setting('fx.sale')::bigint and cost=550000 and profit=200000) then raise exception 'FAIL historic sale changed';end if;
- response:=public.solar_invoice_save('00000000-0000-0000-0000-000000033105',jsonb_build_object('invoiceId',current_setting('fx.sale')::bigint,'expectedRevision',0,'kind','sale','mode','credit','party','FX Customer','sourceCurrency','IQD','exchangeRate',1,'expenses',0,'items',jsonb_build_array(jsonb_build_object('id',-3310,'qty',5,'price',160000))));
+ response:=public.solar_invoice_save('00000000-0000-0000-0000-000000033105',jsonb_build_object('invoiceId',current_setting('fx.sale')::bigint,'expectedRevision',1,'kind','sale','mode','credit','party','FX Customer','sourceCurrency','IQD','exchangeRate',1,'expenses',0,'items',jsonb_build_array(jsonb_build_object('id',-3310,'qty',5,'price',160000))));
  if (response->>'cost')::numeric<>550000 or (response->>'profit')::numeric<>250000 then raise exception 'FAIL edit revalued historic cost';end if;
  begin perform public.solar_purchase_delete(current_setting('fx.purchase')::bigint,0);raise exception 'FAIL deletion after subsequent movement';exception when serialization_failure or sqlstate 'PT409' then null;end;
  begin perform public.solar_invoice_save('00000000-0000-0000-0000-000000033106',jsonb_build_object('invoiceId',current_setting('fx.sale')::bigint,'expectedRevision',0,'kind','sale','mode','credit','sourceCurrency','IQD','expenses',0,'items',jsonb_build_array(jsonb_build_object('id',-3310,'qty',5,'price',150000))));raise exception 'FAIL stale invoice revision';exception when serialization_failure or sqlstate 'PT409' then null;end;
@@ -76,10 +78,10 @@ end $$;
 -- System sales also receive a server snapshot; later USD purchases cannot
 -- change installation cost/profit. Cash remains receipt-driven for systems.
 do $$declare response jsonb;sid bigint;begin
- response:=public.solar_invoice_save('00000000-0000-0000-0000-000000033111','{"kind":"system","mode":"credit","party":"FX Customer","sourceCurrency":"IQD","exchangeRate":1,"total":200000,"expenses":10000,"installerId":"00000000-0000-0000-0000-000000003312","customerAddress":"Test address","items":[{"id":-3310,"qty":1,"price":0,"cost":1}]}');sid:=(response->>'id')::bigint;
- if (response->>'cost')::numeric<>118000 or (response->>'profit')::numeric<>72000 then raise exception 'FAIL system cost snapshot';end if;
+ response:=public.solar_invoice_save('00000000-0000-0000-0000-000000033111','{"kind":"system","mode":"credit","party":"FX Customer","sourceCurrency":"IQD","exchangeRate":1,"total":200000,"expenses":0,"installerId":"00000000-0000-0000-0000-000000003312","customerAddress":"Test address","items":[{"id":-3310,"qty":1,"price":0,"cost":1}]}');sid:=(response->>'id')::bigint;
+ if (response->>'cost')::numeric<>121200 or (response->>'profit')::numeric<>78800 then raise exception 'FAIL system cost snapshot';end if;
  perform public.solar_invoice_save('00000000-0000-0000-0000-000000033112','{"kind":"purchase","mode":"credit","party":"FX Supplier","sourceCurrency":"USD","exchangeRate":1600,"expenses":0,"items":[{"id":-3310,"qty":1,"price":100}]}');
- if not exists(select 1 from public.transactions where id=sid and cost=118000 and profit=72000) then raise exception 'FAIL system was repriced';end if;
+ if not exists(select 1 from public.transactions where id=sid and cost=121200 and profit=78800) then raise exception 'FAIL system was repriced';end if;
 end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003312',true);
 do $$begin

@@ -1,6 +1,8 @@
 import {supabase} from './supabase';
 import {saveRequest} from './save-request.mjs';
 import {invoicePayload} from './currency-utils.mjs';
+import {invoiceAttemptSignature} from './inventory-valuation.mjs';
+import {publishValuation,refreshValuation} from './valuation-events.mjs';
 
 export async function loadExchangeRate(){
   const {data,error}=await supabase.rpc('solar_exchange_rate_get');
@@ -10,17 +12,19 @@ export async function loadExchangeRate(){
 export async function saveExchangeRate(rate,revision){
   const {data,error}=await supabase.rpc('solar_exchange_rate_set',{rate:Number(rate),expected_revision:revision});
   if(error)throw error;
+  publishValuation(data);
   return data;
 }
 // A retained attempt is used after network failures. Replaying an identical
 // request returns the prior receipt without changing stock or cash again.
 export async function saveCurrencyInvoice(attempt,kind,meta,items,original){
-  const payload=invoicePayload(kind,meta,items,original);
-  const signature=JSON.stringify(payload);
+  const candidate=invoicePayload(kind,meta,items,original);
+  const signature=invoiceAttemptSignature(candidate);
   if(attempt.current&&attempt.current.signature!==signature)throw new Error('تعذر تأكيد محاولة الحفظ السابقة. أعد المحاولة بنفس البيانات أولاً.');
-  if(!attempt.current)attempt.current={requestId:crypto.randomUUID(),signature};
+  if(!attempt.current)attempt.current={requestId:crypto.randomUUID(),signature,payload:candidate};
+  const payload=attempt.current.payload;
   const {data,error}=await saveRequest(signal=>supabase.rpc('solar_invoice_save',{request_id:attempt.current.requestId,payload}).abortSignal(signal));
-  if(error){if(error.code)attempt.current=null;throw error;}
+  if(error){if(error.code)attempt.current=null;if(error.code==='PT409')refreshValuation();throw error;}
   attempt.current=null;
   return data;
 }

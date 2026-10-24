@@ -1,6 +1,7 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from './supabase';
+import {VALUATION_EVENT} from './valuation-events.mjs';
 
 export async function inventoryCall(action,payload={},requestId=null){
  const {data,error}=await supabase.rpc('solar_inventory',{action,payload,request_id:requestId});
@@ -20,6 +21,7 @@ export function useWarehouseInventory({aggregate=false,versionKey,initialWarehou
  const [warehouseId,setWarehouse]=useState(()=>initialWarehouseId?String(initialWarehouseId):''),[version,setVersion]=useState(0),[data,setData]=useState(null),[loaded,setLoaded]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const generation=useRef(0);
  const refresh=useCallback(()=>setVersion(v=>v+1),[]);
+ useEffect(()=>{window.addEventListener(VALUATION_EVENT,refresh);return()=>window.removeEventListener(VALUATION_EVENT,refresh);},[refresh]);
  useEffect(()=>{const id=++generation.current;let live=true;setLoading(true);setError('');
   inventoryCall('stock',{warehouseId:warehouseId?Number(warehouseId):null}).then(result=>{
    if(!live||id!==generation.current)return;
