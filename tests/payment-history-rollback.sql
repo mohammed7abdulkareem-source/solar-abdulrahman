@@ -44,6 +44,7 @@ do $$declare a jsonb;b jsonb;c jsonb;r jsonb;begin
  r:=public.solar_customer_payment_save(gen_random_uuid(),jsonb_build_object('customerId',-370001,'amount',37,'mode','payment','notes','لقطة أصلية','expectedToken',r->>'token'));
  perform set_config('test.original',r::text,true);
  a:=public.solar_payment_history('get',jsonb_build_object('id',(r->>'id')::bigint));
+ if a->'receipt' ?| array['cashBefore','cashAfter','cashBalance','accountContext','accountToken'] then raise exception 'FAIL internal save context exposed through receipt reader';end if;
  if a->'receipt'->>'balanceBasis'<>'issued' or a->'receipt'->>'remaining'<>r->>'remaining' or a->'receipt'->>'oldBalance'<>r->>'oldBalance' then raise exception 'FAIL saved issue snapshot';end if;
 end$$;
 reset role;
