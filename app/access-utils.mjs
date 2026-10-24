@@ -1,3 +1,4 @@
+import {canReadPaymentKind,paymentKinds} from './record-browser-utils.mjs';
 export const cashOwner = row => row.cashboxUserId || row.createdBy || null;
 export const isWarehouse = profile => profile?.user_type === 'warehouse';
 export const isEngineer = profile => profile?.user_type === 'installer';
@@ -25,6 +26,7 @@ export function canOpenPage(profile, page) {
   if (page === 'tahseel') return profile.permissions?.tahseel !== undefined ? !!profile.permissions.tahseel : !!profile.permissions?.system;
   if (page === 'cashTransfers') return !!(profile.permissions?.cashTransferSend || profile.permissions?.financeReceive);
   if (page === 'installations') return !!(profile.permissions?.installations || profile.permissions?.system);
+  if (page === 'paymentHistory') return paymentKinds.some(([kind])=>canReadPaymentKind(profile,kind));
   if (page === 'salesHistory') return !!(profile.permissions?.salesHistory || profile.permissions?.sale || profile.permissions?.system || profile.permissions?.installations || profile.permissions?.salesDeleteOwn);
   return !!profile.permissions?.[page];
 }
