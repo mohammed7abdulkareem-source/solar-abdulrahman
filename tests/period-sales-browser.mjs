@@ -1,0 +1,57 @@
+process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY='1';
+import assert from 'node:assert/strict';
+import {createHmac} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import {mkdir,writeFile} from 'node:fs/promises';
+const {chromium}=await import(process.env.SOLAR_PLAYWRIGHT_MODULE||'playwright-core');
+const base='http://127.0.0.1:3073',api='http://127.0.0.1:3079',db='solar_v371_browser',dir='/workspace/solar-review/v371/browser';await mkdir(dir,{recursive:true});
+const sql=q=>execFileSync('python',['/workspace/solar-review/v359/db.py',db],{input:q,encoding:'utf8'}).trim();
+const ids={admin:'00000000-0000-0000-0000-000000003710',owner:'00000000-0000-0000-0000-000000003711',other:'00000000-0000-0000-0000-000000003712',history:'00000000-0000-0000-0000-000000003713'};
+const errors=[],calls=[],contexts=[],encode=x=>Buffer.from(JSON.stringify(x)).toString('base64url');
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+async function open(who,section){
+ const uid=ids[who],raw=encode({alg:'HS256',typ:'JWT'})+'.'+encode({role:'authenticated',sub:uid,exp:Math.floor(Date.now()/1000)+3600}),token=raw+'.'+createHmac('sha256','solar-local-test-only-signing-secret-347').update(raw).digest('base64url');
+ const ctx=await browser.newContext({viewport:{width:390,height:920},hasTouch:true});contexts.push(ctx);ctx.setDefaultTimeout(20000);
+ await ctx.addInitScript(({uid,token})=>{localStorage.setItem('sb-afxxaafsuscwyjzrnagc-auth-token',JSON.stringify({access_token:token,refresh_token:'local-fixture',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:{id:uid,email:'fixture@local.test',aud:'authenticated'}}));window.__documentHtmls=[];const descriptor=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,'srcdoc');Object.defineProperty(HTMLIFrameElement.prototype,'srcdoc',{...descriptor,set(html){window.__documentHtmls.push(html);return descriptor.set.call(this,html);}});},{uid,token});
+ await ctx.routeWebSocket(/supabase/,socket=>socket.close());
+ await ctx.route('https://afxxaafsuscwyjzrnagc.supabase.co/**',async route=>{const req=route.request(),u=new URL(req.url());if(req.method()==='OPTIONS')return route.fulfill({status:204,headers:{'access-control-allow-origin':'*'}});if(u.pathname==='/auth/v1/user')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:uid,email:'fixture@local.test',aud:'authenticated'})});if(!u.pathname.startsWith('/rest/v1/'))return route.abort();
+  const headers={...req.headers(),authorization:'Bearer '+token};delete headers.apikey;delete headers.host;delete headers.origin;
+  const r=await ctx.request.fetch(api+u.pathname.replace('/rest/v1','')+u.search,{method:req.method(),headers,data:req.postDataBuffer()||undefined}),body=await r.text();if(u.pathname.includes('/rpc/'))calls.push({who,path:u.pathname,payload:req.postData()?JSON.parse(req.postData()):null,status:r.status(),...(u.pathname.endsWith('solar_sales_period')?{result:JSON.parse(body)}:{})});if(r.status()>=400)errors.push({who,path:u.pathname,status:r.status(),body});return route.fulfill({response:r,body});});
+ await ctx.route('**/*',route=>{const u=new URL(route.request().url());if(u.hostname==='127.0.0.1'||u.protocol==='data:')return route.continue();if(u.hostname==='afxxaafsuscwyjzrnagc.supabase.co')return route.fallback();return route.abort();});
+ const page=await ctx.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/?section='+section);return {page,ctx,token};
+}
+
+let page;
+const fingerprint=()=>sql("select md5(jsonb_build_object('tx',(select jsonb_agg(to_jsonb(t) order by id) from transactions t),'items',(select jsonb_agg(to_jsonb(i) order by id) from transaction_items i),'stock',(select jsonb_agg(to_jsonb(p) order by id) from products p))::text)");
+async function dates(p,from='2026-10-24',to=from){await p.locator('input[type=date]').nth(0).fill(from);await p.locator('input[type=date]').nth(1).fill(to);}
+async function result(p,quantity){await p.locator('.periodSalesSummary strong').nth(1).filter({hasText:quantity}).waitFor();assert.equal(await p.locator('.periodSalesSummary strong').nth(1).innerText(),quantity);}
+try{
+ const before=fingerprint(),owner=await open('owner','salesHistory');page=owner.page;await page.locator('.saleHistoryCard').first().waitFor();assert.equal(await page.locator('.saleHistoryCard').count(),30);
+ const switcher=page.getByRole('group',{name:'طريقة عرض المبيعات السابقة'});assert.equal(await switcher.getByRole('button').count(),3);
+ await dates(page);await switcher.getByRole('button',{name:'مبيعات الفترة',exact:true}).click();await result(page,'91.126');assert.equal(await page.locator('.periodSalesSummary strong').nth(2).innerText(),'44');assert.equal(await page.locator('.periodMaterialsTable tbody tr').count(),3);
+ assert.match(await page.locator('.periodMaterialsTable tbody tr').nth(1).innerText(),/0002.*86.*878/s);assert.equal(await page.locator('.periodMaterialsTable tbody tr').filter({hasText:'مادة بنفس الاسم'}).count(),2);
+ for(const width of [320,390,768,1440]){await page.setViewportSize({width,height:960});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'period overflow '+width);await page.locator('.recordViewSwitch').screenshot({path:dir+'/tabs-'+width+'.png'});await page.screenshot({path:dir+'/period-'+width+'.png',fullPage:true});}
+ await page.setViewportSize({width:390,height:920});await page.locator('.periodSales').getByRole('button',{name:'معاينة',exact:true}).waitFor({state:'visible'});
+ const preview=page.locator('.periodSales').getByRole('button',{name:'معاينة',exact:true});await preview.isEnabled().then(async yes=>{if(!yes)await page.waitForFunction(()=>!document.querySelector('.periodSales .preview').disabled);});
+ const popupPromise=page.waitForEvent('popup');await preview.click();const popup=await popupPromise;await popup.locator('.pdfPage img').first().waitFor();await popup.screenshot({path:dir+'/period-pdf.png'});await popup.close();
+ const html=await page.evaluate(()=>window.__documentHtmls.at(-1));assert.ok(html.includes('المتبقي الحالي'));assert.ok(!/سعر البيع|مبلغ البيع|الكلفة|مجموع الفاتورة/.test(html));
+ const downloadPromise=page.waitForEvent('download');await page.locator('.periodSales').getByRole('button',{name:'حفظ PDF',exact:true}).click();const download=await downloadPromise;await download.saveAs(dir+'/period.pdf');assert.match((await import('node:fs')).readFileSync(dir+'/period.pdf').subarray(0,8).toString(),/^%PDF-1\.4/);
+ const shared=page.waitForEvent('download');await page.locator('.periodSales').getByRole('button',{name:'مشاركة',exact:true}).click();await(await shared).saveAs(dir+'/shared-period.pdf');
+ await page.locator('.archiveFilters select').nth(0).selectOption('sale');await result(page,'85.126');await page.locator('.archiveFilters select').nth(0).selectOption('system');await result(page,'6');await page.locator('.archiveFilters select').nth(1).selectOption('closed');await page.getByText('لا توجد مواد مبيوعة ضمن الفترة والاختيارات.',{exact:true}).waitFor();assert.equal(await page.locator('.periodSales .reportExport').count(),0);
+ await page.locator('.archiveFilters select').nth(0).selectOption('');await result(page,'91.126');await dates(page,'2026-10-25');await result(page,'4');
+ await dates(page,'2026-10-26','2026-10-24');await page.getByRole('alert').filter({hasText:'تاريخ البداية'}).waitFor();assert.equal(await page.locator('.periodSales .reportExport').count(),0);
+ await dates(page);await result(page,'91.126');await page.reload();await page.locator('.periodSales').waitFor();assert.equal(await switcher.getByRole('button',{name:'مبيعات الفترة',exact:true}).getAttribute('aria-pressed'),'true');
+ await dates(page);await result(page,'91.126');await switcher.getByRole('button',{name:'العرض الحالي',exact:true}).click();await page.locator('.saleHistoryCard').first().waitFor();assert.equal(await page.locator('.saleHistoryCard').count(),30);await switcher.getByRole('button',{name:'وصل واحد مع الأسهم',exact:true}).click();await page.locator('.saleHistoryCard').first().waitFor();assert.equal(await page.locator('.saleHistoryCard').count(),1);
+ const other=await open('other','salesHistory');await other.page.locator('.saleHistoryCard').waitFor();await dates(other.page);await other.page.getByRole('button',{name:'مبيعات الفترة',exact:true}).click();await result(other.page,'7');assert.equal(await other.page.locator('.periodMaterialsTable tbody tr').count(),1);
+ const history=await open('history','salesHistory');await history.page.locator('.saleHistoryCard').waitFor();await dates(history.page);await history.page.getByRole('button',{name:'مبيعات الفترة',exact:true}).click();await result(history.page,'2');assert.equal(await history.page.locator('.periodMaterialsTable tbody tr td').last().innerText(),'—');
+ const admin=await open('admin','salesHistory');await admin.page.locator('.saleHistoryCard').first().waitFor();await dates(admin.page);await admin.page.getByRole('button',{name:'مبيعات الفترة',exact:true}).click();await result(admin.page,'100.126');assert.match(await admin.page.locator('.periodMaterialsTable tbody tr').nth(1).innerText(),/903/);
+
+ await page.goto(base+'/?section=salesHistory');await page.locator('.saleHistoryCard').first().waitFor();await dates(page,'2026-10-26');await page.getByRole('button',{name:'مبيعات الفترة',exact:true}).click();await result(page,'72');assert.equal(await page.locator('.periodMaterialsTable tbody tr').count(),72);
+ await page.waitForFunction(()=>!document.querySelector('.periodSales .preview')?.disabled,{},{timeout:60000});assert.match(await page.locator('.periodSales .reportExportStatus').innerText(),/[2-9] صفحة PDF/);
+ const longPopup=page.waitForEvent('popup');await page.locator('.periodSales').getByRole('button',{name:'معاينة',exact:true}).click();const longPreview=await longPopup;await longPreview.locator('.pdfPage img').first().waitFor();assert.ok(await longPreview.locator('.pdfPage img').count()>=2);await longPreview.screenshot({path:dir+'/multipage-pdf.png',fullPage:true});await longPreview.close();
+ const longHtml=await page.evaluate(()=>window.__documentHtmls.at(-1));assert.ok(longHtml.includes('مادة التقرير الطويل رقم 72'));assert.ok(!/سعر البيع|مبلغ البيع|الكلفة/.test(longHtml));
+ const longDownload=page.waitForEvent('download');await page.locator('.periodSales').getByRole('button',{name:'حفظ PDF',exact:true}).click();await(await longDownload).saveAs(dir+'/multipage.pdf');
+ assert.equal(fingerprint(),before);assert.deepEqual(errors,[]);
+ for(const call of calls.filter(c=>c.path.endsWith('solar_sales_period')))assert.ok(!/"(?:cost|cost_basis|price|profit|amount|total)"/.test(JSON.stringify(call.result)));
+ await writeFile(dir+'/results.json',JSON.stringify({pass:true,errors,calls,readOnly:true},null,2));console.log('PASS actual browser/API/PDF: third quantity-only view, all pages, fractional units, dates/status/kind, original views, per-user data/stock scope, 320–1440px, preview/download/share, read-only');
+}catch(e){for(const [i,ctx]of contexts.entries()){const p=ctx.pages()[0];if(p)await p.screenshot({path:dir+'/failure-'+i+'.png',fullPage:true});}await writeFile(dir+'/failure.json',JSON.stringify({message:e.message,errors,calls},null,2));throw e;}finally{await Promise.all(contexts.map(c=>c.close()));await browser.close();}

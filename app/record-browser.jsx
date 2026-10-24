@@ -2,15 +2,15 @@
 import {useEffect,useState} from 'react';
 import AppIcon from './app-icons';
 
-export function useRecordView(userId,section){
+export function useRecordView(userId,section,allowPeriod=false){
  const [mode,setMode]=useState('list');
  const key='solar-record-view:'+userId+':'+section;
- useEffect(()=>{try{setMode(localStorage.getItem(key)==='single'?'single':'list');}catch{setMode('list');}},[key]);
- const choose=value=>{if(!['list','single'].includes(value))return;setMode(value);try{localStorage.setItem(key,value);}catch{}};
+ useEffect(()=>{try{const stored=localStorage.getItem(key);setMode(stored==='single'||allowPeriod&&stored==='period'?stored:'list');}catch{setMode('list');}},[key,allowPeriod]);
+ const choose=value=>{if(!['list','single',...(allowPeriod?['period']:[])].includes(value))return;setMode(value);try{localStorage.setItem(key,value);}catch{}};
  return [mode,choose];
 }
-export function RecordViewSwitch({mode,onChange,label='طريقة عرض الوصولات',disabled=false}){
- return <div className="recordViewSwitch" role="group" aria-label={label}>{[['list','العرض الحالي','list'],['single','وصل واحد مع الأسهم','receipt']].map(([value,text,icon])=><button type="button" key={value} aria-pressed={mode===value} disabled={disabled} onClick={()=>onChange(value)}><AppIcon name={icon} size={16}/>{text}</button>)}</div>;
+export function RecordViewSwitch({mode,onChange,label='طريقة عرض الوصولات',disabled=false,allowPeriod=false}){
+ return <div className={'recordViewSwitch'+(allowPeriod?' hasPeriod':'')} role="group" aria-label={label}>{[['list','العرض الحالي','list'],['single','وصل واحد مع الأسهم','receipt'],...(allowPeriod?[['period','مبيعات الفترة','chart']]:[])].map(([value,text,icon])=><button type="button" key={value} aria-pressed={mode===value} disabled={disabled} onClick={()=>onChange(value)}><AppIcon name={icon} size={16}/><span>{text}</span></button>)}</div>;
 }
 export function RecordNavigator({index,total,onPrevious,onNext,busy=false,label='التنقل بين الوصولات',children,previousDisabled,nextDisabled}){
  const first=previousDisabled??index<=0,last=nextDisabled??index+1>=total;

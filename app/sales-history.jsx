@@ -12,22 +12,23 @@ import {deleteSale} from './delete-sale';
 import {receiptQuery,receiptNumber} from './supplier-utils.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 import {RecordNavigator,RecordViewSwitch,useRecordView} from './record-browser';
+import PeriodSales from './period-sales';
 import {baghdadDay,recordPage} from './record-browser-utils.mjs';
 
 export default function SalesHistory({profile,customers=[],products=[],staff=[],onUpdateInvoice,a4,openA4,saveA4,shareA4,onFollow,onChanged}){
- const [mode,setMode]=useRecordView(profile.id,'sales');
+ const [mode,setMode]=useRecordView(profile.id,'sales',true);
  const [position,setPosition]=useState(0);
  const moved=useRef(false);
  const [editing,setEditing]=useState(null),[editItems,setEditItems]=useState([]),[editSearch,setEditSearch]=useState(''),[deleting,setDeleting]=useState(null),[message,setMessage]=useState('');
  async function remove(row){if(deleting!==null)return;setDeleting(row.id);setError('');setMessage('');try{if(await deleteSale(row.id)){setMessage('تم حذف الفاتورة وإعادة المواد وتصحيح الحساب.');setOffset(0);setPosition(0);setRefresh(n=>n+1);await onChanged?.()}}catch(e){setError(e.message)}finally{setDeleting(null)}}
  const [query,setQuery]=useState(''),[search,setSearch]=useState(''),[kind,setKind]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[status,setStatus]=useState(''),[offset,setOffset]=useState(0),[refresh,setRefresh]=useState(0);
  const [result,setResult]=useState({rows:[],count:0}),[loading,setLoading]=useState(true),[error,setError]=useState('');
- useEffect(()=>{let active=true;setLoading(true);setError('');
+ useEffect(()=>{let active=true;setError('');if(mode==='period'){setLoading(false);return()=>{active=false;};}setLoading(true);
   supabase.rpc('solar_sales_history',{search_text:search,sale_kind:kind,date_from:from||null,date_to:to||null,job_status:status,page_offset:offset}).then(({data,error})=>{
    if(!active)return;if(error){setError('تعذر تحميل المبيعات. حاول التحديث مرة ثانية.');setResult({rows:[],count:0});}else{setResult(data||{rows:[],count:0});if(offset>0&&offset>=data.count){setOffset(Math.floor(Math.max(0,data.count-1)/30)*30);setPosition(0);}}setLoading(false);
   }).catch(()=>{if(active){setError('تعذر الاتصال. حاول مرة ثانية.');setLoading(false)}});
   return()=>{active=false};
- },[search,kind,from,to,status,offset,refresh]);
+ },[search,kind,from,to,status,offset,refresh,mode]);
  const current=Math.min(position,Math.max(0,result.rows.length-1)),shown=mode==='single'?result.rows.slice(current,current+1):result.rows;
  const move=delta=>{moved.current=true;const next=recordPage(offset+current+delta,result.count);if(next.offset!==offset)setLoading(true);setOffset(next.offset);setPosition(next.index);};
  useEffect(()=>{if(!loading&&moved.current){document.querySelector('.salesArchive .saleHistoryCard')?.scrollIntoView({block:'start'});moved.current=false;}},[position,offset,loading]);
@@ -45,9 +46,9 @@ export default function SalesHistory({profile,customers=[],products=[],staff=[],
    <div className="dateRange"><label>من<input type="date" value={from} onChange={e=>change(setFrom,e.target.value)}/></label><label>إلى<input type="date" min={from||undefined} value={to} onChange={e=>change(setTo,e.target.value)}/></label></div>
    <div className="recordDateShortcuts"><button type="button" onClick={()=>{change(setFrom,baghdadDay());setTo(baghdadDay());}}>اليوم</button><button type="button" onClick={()=>{change(setFrom,'');setTo('');}}>كل الفترات</button></div><button disabled={loading}>بحث / تحديث</button>
   </form>
-  <RecordViewSwitch mode={mode} onChange={setMode} label="طريقة عرض المبيعات السابقة" disabled={loading}/>{mode==='single'&&<RecordNavigator label="التنقل بين فواتير البيع" index={offset+current} total={result.count} busy={loading||deleting!==null} onPrevious={()=>move(-1)} onNext={()=>move(1)}/>}
+  <RecordViewSwitch allowPeriod mode={mode} onChange={setMode} label="طريقة عرض المبيعات السابقة" disabled={loading}/>{mode==='single'&&<RecordNavigator label="التنقل بين فواتير البيع" index={offset+current} total={result.count} busy={loading||deleting!==null} onPrevious={()=>move(-1)} onNext={()=>move(1)}/>}
   {error&&<div className="workflowError" role="alert">{error}</div>}{message&&<div className="workflowSuccess" role="status">{message}</div>}
-  {loading?<div className="empty">جاري تحميل المبيعات…</div>:<><p className="archiveCount">{formatMoney(result.count)} فاتورة ضمن صلاحياتك</p>
+  {mode==='period'?<PeriodSales search={search} kind={kind} from={from} to={to} status={status} refresh={refresh} a4={a4}/>:loading?<div className="empty">جاري تحميل المبيعات…</div>:<><p className="archiveCount">{formatMoney(result.count)} فاتورة ضمن صلاحياتك</p>
   {!result.rows.length?<div className="empty">لا توجد مبيعات ضمن هذا الاختيار</div>:shown.map(row=><SalesArchiveCard key={row.id} row={row} profile={profile} warehouseStatus={preparation[row.id]||row.warehouse_status} doc={doc} openA4={openA4} saveA4={saveA4} shareA4={shareA4} onFollow={onFollow} onDelete={remove} deleting={deleting} onEdit={onUpdateInvoice&&canEditArchivedInvoice(profile,row)?edit:undefined} onWarrantyChanged={async()=>{setMessage('تم حفظ الضمان. رمز الوصل نفسه يعرض آخر تحديث.');setRefresh(n=>n+1);await onChanged?.();}}/>)}
   {mode==='list'&&<div className="archivePagination"><button disabled={offset===0} onClick={()=>{setPosition(0);setOffset(Math.max(0,offset-30));}}>السابق</button><span>{Math.floor(offset/30)+1} / {Math.max(1,Math.ceil(result.count/30))}</span><button disabled={offset+30>=result.count} onClick={()=>{setPosition(0);setOffset(offset+30);}}>التالي</button></div>}</>}
  </section>;

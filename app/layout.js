@@ -34,6 +34,7 @@ import './solar-horizon.css';
 import './premium-experience.css';
 import './phone-actions.css';
 import './record-browser.css';
+import './period-sales.css';
 import PWARegister from './pwa-register';
 export const metadata={title:'عبدالرحمن سولار',description:'إدارة فرع الطاقة الشمسية',manifest:'/manifest.webmanifest',icons:{icon:[{url:'/icon-192.png',sizes:'192x192',type:'image/png'},{url:'/icon-512.png',sizes:'512x512',type:'image/png'}],apple:[{url:'/apple-touch-icon.png',sizes:'180x180',type:'image/png'}]}};
 export const viewport={width:'device-width',initialScale:1,viewportFit:'cover',themeColor:'#123c48'};
