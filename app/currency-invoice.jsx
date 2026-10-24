@@ -17,13 +17,14 @@ import {unlockNotificationSound,playNotificationSound} from './notification-soun
 import {savedSaleInvoice} from './invoice-save-result.mjs';
 import SavedSaleReceipt from './saved-sale-receipt';
 import {currentSaleItems} from './inventory-valuation.mjs';
+import {refreshMaterialBrands} from './current-brand.mjs';
 
 const blank=kind=>({party:'',currency:'IQD',exchangeRate:'',cashCurrency:'IQD',mode:'credit',notes:'',expenses:'',warranty:blankWarranty()});
 export default function CurrencyInvoice({contact,kind,products:catalogProducts,parties,items:draftItems,setItems,search,setSearch,onSave,onUpdateInvoice,history=[],renderHistory,initialInvoice,initialParty='',onCancel,canEditRate=false,a4,openA4,saveA4,shareA4}){
  const [meta,setMeta]=useState(()=>{const party=parties.find(p=>p.name===initialParty);return {...blank(kind),party:initialParty,...(kind==='purchase'&&party?{currency:party.accountCurrency||'IQD',cashCurrency:party.accountCurrency||'IQD'}:{})};}),[saving,setSaving]=useState(false),[editing,setEditing]=useState(null),[backup,setBackup]=useState(null),[error,setError]=useState(''),[settings,setSettings]=useState(null),[saved,setSaved]=useState(null);
  const catalogVersion=useMemo(()=>JSON.stringify(catalogProducts||[]),[catalogProducts]);
  const inventory=useWarehouseInventory({versionKey:catalogVersion}),products=inventory.products;
- const items=kind==='sale'?currentSaleItems(draftItems,products,editing?.items):draftItems;
+ const items=kind==='sale'?currentSaleItems(draftItems,products,editing?.items):refreshMaterialBrands(draftItems,products);
  const opened=useRef(false),saveLock=useRef(false),partySeeded=useRef(!initialParty||kind!=='purchase'||parties.some(p=>p.name===initialParty));
  useEffect(()=>{if(partySeeded.current)return;const party=parties.find(p=>p.name===initialParty);if(!party)return;partySeeded.current=true;setMeta(m=>({...m,currency:party.accountCurrency||'IQD',cashCurrency:party.accountCurrency||'IQD'}));},[initialParty,kind,parties]);
  useEffect(()=>{let live=true;if(kind==='purchase')loadExchangeRate().then(data=>{if(live){setSettings(data);setMeta(m=>({...m,exchangeRate:m.exchangeRate|| (data.rate==null?'':String(data.rate))}));}}).catch(()=>{if(live)setError('تعذر تحميل الصرف المعتمد؛ حدّث البيانات قبل حفظ الشراء.');});return()=>{live=false;};},[kind]);

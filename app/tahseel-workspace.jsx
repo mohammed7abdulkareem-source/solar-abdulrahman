@@ -54,7 +54,7 @@ export default function TahseelWorkspace({products,userId,a4,openA4,onDirtyChang
   async function remove(row){if(!confirm('حذف مسودة '+(row.payload.customer||'منظومة '+row.payload.day+' × '+row.payload.night)+'؟'))return;await run(async()=>{
     await store.remove(row,userId);setDrafts(v=>v.filter(x=>x.id!==row.id));if(current?.id===row.id){const f=fresh();setForm(f);setBaseline(JSON.stringify(f));setCurrent(null);pendingId.current=null}setMessage('تم حذف المسودة.');
   })}
-  const html=()=>a4(fullAccess&&internal?'التحصيل — تفاصيل الكلفة':'عرض سعر منظومة',quoteDocument(form,fullAccess&&internal,fullAccess?null:result),money(result.price)+' د.ع',new Date(current?.created_at||Date.now()).toLocaleDateString('ar-IQ',{timeZone:'Asia/Baghdad'}));
+  const html=()=>a4(fullAccess&&internal?'التحصيل — تفاصيل الكلفة':'عرض سعر منظومة',quoteDocument(form,fullAccess&&internal,fullAccess?null:result,products),money(result.price)+' د.ع',new Date(current?.created_at||Date.now()).toLocaleDateString('ar-IQ',{timeZone:'Asia/Baghdad'}));
   const filename='عرض-منظومة-'+(form.customer||form.day+'-'+form.night)+(fullAccess&&internal?'-كلفة':'');
   function preview(){setError('');try{openA4(html())}catch(e){setError(e.message)}}
   const shownDrafts=drafts.filter(row=>normalizeSearch([row.payload.customer,row.payload.phone,row.payload.day+'×'+row.payload.night].join(' ')).includes(normalizeSearch(query)));

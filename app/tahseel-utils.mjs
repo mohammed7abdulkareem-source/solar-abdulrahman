@@ -1,3 +1,4 @@
+import {refreshMaterialBrands} from './current-brand.mjs';
 // Commercial quotation rules supplied by the shop; not an electrical design model.
 export const BATTERY_CAPACITIES = [5, 7.5, 10, 15, 25, 30];
 // Older saved quotations used a fixed 15-kilo battery.
@@ -42,10 +43,11 @@ export function calculateQuote(form) {
   const cost=round(materialsTotal+expensesTotal), markup=round(cost*(valid(markupPercent,1000)?Number(markupPercent):0)/100), price=round(cost+markup);
   return {panelQty,batteryQty,batteryCapacity:capacityValid?capacity:null,materials,expenses,materialsTotal,expensesTotal,cost,markupPercent:Number(markupPercent),markup,price,errors};
 }
-export function quoteDocument(form, internal=false, calculated=null) {
+export function quoteDocument(form, internal=false, calculated=null, products=[]) {
   const q=calculated||calculateQuote(form);if(q.errors.length)throw new Error(q.errors[0]);
   const e=escapeHtml;
-  const rows=q.materials.filter(x=>x.qty).map(x=>'<tr><td>'+e(x.name)+'<br><small>'+e(x.brand)+(x.key==='battery'?' • '+e(x.label):'')+'</small></td><td>'+money(x.qty)+'</td>'+(internal?'<td>'+money(x.unitCost)+'</td><td>'+money(x.total)+'</td>':'')+'</tr>').join('');
+  const materials=refreshMaterialBrands(q.materials.map(x=>({...x,id:form[x.key]?.id})),products);
+  const rows=materials.filter(x=>x.qty).map(x=>'<tr><td>'+e(x.name)+'<br><small>'+e(x.brand)+(x.key==='battery'?' • '+e(x.label):'')+'</small></td><td>'+money(x.qty)+'</td>'+(internal?'<td>'+money(x.unitCost)+'</td><td>'+money(x.total)+'</td>':'')+'</tr>').join('');
   const details=internal?'<h3>المصاريف</h3><table><thead><tr><th>البيان</th><th>المبلغ — د.ع</th></tr></thead><tbody>'+q.expenses.map(x=>'<tr><td>'+e(x.label)+(x.key==='panels'?' ('+money(x.qty)+' × '+money(x.unitCost)+')':'')+'</td><td>'+money(x.total)+'</td></tr>').join('')+'</tbody></table><div class="meta"><div>كلفة المواد: '+money(q.materialsTotal)+' د.ع</div><div>المصاريف: '+money(q.expensesTotal)+' د.ع</div><div>الكلفة الكلية: '+money(q.cost)+' د.ع</div><div>إضافة '+money(q.markupPercent)+'%: '+money(q.markup)+' د.ع</div></div>':'<p>السعر يشمل المواد ومصاريف التجهيز والتنصيب المذكورة في العرض.</p>';
   return '<div class="meta"><div>الزبون: '+e(form.customer||'—')+'</div><div>الهاتف: '+e(form.phone||'—')+'</div><div>نهاري: '+e(form.day)+' أمبير</div><div>ليلي: '+e(form.night)+' أمبير</div></div><table><thead><tr><th>المادة</th><th>العدد</th>'+(internal?'<th>كلفة الوحدة</th><th>الكلفة</th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table>'+details+(form.notes?'<div class="notes">'+e(form.notes).replace(/\n/g,'<br>')+'</div>':'')+'<p><small>عرض سعر تقديري حسب قاعدة احتساب المحل، وليس فاتورة بيع.</small></p>';
 }

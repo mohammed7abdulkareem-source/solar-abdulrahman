@@ -1,4 +1,5 @@
 import {fxCloudRows} from './fx-utils.mjs';
+import {refreshMaterialBrands} from './current-brand.mjs';
 import {createLatestLoader} from './data-refresh.mjs';
 import {changedRows} from './review-utils.mjs';
 import {createClient} from '@supabase/supabase-js';
@@ -55,7 +56,7 @@ const loadSnapshot=createLatestLoader(async userId=>{
  for(const x of [b,p,c,s,t,ti,ce,fx,contacts])if(x.error)throw x.error;
  const entries=ce.data.map(r=>({id:'cash:'+r.id,systemCash:true,kind:r.entry_type,cash:true,cashDelta:Number(r.delta),total:Math.abs(Number(r.delta)),cashboxUserId:r.owner_id,createdBy:r.owner_id,notes:r.notes||'',date:r.created_at,jobId:r.job_id}));
  const contactsByCreator=new Map(contacts.data.map(r=>[r.id,{creatorName:r.creatorName,creatorPhone:r.creatorPhone}]));
- const byInvoice=new Map();for(const item of ti.data){const list=byInvoice.get(item.transaction_id)||[];list.push(item);byInvoice.set(item.transaction_id,list);}
+ const byInvoice=new Map();for(const item of refreshMaterialBrands(ti.data,p.data)){const list=byInvoice.get(item.transaction_id)||[];list.push(item);byInvoice.set(item.transaction_id,list);}
  return {userId,brands:b.data.map(x=>({id:x.id,name:x.name})),products:p.data.map(mapProduct),customers:c.data.map(mapCustomer),suppliers:s.data.map(mapSupplier),tx:[...t.data.map(x=>({...mapTx(x,byInvoice.get(x.id)||[]),...(contactsByCreator.get(x.created_by||x.cashbox_user_id)||{})})),...entries,...fxCloudRows(fx.data)].sort((a,b)=>new Date(a.date)-new Date(b.date))};
 });
 export async function loadCloud(options={}){
