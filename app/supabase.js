@@ -1,3 +1,4 @@
+import {transactionColumns} from './cloud-snapshot-columns.mjs';
 import {fxCloudRows} from './fx-utils.mjs';
 import {refreshMaterialBrands} from './current-brand.mjs';
 import {createLatestLoader} from './data-refresh.mjs';
@@ -43,13 +44,13 @@ const loadSnapshot=createLatestLoader(async userId=>{
  if(!profile.active||['installer','warehouse'].includes(profile.user_type))return {userId,brands:[],products:[],customers:[],suppliers:[],tx:[]};
 
  const [b,p,c,s,t,ti,ce,fx,contacts]=await Promise.all([
-  allRows('brands'),
+  allRows('brands','id,name'),
   supabase.rpc('solar_inventory',{action:'catalog'}),
-  allRows('customers'),
-  allRows('suppliers'),
-  allRows('transactions'),
+  allRows('customers','id,name,phone,customer_type,owner_id'),
+  allRows('suppliers','id,name,phone,account_currency,currency_revision'),
+  allRows('transactions',transactionColumns),
   allRows('transaction_items'),
-  allRows('solar_cash_entries'),
+  allRows('solar_cash_entries','id,owner_id,entry_type,delta,notes,created_at,job_id'),
   supabase.rpc('solar_fx',{action:'state'}),
   supabase.rpc('solar_receipt_contacts')
  ]);

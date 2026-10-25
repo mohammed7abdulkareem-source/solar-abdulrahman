@@ -19,5 +19,15 @@ test('warranty follows current invoice materials and validates optional individu
 test('customer documents include approved QR and escaped warranty, drafts and warehouse copies do not claim approval',()=>{
  const row={kind:'sale',created_at:'2026-10-18',party_name:'عميل',items:[{product_id:1,product_name:'بطارية',qty:1,price:5}],warranty:{enabled:true,items:[{id:1,duration:2,unit:'years'}],maintenance:{duration:6,unit:'months'},notes:'<unsafe>'},warrantyToken:token};
  assert.ok(salesDocument(row).body.includes('<svg'));assert.ok(salesDocument(row).body.includes('&lt;unsafe&gt;'));assert.ok(!salesDocument(row,false).body.includes('رمز QR'));
- assert.ok(!warrantyDocument({...row,draft:true}).includes('<svg'));assert.ok(warrantyDocument({}).includes('بدون ضمان'));
+ assert.ok(!warrantyDocument({...row,draft:true}).includes('<svg'));assert.equal(warrantyDocument({}),'');
+});
+
+// A retained certificate/warehouse token must not imply an enabled warranty.
+test('unchecked warranties omit every warranty block, QR and no-warranty message in all invoice copies',()=>{
+ for(const kind of ['sale','system'])for(const customer of [true,false])for(const warranty of [undefined,{enabled:false},{enabled:false,items:[{id:1,duration:2,unit:'years'}]}]){
+  const row={kind,warranty,created_at:'2026-10-20',items:[{product_id:1,product_name:'مادة',qty:1,price:100}],warrantyToken:token,warehouseQrToken:token};
+  const doc=salesDocument(row,customer);assert.ok(!doc.body.includes('<svg'));assert.ok(!doc.body.includes('invoiceWarranty'));assert.ok(!doc.body.includes('بدون ضمان'));assert.ok(!doc.body.includes('فحص الفاتورة والضمان'));assert.ok(doc.body.includes('مادة'));
+ }
+ const enabled={kind:'sale',created_at:'2026-10-20',warranty:{enabled:true,items:[{id:1,duration:1,unit:'years'}],maintenance:{duration:6,unit:'months'}},items:[{product_id:1,product_name:'مادة',qty:1,price:100}],warrantyToken:token,warehouseQrToken:token};
+ assert.ok(salesDocument(enabled).body.includes('<svg'));assert.ok(salesDocument(enabled,false).body.includes('<svg'));assert.ok(salesDocument(enabled).body.includes('invoiceWarranty'));
 });

@@ -29,7 +29,7 @@ export function salesDocument(row,customer=true){
  if(!row.draft)meta.push([warehouseName?'المخزن':'تجهيز المخزن',[warehouseName,(row.warehouse_status||row.warehouseStatus)==='ready'?'✓ تم التجهيز':'بانتظار التجهيز'].filter(Boolean).join(' • ')]);
  const prices=customer&&!system;
  const safeToken=row.warehouseQrToken||row.warehouse_qr_token,token=customer?(row.warrantyToken||row.warranty_token||safeToken):safeToken;
- const qr=!row.draft&&token?warrantyQrSvg(token):'';
+ const qr=!row.draft&&row.warranty?.enabled&&token?warrantyQrSvg(token):'';
  const rows=items.map((i,index)=>'<tr><td class="documentNumber">'+String(index+1)+'</td><td class="materialName"><b>'+escape(i.product_name)+'</b>'+([i.brand_name,i.category].filter(Boolean).length?'<br><small>'+escape([i.brand_name,i.category].filter(Boolean).join(' • '))+'</small>':'')+'</td><td class="documentNumber">'+formatMoney(i.qty)+'</td>'+(prices?'<td class="documentNumber">'+formatMoney(i.price)+'</td><td class="documentNumber">'+formatMoney(Number(i.qty)*Number(i.price))+'</td>':'')+'</tr>').join('');
  const cols=prices?[6,40,10,22,22]:[7,76,17];
  const metaRows=meta.map(([k,v])=>'<div><b>'+k+':</b> '+escape(v)+'</div>');
