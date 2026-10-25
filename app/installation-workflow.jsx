@@ -10,6 +10,7 @@ import {saveRequest} from './save-request.mjs';
 import {unlockNotificationSound,playNotificationSound} from './notification-sound.mjs';
 import {supabase} from './supabase';
 import {receiptNumber} from './supplier-utils.mjs';
+import {approvedExpenseValue,installationPaidExpense,installationExpenseDifference} from './expense-review.mjs';
 const fmt=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const rawMoney=value=>String(value??'').replace(/,/g,'').trim();
 const moneyValue=value=>rawMoney(value)===''?'':fmt(rawMoney(value));
@@ -56,7 +57,7 @@ export default function InstallationWorkflow({profile,onChanged,selectedJob=''})
   <div className="statusTabs" aria-label="تصفية المهام">{[['open','المفتوحة'],...stages,['all','الكل']].map(([value,label])=><button key={value} aria-pressed={status===value} onClick={()=>setStatus(value)}>{label}</button>)}</div>
   {error&&<div className="workflowError" role="alert">{error}</div>}{message&&<div className="workflowSuccess" role="status">{message}</div>}
   <div className="installationResultsHeading"><h3 ref={resultsHeading} tabIndex={-1}>{resultsTitle}</h3><span aria-live="polite">{loading?'جاري التحميل…':visible.length+' ملف'}</span></div>
-  {loading?<div className="empty">جاري تحميل المهام…</div>:!visible.length?<div className="workflowEmpty"><span>✓</span><h3>لا توجد مهام ضمن هذا الاختيار</h3><p>{engineer?'تظهر المهمة هنا عندما تسندها الإدارة إليك.':'يمكن إسناد مهمة من فاتورة بيع المنظومة.'}</p></div>:visible.map(job=><JobCard key={job.id+':'+job.installationRevision} job={job} engineer={engineer} busy={busy!==null} change={change}/>)}
+  {loading?<div className="empty">جاري تحميل المهام…</div>:!visible.length?<div className="workflowEmpty"><span>✓</span><h3>لا توجد مهام ضمن هذا الاختيار</h3><p>{engineer?'تظهر المهمة هنا عندما تسندها الإدارة إليك.':'يمكن إسناد مهمة من فاتورة بيع المنظومة.'}</p></div>:visible.map(job=><JobCard key={engineer?job.id+':'+job.installationRevision:job.id} job={job} engineer={engineer} busy={busy!==null} change={change}/>)}
  </div>;
 }
 function JobCard({job,engineer,busy,change}){
@@ -93,7 +94,16 @@ function CompletionReport({busy,onSubmit}){
  {error&&<p role="alert" className="workflowError">{error}</p>}<button className="workflowPrimary" type="submit">{busy?'جاري الإرسال…':'إكمال التنصيب وإرسال التقرير'}</button></fieldset></form>;
 }
 function ApproveInstallation({job,busy,onSubmit}){
- const [amount,setAmount]=useState(String(job.installationExpenses||job.installationReport?.expenseTotal||0)),[notes,setNotes]=useState(job.installationExpenseNotes||''),[error,setError]=useState('');
+ const [amount,setAmount]=useState(()=>approvedExpenseValue(job)),[notes,setNotes]=useState(job.installationExpenseNotes||''),[error,setError]=useState(''),[draftRevision,setDraftRevision]=useState(job.installationRevision);
+ const stale=draftRevision!==job.installationRevision,paid=installationPaidExpense(job),difference=installationExpenseDifference(job,rawMoney(amount)),proposal=job.installationReport?.expenseTotal;
  const approved=rawMoney(amount)===''?0:Number(rawMoney(amount)),cost=Number(job.cost||0)+Number(job.expenses||0)+(Number.isFinite(approved)?approved:0);
- return <form className="approvalForm" onSubmit={async e=>{e.preventDefault();setError('');if(!Number.isFinite(approved)||approved<0||approved>1e9)return setError('أدخل مصاريف صحيحة.');if(confirm('تأكيد دفع المصاريف من قاصتك وإغلاق الملف؟ إذا سبق الدفع يُسجل الفرق فقط.'))await onSubmit({amount:approved,notes:notes.trim()})}}><h4>مراجعة الإدارة وإغلاق الملف</h4><label className="workflowField">المصاريف النهائية المعتمدة — د.ع<input aria-label="المصاريف النهائية للمنظومة" inputMode="decimal" value={moneyValue(amount)} disabled={busy} placeholder="اختياري — الفارغ يعني 0" onChange={e=>setAmount(rawMoney(e.target.value))}/></label><label className="workflowField">ملاحظات الاعتماد (اختياري)<textarea value={notes} maxLength={4000} disabled={busy} placeholder="يمكن إغلاق الملف بدون كتابة سبب" onChange={e=>setNotes(e.target.value)}/></label><div className="approvalTotals"><span>الكلفة النهائية <b>{fmt(cost)} د.ع</b></span><span>الربح النهائي <b>{fmt(Number(job.total||0)-cost)} د.ع</b></span></div><p className="workflowHint">عند الغلق تُخصم المصاريف من قاصتك مباشرة. إعادة الغلق تخصم الزيادة فقط؛ التخفيض يعيد الفرق لقاصة من دفعه أولاً.</p>{error&&<p className="workflowError" role="alert">{error}</p>}<button className="workflowPrimary" disabled={busy}>{busy?'جاري الاعتماد…':'اعتماد المصاريف وإغلاق الملف'}</button></form>;
+ return <form className="approvalForm" onSubmit={async e=>{e.preventDefault();setError('');if(stale)return setError('تغيّر الملف؛ حمّل القيم الحالية قبل الاعتماد.');if(!Number.isFinite(approved)||approved<0||approved>1e9)return setError('أدخل مصاريف صحيحة.');if(confirm('تأكيد اعتماد المصاريف وإغلاق الملف؟ يُسجّل فرق المبلغ فقط.'))await onSubmit({amount:approved,notes:notes.trim()})}}>
+  <h4>مراجعة الإدارة وإغلاق الملف</h4>{stale&&<div className="workflowError" role="alert">تغيّر الملف أثناء المراجعة.<button type="button" onClick={()=>{setAmount(approvedExpenseValue(job));setNotes(job.installationExpenseNotes||'');setDraftRevision(job.installationRevision);setError('');}}>تحميل القيم الحالية</button></div>}
+  <p className="workflowHint">المدفوع فعليًا سابقًا: <b>{fmt(paid)} د.ع</b></p>{proposal!=null&&<p className="workflowHint">مقترح تقرير المهندس: <b>{fmt(proposal)} د.ع</b> <button type="button" disabled={busy||stale} onClick={()=>setAmount(String(proposal))}>استخدام مبلغ التقرير</button></p>}
+  <label className="workflowField">المصاريف النهائية المعتمدة — د.ع<input aria-label="المصاريف النهائية للمنظومة" inputMode="decimal" value={moneyValue(amount)} disabled={busy||stale} placeholder="اختياري — الفارغ يعني 0" onChange={e=>setAmount(rawMoney(e.target.value))}/></label>
+  <label className="workflowField">ملاحظات الاعتماد (اختياري)<textarea value={notes} maxLength={4000} disabled={busy||stale} placeholder="يمكن إغلاق الملف بدون كتابة سبب" onChange={e=>setNotes(e.target.value)}/></label>
+  <div className="approvalTotals"><span>الكلفة النهائية <b>{fmt(cost)} د.ع</b></span><span>الربح النهائي <b>{fmt(Number(job.total||0)-cost)} د.ع</b></span></div>
+  {Number.isFinite(difference)&&<p className="workflowHint expenseDifference" role="status">{difference>0?'المبلغ الإضافي المطلوب من القاصة: '+fmt(difference)+' د.ع':difference<0?'المبلغ الذي يرجع لقاصة من دفعه: '+fmt(-difference)+' د.ع':'لا يوجد صرف إضافي؛ المبلغ مسجل سابقًا.'}</p>}
+  <p className="workflowHint">اعتماد الصفر يلغي أثر المصاريف السابقة ويرجع المدفوع لقاصة صاحبه. السجل يحفظ الصرف والإرجاع للتدقيق.</p>{error&&<p className="workflowError" role="alert">{error}</p>}<button className="workflowPrimary" disabled={busy||stale}>{busy?'جاري الاعتماد…':'اعتماد المصاريف وإغلاق الملف'}</button>
+ </form>;
 }
