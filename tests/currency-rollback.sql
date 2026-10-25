@@ -57,9 +57,14 @@ do $$declare response jsonb;begin
  if not exists(select 1 from public.products where id=-3310 and qty=20 and cost=120000) then raise exception 'FAIL rejected operation changed stock';end if;
 end $$;
 -- The same request UUID cannot be reused for altered financial input.
-do $$begin
+-- A cash purchase paid in dinars is now allowed to overdraw, then reverse on deletion.
+do $$declare response jsonb;before_cash numeric;begin
  begin perform public.solar_invoice_save('00000000-0000-0000-0000-000000033101','{"kind":"purchase","mode":"credit","party":"FX Supplier","sourceCurrency":"USD","exchangeRate":1600,"expenses":0,"items":[{"id":-3310,"qty":10,"price":80}]}');raise exception 'FAIL changed request replay';exception when insufficient_privilege then null;end;
- begin perform public.solar_invoice_save('00000000-0000-0000-0000-000000033110','{"kind":"purchase","mode":"cash","party":"FX Supplier","sourceCurrency":"USD","exchangeRate":1600,"expenses":0,"items":[{"id":-3311,"qty":1,"price":100}]}');raise exception 'FAIL insufficient cash';exception when sqlstate 'P0002' then null;end;
+ before_cash:=solar_private.cash_balance(auth.uid());
+ response:=public.solar_invoice_save('00000000-0000-0000-0000-000000033110','{"kind":"purchase","mode":"cash","party":"FX Supplier","sourceCurrency":"USD","exchangeRate":1600,"expenses":0,"items":[{"id":-3311,"qty":1,"price":100}]}');
+ if solar_private.cash_balance(auth.uid())<>before_cash-160000 then raise exception 'FAIL IQD purchase overdraft';end if;
+ perform public.solar_purchase_delete((response->>'id')::bigint,(response->>'pricingRevision')::bigint);
+ if solar_private.cash_balance(auth.uid())<>before_cash then raise exception 'FAIL overdraft purchase deletion refund';end if;
 end $$;
 -- An independent purchase can be edited/deleted before subsequent stock moves.
 do $$declare response jsonb;pid bigint;begin
