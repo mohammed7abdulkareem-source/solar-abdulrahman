@@ -15,14 +15,15 @@ import {RecordNavigator,RecordViewSwitch,useRecordView} from './record-browser';
 import PeriodSales from './period-sales';
 import {baghdadDay,recordPage} from './record-browser-utils.mjs';
 
-export default function SalesHistory({profile,customers=[],products=[],staff=[],onUpdateInvoice,onPrepareEdit,a4,openA4,saveA4,shareA4,onFollow,onChanged}){
+export default function SalesHistory({initialSearch='',initialKind='',profile,customers=[],products=[],staff=[],onUpdateInvoice,onPrepareEdit,a4,openA4,saveA4,shareA4,onFollow,onChanged}){
  const [mode,setMode]=useRecordView(profile.id,'sales',true);
- const [position,setPosition]=useState(0);
+ const [position,setPosition]=useState(0),reviewInitialized=useRef(false);
+ useEffect(()=>{if(initialSearch&&!reviewInitialized.current){reviewInitialized.current=true;if(mode==='period')setMode('list');}},[initialSearch,mode,setMode]);
  const moved=useRef(false);
  const editLock=useRef(false),[preparingEdit,setPreparingEdit]=useState(false);
  const [editing,setEditing]=useState(null),[editItems,setEditItems]=useState([]),[editSearch,setEditSearch]=useState(''),[deleting,setDeleting]=useState(null),[message,setMessage]=useState('');
  async function remove(row){if(deleting!==null)return;setDeleting(row.id);setError('');setMessage('');try{if(await deleteSale(row.id)){setMessage('تم حذف الفاتورة وإعادة المواد وتصحيح الحساب.');setOffset(0);setPosition(0);setRefresh(n=>n+1);await onChanged?.()}}catch(e){setError(e.message)}finally{setDeleting(null)}}
- const [query,setQuery]=useState(''),[search,setSearch]=useState(''),[kind,setKind]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[status,setStatus]=useState(''),[offset,setOffset]=useState(0),[refresh,setRefresh]=useState(0);
+ const [query,setQuery]=useState(initialSearch),[search,setSearch]=useState(initialSearch),[kind,setKind]=useState(initialKind),[from,setFrom]=useState(''),[to,setTo]=useState(''),[status,setStatus]=useState(''),[offset,setOffset]=useState(0),[refresh,setRefresh]=useState(0);
  const [result,setResult]=useState({rows:[],count:0}),[loading,setLoading]=useState(true),[error,setError]=useState('');
  useEffect(()=>{let active=true;setError('');if(mode==='period'){setLoading(false);return()=>{active=false;};}setLoading(true);
   supabase.rpc('solar_sales_history',{search_text:search,sale_kind:kind,date_from:from||null,date_to:to||null,job_status:status,page_offset:offset}).then(({data,error})=>{

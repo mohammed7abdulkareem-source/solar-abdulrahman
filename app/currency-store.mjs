@@ -1,7 +1,7 @@
 import {supabase} from './supabase';
 import {saveRequest} from './save-request.mjs';
 import {invoicePayload} from './currency-utils.mjs';
-import {invoiceAttemptSignature} from './inventory-valuation.mjs';
+import {saveInvoiceAttempt,resolveInvoiceAttempt} from './invoice-attempt.mjs';
 import {publishValuation,refreshValuation} from './valuation-events.mjs';
 
 export async function loadExchangeRate(){
@@ -15,18 +15,20 @@ export async function saveExchangeRate(rate,revision){
   publishValuation(data);
   return data;
 }
-// A retained attempt is used after network failures. Replaying an identical
-// request returns the prior receipt without changing stock or cash again.
+async function invoiceUser(){
+ const {data,error}=await supabase.auth.getSession();if(error)throw error;
+ const uid=data.session?.user?.id;if(!uid)throw new Error('سجّل الدخول لتأكيد حفظ الفاتورة.');return uid;
+}
+const resolveAttempt=record=>saveRequest(signal=>supabase.rpc('solar_invoice_attempt_resolve',{request_id:record.requestId,payload:record.payload}).abortSignal(signal));
+export async function recoverCurrencyInvoice(attempt){
+ const uid=await invoiceUser();return resolveInvoiceAttempt(attempt,uid,{resolve:resolveAttempt,currentUser:invoiceUser});
+}
 export async function saveCurrencyInvoice(attempt,kind,meta,items,original){
-  const candidate=invoicePayload(kind,meta,items,original);
-  const signature=invoiceAttemptSignature(candidate);
-  if(attempt.current&&attempt.current.signature!==signature)throw new Error('تعذر تأكيد محاولة الحفظ السابقة. أعد المحاولة بنفس البيانات أولاً.');
-  if(!attempt.current)attempt.current={requestId:crypto.randomUUID(),signature,payload:candidate};
-  const payload=attempt.current.payload;
-  const {data,error}=await saveRequest(signal=>supabase.rpc('solar_invoice_save',{request_id:attempt.current.requestId,payload}).abortSignal(signal));
-  if(error){if(error.code)attempt.current=null;if(error.code==='PT409')refreshValuation();throw error;}
-  attempt.current=null;
-  return data;
+ const uid=await invoiceUser();
+ try{return await saveInvoiceAttempt(attempt,uid,invoicePayload(kind,meta,items,original),{
+  currentUser:invoiceUser,resolve:resolveAttempt,
+  send:record=>saveRequest(signal=>supabase.rpc('solar_invoice_save',{request_id:record.requestId,payload:record.payload}).abortSignal(signal))
+ });}catch(error){if(error.code==='PT409')refreshValuation();if(!error.invoiceRecovery&&!/^[0-9A-Z]{5}$/.test(error.code||'')&&!/[\u0600-\u06ff]/.test(error.message||''))throw new Error('لم يصل تأكيد الحفظ. استخدم «التحقق من الحفظ السابق» قبل إعادة المحاولة.',{cause:error});throw error;}
 }
 export async function deleteCurrencyPurchase(invoice){
   const {error}=await supabase.rpc('solar_purchase_delete',{invoice_id:invoice.id,expected_revision:invoice.pricingRevision||0});

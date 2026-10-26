@@ -1,3 +1,4 @@
+import './invoice-attempt.css';
 import './globals.css';
 import './solar-theme.css';
 import './workflow.css';
