@@ -1,4 +1,6 @@
 'use client';
+import {userDisplayName} from './user-name-utils.mjs';
+
 import {useEffect,useMemo,useRef,useState} from 'react';
 import {useWarehouseInventory,WarehouseField} from './warehouse-data';
 import PartySearch from './party-search';
@@ -50,7 +52,7 @@ export default function CurrencyInvoice({contact,kind,products:catalogProducts,p
  const chooseParty=value=>setMeta(m=>{const selected=parties.find(p=>p.name===value);return {...m,party:value,...(kind==='purchase'&&!editing&&!items.length&&selected?{currency:selected.accountCurrency||'IQD',cashCurrency:selected.accountCurrency||'IQD'}:{})};});
  const availableProducts=editing&&kind==='sale'?products.map(p=>({...p,qty:Number(p.qty)+(editing.items||[]).filter(i=>i.id===p.id).reduce((sum,i)=>sum+Number(i.qty),0)})):products;
  const fxMeta={...(kind==='sale'?{valuationRevision:inventory.valuationRevision}:{}),marketRate:Number(meta.exchangeRate),accountRevision:supplier?.currencyRevision||0,cashCurrency:meta.cashCurrency,partyId:supplier?.id};
- const draft={customerPhone:supplier?.phone||'',creatorName:editing?(editing.creatorName||'—'):(contact?.display_name||contact?.username),creatorPhone:editing?editing.creatorPhone:contact?.phone,warehouseId:Number(inventory.warehouseId),warehouseName:editing?.warehouseName||inventory.warehouseName,warranty:warrantyPolicy(meta.warranty,items),id:editing?.id,receiptNo:editing?.receiptNo,kind,draft:true,party:meta.party,cash:meta.mode==='cash',date:editing?.date||new Date().toISOString(),...amounts,sourceCurrency:kind==='purchase'?meta.currency:'IQD',exchangeRate:rate,...fxMeta,accountCurrency,accountAmount:convertAmount(amounts.total,'IQD',accountCurrency,meta.exchangeRate||1),cashAmount:convertAmount(amounts.total,'IQD',meta.cashCurrency,meta.exchangeRate||1),notes:meta.notes};
+ const draft={customerPhone:supplier?.phone||'',creatorName:editing?(editing.creatorName||'—'):(userDisplayName(contact)),creatorPhone:editing?editing.creatorPhone:contact?.phone,warehouseId:Number(inventory.warehouseId),warehouseName:editing?.warehouseName||inventory.warehouseName,warranty:warrantyPolicy(meta.warranty,items),id:editing?.id,receiptNo:editing?.receiptNo,kind,draft:true,party:meta.party,cash:meta.mode==='cash',date:editing?.date||new Date().toISOString(),...amounts,sourceCurrency:kind==='purchase'?meta.currency:'IQD',exchangeRate:rate,...fxMeta,accountCurrency,accountAmount:convertAmount(amounts.total,'IQD',accountCurrency,meta.exchangeRate||1),cashAmount:convertAmount(amounts.total,'IQD',meta.cashCurrency,meta.exchangeRate||1),notes:meta.notes};
  const display=kind==='purchase'?purchaseDisplayTotal(draft):{currency:'IQD',value:amounts.total};
  function document(priced=true){const d=kind==='purchase'?supplierDocument(draft):salesDocument({...draft,party_name:draft.party,created_at:draft.date,items:amounts.items.map(i=>({...i,product_name:i.name,brand_name:i.brand}))},priced);return a4(d.title,d.body,d.total,editing?'تعديل فاتورة #'+receiptNumber(editing)+' — غير محفوظ':d.subtitle);}
  async function save(){

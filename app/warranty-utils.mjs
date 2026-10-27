@@ -19,6 +19,12 @@ export const termLabel=t=>Number(t?.duration)>0?t.duration+' '+({days:'يوم',m
 export function warrantyDocument(row,{hasQr=false}={}){
  const w=row.warranty||{enabled:false};
  if(!w.enabled)return '';
- const line=(name,term)=>'<tr><td>'+escape(name)+'</td><td>'+escape(termLabel(term))+'</td><td class="documentNumber">'+(warrantyLastDay(row.created_at,term)||'—')+'</td></tr>';
- return '<section class="invoiceWarranty"><h3>ضمان المواد والصيانة'+(row.draft?' — مسودة':'')+'</h3><p class="warrantyStart">بداية الضمان: <b dir="ltr">'+invoiceDate(row.created_at)+'</b> — من تاريخ هذه الفاتورة.</p><table data-pdf-paginate class="warrantyTable"><colgroup><col style="width:50%"><col style="width:23%"><col style="width:27%"></colgroup><thead><tr><th>المادة / الخدمة</th><th>مدة الضمان</th><th>آخر يوم مشمول</th></tr></thead><tbody>'+((row.items||[]).map(item=>line(item.product_name||item.name,(w.items||[]).find(t=>String(t.id)===String(item.product_id??item.id)))).join(''))+line('ضمان الصيانة',w.maintenance)+'</tbody></table><p class="warrantyHint">'+(row.draft?'يصدر رمز التحقق بعد حفظ الوصل.':hasQr?'امسح رمز QR أعلى الوصل لمعرفة حالة الضمان والمدة المتبقية وقت الفحص.':'الضمان يشمل المواد والخدمات التي حُددت لها مدة فقط.')+'</p>'+(w.notes?'<div class="notes warrantyNotes" data-pdf-end><b>شروط وملاحظات الضمان:</b><br>'+escape(w.notes)+'</div>':'')+'</section>';
+ const maintenance=Number(w.maintenance?.duration)>0;
+ const line=(name,term,details='')=>'<tr><td><b>'+escape(name)+'</b>'+(details?'<br><small>'+escape(details)+'</small>':'')+'</td><td>'+escape(termLabel(term))+'</td><td class="documentNumber">'+(warrantyLastDay(row.created_at,term)||'—')+'</td></tr>';
+ const materials=(row.items||[]).map(item=>line(
+  item.product_name||item.name,
+  (w.items||[]).find(t=>String(t.id)===String(item.product_id??item.id)),
+  [item.brand_name||item.brand,item.category].filter(Boolean).join(' • ')
+ )).join('');
+ return '<section class="invoiceWarranty"><h3>ضمان المواد'+(maintenance?' والصيانة':'')+(row.draft?' — مسودة':'')+'</h3><p class="warrantyStart">بداية الضمان: <b dir="ltr">'+invoiceDate(row.created_at)+'</b> — من تاريخ هذه الفاتورة.</p><table data-pdf-paginate class="warrantyTable"><colgroup><col style="width:50%"><col style="width:23%"><col style="width:27%"></colgroup><thead><tr><th>المادة / البراند / الفئة أو الخدمة</th><th>مدة الضمان</th><th>آخر يوم مشمول</th></tr></thead><tbody>'+materials+(maintenance?line('ضمان الصيانة',w.maintenance):'')+'</tbody></table><p class="warrantyHint">'+(row.draft?'يصدر رمز التحقق بعد حفظ الوصل.':hasQr?'امسح رمز QR أعلى الوصل لمعرفة حالة الضمان والمدة المتبقية وقت الفحص.':'الضمان يشمل المواد والخدمات التي حُددت لها مدة فقط.')+'</p>'+(w.notes?'<div class="notes warrantyNotes" data-pdf-end><b>شروط وملاحظات الضمان:</b><br>'+escape(w.notes)+'</div>':'')+'</section>';
 }

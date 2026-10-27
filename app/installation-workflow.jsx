@@ -32,7 +32,7 @@ export default function InstallationWorkflow({profile,onChanged,selectedJob=''})
   try{
    const {error}=await saveRequest(signal=>supabase.rpc('solar_installation_action',{job_id:job.id,expected_revision:job.installationRevision,action,payload}).abortSignal(signal));
    if(error)throw error;
-   setMessage({start:'تم بدء التنصيب وتحديث المرحلة للجميع.',complete:'تم إنهاء التنصيب وإرسال التقرير للمراجعة.',close:'تم إغلاق الملف وتحديث المرحلة عند المهندس.',reopen:'تمت إعادة فتح الملف للمراجعة.'}[action]);
+   setMessage({start:'تم بدء التنصيب وتحديث المرحلة للجميع.',complete:'تم إنهاء التنصيب وإرسال التقرير للمراجعة.',close:'تم إغلاق الملف وتحديث المرحلة عند المهندس.',reopen:'تمت إعادة فتح الملف للمراجعة.',clear_expenses:'تم إلغاء المصاريف وإرجاع المدفوع إلى قاصة صاحبه وتحديث الربح.'}[action]);
    if(action==='close')setToast(true);
    void playNotificationSound();
    await refresh().catch(()=>setError('تم حفظ الخطوة. تعذر تحديث القائمة؛ اضغط تحديث لرؤية آخر حالة.'));
@@ -77,9 +77,10 @@ function JobCard({job,engineer,busy,change}){
   {report.submittedAt&&<div className="jobReport"><h4>تقرير المهندس</h4><p>{report.notes}</p>{(report.expenses||[]).map((e,i)=><div key={i}><span>{e.description}</span><b>{fmt(e.amount)} د.ع</b></div>)}<div><span>المصاريف المرفوعة للمراجعة</span><b>{fmt(report.expenseTotal)} د.ع</b></div></div>}
   {engineer&&job.installationStatus==='completed'&&<p className="workflowNotice">تم إرسال التقرير. الإدارة تراجع المصاريف وتغلق الملف.</p>}
   {engineer&&job.installationStatus==='closed'&&<p className="workflowNotice installationClosed"><AppIcon name="check" size={18}/> تم إنهاء التنصيب وإغلاق الملف من الإدارة.</p>}
+  {job.canManage&&job.installationStatus!=='closed'&&(installationPaidExpense(job)>0||Number(job.installationExpenses)>0)&&<div className="cancelInstallationExpenses"><p>مصاريف التنصيب المدفوعة: {fmt(installationPaidExpense(job))} د.ع</p><button type="button" className="workflowSecondary" disabled={busy} onClick={()=>confirm('إلغاء مصاريف التنصيب وإرجاع المدفوع إلى قاصة صاحبه؟')&&change(job,'clear_expenses',{notes:'إلغاء مصاريف التنصيب المعتمدة'})}>إلغاء مصاريف التنصيب وإرجاعها للقاصة</button></div>}
   {job.canManage&&job.warehouseStatus==='ready'&&job.installationStatus!=='closed'&&<ApproveInstallation job={job} busy={busy} onSubmit={payload=>change(job,'close',payload)}/>}
   {job.canManage&&job.warehouseStatus!=='ready'&&job.installationStatus!=='closed'&&<p className="workflowNotice">بانتظار تجهيز المخزن. يظهر اعتماد المصاريف والغلق بعد التجهيز.</p>}
-  {job.canManage&&job.installationStatus==='closed'&&<div className="jobFinancials"><div><small>المصاريف المعتمدة</small><b>{fmt(job.installationExpenses)} د.ع</b></div><div><small>الكلفة النهائية</small><b>{fmt(Number(job.cost||0)+Number(job.expenses||0)+Number(job.installationExpenses||0))} د.ع</b></div><div><small>الربح النهائي</small><b>{fmt(Number(job.total||0)-Number(job.cost||0)-Number(job.expenses||0)-Number(job.installationExpenses||0))} د.ع</b></div>{job.installationExpenseNotes&&<p>{job.installationExpenseNotes}</p>}<button disabled={busy} onClick={()=>confirm('إعادة فتح الملف لمراجعة المصاريف؟')&&change(job,'reopen')}>إعادة فتح للمراجعة</button></div>}
+  {job.canManage&&job.installationStatus==='closed'&&<div className="jobFinancials"><div><small>المصاريف المعتمدة</small><b>{fmt(job.installationExpenses)} د.ع</b></div><div><small>الكلفة النهائية</small><b>{fmt(Number(job.cost||0)+Number(job.expenses||0)+Number(job.installationExpenses||0))} د.ع</b></div><div><small>الربح النهائي</small><b>{fmt(Number(job.total||0)-Number(job.cost||0)-Number(job.expenses||0)-Number(job.installationExpenses||0))} د.ع</b></div>{job.installationExpenseNotes&&<p>{job.installationExpenseNotes}</p>}<button disabled={busy} onClick={()=>confirm('إعادة فتح الملف للمراجعة؟ فتح الملف لا يلغي المصاريف؛ يمكنك إلغاءها أو تعديلها بعد الفتح.')&&change(job,'reopen')}>إعادة فتح للمراجعة</button></div>}
  </article>;
 }
 function CompletionReport({busy,onSubmit}){

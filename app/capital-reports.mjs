@@ -1,3 +1,4 @@
+import {userDisplayName} from './user-name-utils.mjs';
 import {phoneContactDocument} from './phone-contact-utils.mjs';
 import {accountEffect} from './reconciliation-utils.mjs';
 import {supplierEffect,money,receiptNumber} from './supplier-utils.mjs';
@@ -40,7 +41,7 @@ export function capitalCashReport(rows,staff=[]){
   const delta=t.cashDelta!==undefined?Number(t.cashDelta):(['purchase','supplier_payment','cash_expense','profit_distribution'].includes(t.kind)?-1:1)*Number(t.total||0);
   total+=delta;incoming+=Math.max(0,delta);outgoing+=Math.max(0,-delta);
   const owner=staff.find(u=>u.id===cashOwner(t));
-  return [i+1,e(warehouseDate(t.date)),e(cashLabels[t.kind]||t.kind)+'<br>'+e(t.party||t.notes||'')+(owner?'<br>'+e(owner.display_name||owner.username||''):''),t.systemCash?'—':e(receiptNumber(t)),money(Math.max(0,delta)),money(Math.max(0,-delta)),money(total)];
+  return [i+1,e(warehouseDate(t.date)),e(cashLabels[t.kind]||t.kind)+'<br>'+e(t.party||t.notes||'')+(owner?'<br>'+e(userDisplayName(owner,'')):''),t.systemCash?'—':e(receiptNumber(t)),money(Math.max(0,delta)),money(Math.max(0,-delta)),money(total)];
  });
  return {title:'كشف الصندوق',total,body:table(['ت','التاريخ','البيان / القاصة','الوصل','داخل د.ع','خارج د.ع','الرصيد د.ع'],data,[7,12,23,10,16,16,16])+'<div data-pdf-end class="documentCounts">عدد الحركات: '+data.length+' • الداخل: '+money(incoming)+' د.ع • الخارج: '+money(outgoing)+' د.ع</div>'};
 }

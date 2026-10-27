@@ -1,4 +1,6 @@
 'use client';
+import {userDisplayName} from './user-name-utils.mjs';
+
 import PhoneActions from './phone-actions';
 import {useEffect,useMemo,useState} from 'react';
 import {supabase} from './supabase';
@@ -28,7 +30,7 @@ export default function PartyBalances({mode='customers',a4,profile}){
   <header className="accountHero"><span className="accountHeroIcon"><ReportIcon name={customer?'users':'wallet'}/></span><div><span className="accountEyebrow">التقارير المالية</span><h1>{title}</h1><p>{customer?'ديون الجملة والمنظومات حسب مسؤول العميل.':'رصيد الموردين وآخر دفعة ضمن صلاحيات حسابك.'}</p></div><button className="reportRefresh" disabled={loading} onClick={()=>setRefresh(n=>n+1)}><ReportIcon name="refresh"/>{loading?'جاري التحديث':'تحديث الأرصدة'}</button></header>
   <section className="accountFilterPanel" aria-label="تصفية تقرير الأرصدة"><div className="accountFilterTitle"><div><h2>تصفية المدينين</h2></div><span className="accountScopeBadge">{data?.scope||'ضمن صلاحياتك'}</span></div>
    <div className="accountFilterGrid"><label className="accountSearchField">بحث بالاسم أو الهاتف<div><ReportIcon name="search"/><input aria-label="بحث الأرصدة" value={query} onChange={e=>setQuery(e.target.value)} placeholder="اسم العميل أو رقم الهاتف…"/>{query&&<button aria-label="مسح بحث الأرصدة" onClick={()=>setQuery('')}>×</button>}</div></label>
-    {customer&&<label>مسؤول العميل{profile?.is_admin?<select aria-label="مستخدم تقرير المدينين" value={ownerId} onChange={e=>setOwnerId(e.target.value)}><option value="all">جميع المستخدمين</option>{(data?.owners||[]).map(o=><option key={ownerKey(o.id)} value={ownerKey(o.id)}>{o.name}</option>)}</select>:<div className="accountReadonly">{profile?.display_name||profile?.username||'زبائني المخصصون لي'}</div>}</label>}
+    {customer&&<label>مسؤول العميل{profile?.is_admin?<select aria-label="مستخدم تقرير المدينين" value={ownerId} onChange={e=>setOwnerId(e.target.value)}><option value="all">جميع المستخدمين</option>{(data?.owners||[]).map(o=><option key={ownerKey(o.id)} value={ownerKey(o.id)}>{o.name}</option>)}</select>:<div className="accountReadonly">{userDisplayName(profile,'زبائني المخصصون لي')}</div>}</label>}
     <label>لغاية تاريخ<input aria-label="الرصيد لغاية" type="date" value={asOf} max={baghdadToday()} onChange={e=>setAsOf(e.target.value)}/></label>
    </div>
    <div className="accountFilterBottom">{customer?<div className="accountSegments" role="group" aria-label="نوع بيع المدينين">{[['all','الكل'],['wholesale','جملة'],['system','منظومات']].map(([key,label])=><button key={key} aria-pressed={category===key} className={category===key?'active':''} onClick={()=>setCategory(key)}>{label}</button>)}</div>:<label className="accountCheck"><input type="checkbox" checked={dueOnly} onChange={e=>setDueOnly(e.target.checked)}/>المبالغ المستحقة فقط</label>}
