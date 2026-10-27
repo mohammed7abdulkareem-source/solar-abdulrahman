@@ -10,3 +10,6 @@ test('period quantity document has no monetary columns and preserves three-decim
 test('report period labels identify the same sale filters without inferred dates',()=>{
  assert.equal(periodDate('2026-10-24'),'24/10/2026');assert.equal(periodKindLabel('sale'),'بيع جملة');assert.equal(periodKindLabel('system'),'بيع منظومات');assert.equal(periodKindLabel(''),'الجملة والمنظومات');
 });
+test('period PDF identifies and escapes the selected user',()=>{
+ const doc=periodSalesDocument({asOf:'2026-10-27T10:00Z',ownerName:'الحاج سفيان <تجربة>',scope:'own',rows:[],summary:{}});assert.ok(doc.body.includes('المستخدم: الحاج سفيان &lt;تجربة&gt;'));assert.ok(!doc.body.includes('<تجربة>'));
+});

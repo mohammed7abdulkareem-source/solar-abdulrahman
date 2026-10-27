@@ -16,3 +16,5 @@
 @media(max-width:380px){.saleHistoryCopies{grid-template-columns:minmax(0,1fr)}.saleHistoryCopyGroup{gap:8px}.saleHistoryCopyGroup+.saleHistoryCopyGroup{padding-inline-start:0;border-inline-start:0;border-top:1px solid #e4ecf2;padding-top:10px}.salesArchive .saleHistoryAction{font-size:11px}}
 
 .premiumSolar .appContent .saleHistoryUtilities .saleHistoryEdit{display:inline-flex;align-items:center;gap:7px;border:1px solid #94b5df;background:#e9f2ff;color:#174e87;font-size:13px;font-weight:700;min-height:38px;padding:8px 12px;border-radius:9px}.saleHistoryEdit svg{width:16px;height:16px}
+
+.salesArchive .archiveFilters .archiveUserFilter{grid-column:1 / -1}
