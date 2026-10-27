@@ -1,7 +1,9 @@
+import {customerCashReceipt} from './customer-cash-receipt.mjs';
 import {phoneContactDocument} from './phone-contact-utils.mjs';
 import {escapeHtml as e,money,receiptNumber} from './supplier-utils.mjs';
 export const paymentReason=mode=>({payment:'تسديد من الزبون',charge_extra_expense:'مصروف إضافي',charge_old_balance:'حساب قديم',charge_other:'إضافة أخرى'}[mode]||'إضافة على الحساب');
 export function systemPaymentDocument(row){
+ if(!(Number(row.total)<0))return customerCashReceipt(row);
  const charge=Number(row.total)<0,wholesale=row.ledgerType==='wholesale',title=charge?(wholesale?'وصل إضافة على حساب جملة':'وصل إضافة على حساب منظومات'):(wholesale?'وصل تسديد جملة':'وصل تسديد منظومات'),invoice=row.invoice;
  const body='<div class="meta"><div><b>العميل:</b> '+e(row.party)+'</div><div><b>رقم الوصل:</b> '+e(receiptNumber(row))+'</div><div><b>التاريخ:</b> '+e(new Date(row.date).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad'}))+'</div><div><b>نوع الحركة:</b> '+e(paymentReason(row.mode))+'</div><div><b>التخصيص:</b> '+(invoice?'المنظومة #'+e(receiptNumber(invoice)):'الحساب العام / الرصيد الافتتاحي')+'</div><div><b>المستلم:</b> '+e(row.cashOwnerName||'')+'</div>'+(row.creatorPhone?'<div><b>هاتف صاحب الوصل:</b> '+phoneContactDocument(row.creatorPhone)+'</div>':'')+'</div>'+
  '<table><thead><tr><th>رصيد الحساب السابق د.ع</th><th>'+ (charge?'الإضافة':'التسديد')+' د.ع</th><th>رصيد الحساب الجديد د.ع</th></tr></thead><tbody><tr><td>'+money(row.oldBalance)+'</td><td>'+money(Math.abs(row.total))+'</td><td>'+money(row.remaining)+'</td></tr></tbody></table>'+
