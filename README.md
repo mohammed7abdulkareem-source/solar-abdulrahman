@@ -630,3 +630,12 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Warehouse staff enter quantities only for new wholesale materials. The entire proposed amendment waits in a private pricing request; posted invoice lines, prices, money and stock stay unchanged until administration approves all new unit prices. Preparation is blocked until pricing. Availability is rechecked when approving, and no stock reservation is claimed for an unapproved amendment.
 - The pricing queue is visible in warehouse and sales history to administrators and authorized invoice owners. Pricing uses the canonical invoice save with live role/owner/warehouse checks, stale invoice protection and idempotent acknowledgment retries. It preserves existing prices/cost history and updates all invoice lines, cash/customer balance and stock atomically. Cancellation discards the proposed amendment only.
 - Existing receipt #6 and historical inventory/accounting records are not rewritten by the migration. Validation includes full-system material edits, wholesale staging/approval/cancellation, cash/credit, scope/security, exact retries, stock consistency, five related SQL suites and the real browser/API/PDF flow on mobile/tablet.
+
+
+## V3.78.0 — كشف صندوق المستخدمين حسب الفترة
+
+- كشف من–إلى لكل قاصة وعملة: رصيد سابق، وارد، صادر، رصيد جارٍ، ورصيد نهاية الفترة، مع الجهة والوصل والمسجل والملاحظات الكاملة وتفاصيل التحويل والصرف والتصفير.
+- الأدمن يختار مستخدمًا أو جميع القاصات؛ المستخدم يرى قاصته فقط. الدينار والدولار مستقلان، وتشمل التواريخ أيام بغداد كاملة.
+- الحساب من الحركات الحالية في قراءة واحدة دون حد صفوف أو إعادة نشر مالي؛ التعديل والحذف يعيدان احتساب الأرصدة اللاحقة، وتبطل المعاينة القديمة عند تغير القاصة أو الفترة أو تحديث البيانات.
+- كشف ملون بعناوين متكررة وملاحظات طويلة كاملة، ومعاينة وحفظ ومشاركة لنفس ملف PDF.
+- التحقق: اختبارات SQL للصلاحيات وحدود الفترة والتعديل والحذف و5101 حركة، ومسار متصفح حقيقي مع API محلي وقاعدة Postgres وPDF، وفحص طباعة متعدد الصفحات.

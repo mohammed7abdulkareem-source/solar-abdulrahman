@@ -1,0 +1,45 @@
+process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY='1';
+import assert from 'node:assert/strict';
+import {createHmac,createHash} from 'node:crypto';
+import {execFileSync} from 'node:child_process';
+import {mkdir,writeFile,readFile} from 'node:fs/promises';
+const {chromium}=await import(process.env.SOLAR_PLAYWRIGHT_MODULE||'playwright-core');
+const base='http://127.0.0.1:3073',api='http://127.0.0.1:3079',db='solar_v378',dir='/workspace/solar-review/v378/browser';await mkdir(dir,{recursive:true});
+const sql=q=>execFileSync('python',['/workspace/solar-review/v359/db.py',db],{input:q,encoding:'utf8'}).trim();
+const ids={admin:'00000000-0000-0000-0000-000000003780',owner:'00000000-0000-0000-0000-000000003781',other:'00000000-0000-0000-0000-000000003782',history:'00000000-0000-0000-0000-000000003754'};
+const errors=[],calls=[],contexts=[],encode=x=>Buffer.from(JSON.stringify(x)).toString('base64url');
+const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
+async function open(who,section){
+ const uid=ids[who],raw=encode({alg:'HS256',typ:'JWT'})+'.'+encode({role:'authenticated',sub:uid,exp:Math.floor(Date.now()/1000)+3600}),token=raw+'.'+createHmac('sha256','solar-local-test-only-signing-secret-347').update(raw).digest('base64url');
+ const ctx=await browser.newContext({viewport:{width:390,height:920},hasTouch:true});contexts.push(ctx);ctx.setDefaultTimeout(20000);
+ await ctx.addInitScript(({uid,token})=>{localStorage.setItem('sb-afxxaafsuscwyjzrnagc-auth-token',JSON.stringify({access_token:token,refresh_token:'local-fixture',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:{id:uid,email:'fixture@local.test',aud:'authenticated'}}));window.__documentHtmls=[];window.__sharedPdfs=[];Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{const f=data.files[0],active=navigator.userActivation.isActive,hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await f.arrayBuffer()))).map(x=>x.toString(16).padStart(2,'0')).join('');window.__sharedPdfs.push({name:f.name,type:f.type,size:f.size,hash,active});}});const descriptor=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,'srcdoc');Object.defineProperty(HTMLIFrameElement.prototype,'srcdoc',{...descriptor,set(html){window.__documentHtmls.push(html);return descriptor.set.call(this,html);}});},{uid,token});
+ await ctx.routeWebSocket(/supabase/,socket=>socket.close());
+ await ctx.route('https://afxxaafsuscwyjzrnagc.supabase.co/**',async route=>{const req=route.request(),u=new URL(req.url());if(req.method()==='OPTIONS')return route.fulfill({status:204,headers:{'access-control-allow-origin':'*'}});if(u.pathname==='/auth/v1/user')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:uid,email:'fixture@local.test',aud:'authenticated'})});if(!u.pathname.startsWith('/rest/v1/'))return route.abort();
+  const headers={...req.headers(),authorization:'Bearer '+token};delete headers.apikey;delete headers.host;delete headers.origin;
+  const r=await ctx.request.fetch(api+u.pathname.replace('/rest/v1','')+u.search,{method:req.method(),headers,data:req.postDataBuffer()||undefined}),body=await r.text();if(u.pathname.includes('/rpc/'))calls.push({who,path:u.pathname,payload:req.postData()?JSON.parse(req.postData()):null,status:r.status(),...(u.pathname.endsWith('solar_sales_period')?{result:JSON.parse(body)}:{})});if(r.status()>=400)errors.push({who,path:u.pathname,status:r.status(),body});return route.fulfill({response:r,body});});
+ await ctx.route('**/*',route=>{const u=new URL(route.request().url());if(u.hostname==='127.0.0.1'||u.protocol==='data:')return route.continue();if(u.hostname==='afxxaafsuscwyjzrnagc.supabase.co')return route.fallback();return route.abort();});
+ const page=await ctx.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/?section='+section);return {page,ctx,token};
+}
+
+
+try{
+ const admin=await open('admin','cash'),p=admin.page,host=p.locator('.cashPeriodStatement');
+ await p.getByLabel('القاصة المعروضة',{exact:true}).selectOption(ids.owner);await p.getByTestId('cash-iqd').filter({hasText:'500,000'}).waitFor();
+ await host.getByLabel('من تاريخ كشف الصندوق').fill('2026-10-01');await host.getByLabel('إلى تاريخ كشف الصندوق').fill('2026-10-31');
+ await host.getByRole('button',{name:'عرض كشف الفترة',exact:true}).click();const ready=async()=>host.locator('.reportButton.preview:not([disabled])').waitFor();await ready();
+ const groups=host.locator('.cashStatementScroll');assert.equal(await groups.count(),2);assert.match(await groups.first().innerText(),/1,000,000/);assert.match(await groups.first().innerText(),/ملاحظات المصروف الأصلي/);assert.match(await groups.first().innerText(),/-1,000,000/);assert.match(await groups.last().innerText(),/80/);
+ assert.equal(await host.locator('.cashStatementOut').first().evaluate(e=>getComputedStyle(e).color),'rgb(180, 35, 38)');assert.equal(await p.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+ await host.screenshot({path:dir+'/period-mobile.png'});await p.setViewportSize({width:1366,height:1000});await host.screenshot({path:dir+'/period-desktop.png'});
+ const event=p.waitForEvent('download');await host.getByRole('button',{name:'حفظ PDF',exact:true}).click();await(await event).saveAs(dir+'/cash-statement.pdf');const hash=createHash('sha256').update(await readFile(dir+'/cash-statement.pdf')).digest('hex');
+ await host.getByRole('button',{name:'مشاركة',exact:true}).click();await p.waitForFunction(()=>window.__sharedPdfs.length>0);const shared=await p.evaluate(()=>window.__sharedPdfs.at(-1));assert.equal(shared.hash,hash);assert.equal(shared.active,true);
+ const pop=p.waitForEvent('popup');await host.getByRole('button',{name:'معاينة',exact:true}).click();const pdf=await pop;await pdf.locator('.pdfPage img').first().waitFor();await pdf.screenshot({path:dir+'/pdf-preview.png'});await pdf.close();
+ // Actual DB edit/delete, then refresh the current view. No cached balances or notes survive.
+ sql("update solar_cash_entries set delta=-500000,notes='ملاحظات معدلة' where id='00000000-0000-0000-0000-000000003781';delete from solar_cash_entries where id='00000000-0000-0000-0000-000000003782';");
+ await host.getByRole('button',{name:'تحديث كشف الفترة',exact:true}).click();await ready();const text=await groups.first().innerText();assert.match(text,/ملاحظات معدلة/);assert.ok(!text.includes('ملاحظات المصروف الأصلي'));assert.ok(!text.includes('قبض نهاية الفترة'));assert.ok(!text.includes('2,000,000'));
+ await p.getByLabel('القاصة المعروضة',{exact:true}).selectOption('');await ready();assert.equal(await groups.count(),6);const all=await groups.allTextContents();assert.ok(all.some(t=>t.includes('قاصة سفيان')&&t.includes('7,000,000')));assert.ok(all.some(t=>t.includes('قاصة أحمد')&&t.includes('500,000')&&!t.includes('7,000,000')));
+ const own=await open('owner','cash'),ownHost=own.page.locator('.cashPeriodStatement');await ownHost.getByRole('button',{name:'عرض كشف الفترة',exact:true}).click();await ownHost.locator('.reportButton.preview:not([disabled])').waitFor();assert.equal(await ownHost.locator('.cashStatementScroll').count(),2);assert.ok(!(await ownHost.innerText()).includes('قاصة سفيان'));assert.equal(await own.page.getByLabel('القاصة المعروضة',{exact:true}).locator('option').count(),1);
+ const r=await own.ctx.request.post(api+'/rpc/solar_cash_statement',{headers:{Authorization:'Bearer '+own.token},data:{owner_id:ids.other,date_from:'2026-10-01',date_to:'2026-10-31',currency_filter:'all'}});assert.equal(r.status(),403);
+ // Do not show old prepared PDFs while a new scope is still being retrieved.
+ let release;const gate=new Promise(r=>release=r);await p.route('**/rpc/solar_cash_statement',async route=>{await gate;await route.fallback();});await p.getByLabel('القاصة المعروضة',{exact:true}).selectOption(ids.other);assert.equal(await host.locator('.reportButton').count(),0);release();await ready();assert.match(await groups.first().innerText(),/7,000,000/);assert.ok(!(await groups.first().innerText()).includes('ملاحظات معدلة'));
+ assert.deepEqual(errors,[]);await writeFile(dir+'/results.json',JSON.stringify({pass:true,errors,calls,pdfHash:hash,shared,editedAndDeletedRowsRecalculated:true,ownerCurrencyIsolation:true,staleScopeExportsHidden:true},null,2));console.log('PASS UI→RPC→Postgres→PDF: opening/running/closing balances, IQD/USD, full notes, live edit/delete refresh, separate owners, denied cross-owner, colors/mobile and byte-identical shared PDF');
+}catch(e){for(const[i,ctx]of contexts.entries()){const p=ctx.pages()[0];if(p&&!p.isClosed())await p.screenshot({path:dir+'/failure-'+i+'.png',fullPage:true});}await writeFile(dir+'/failure.json',JSON.stringify({message:e.message,errors,calls},null,2));throw e;}finally{await Promise.allSettled(contexts.map(async c=>{await c.unrouteAll({behavior:'ignoreErrors'});await c.close();}));await browser.close();}
