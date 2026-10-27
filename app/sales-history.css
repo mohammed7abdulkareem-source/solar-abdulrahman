@@ -18,3 +18,19 @@
 .premiumSolar .appContent .saleHistoryUtilities .saleHistoryEdit{display:inline-flex;align-items:center;gap:7px;border:1px solid #94b5df;background:#e9f2ff;color:#174e87;font-size:13px;font-weight:700;min-height:38px;padding:8px 12px;border-radius:9px}.saleHistoryEdit svg{width:16px;height:16px}
 
 .salesArchive .archiveFilters .archiveUserFilter{grid-column:1 / -1}
+
+/* Keep the entire archive search visible above the results on phones. */
+.salesArchive .salesFilterPanel.card.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:14px;margin:0;border-radius:16px;align-items:end}
+.salesArchive .salesFilterPanel>.archiveFilters,.salesArchive .salesFilterPanel>.dateRange{display:contents}
+.salesArchive .salesFilterPanel label{min-width:0;display:grid;gap:5px;margin:0;font-size:11px;line-height:1.4;color:#516d7c}
+.salesArchive .salesFilterPanel.card.form .archiveUserFilter{grid-column:auto}
+.salesArchive .salesFilterPanel:not(.hasUserFilter)>.archiveSearchField{grid-column:1 / -1}
+.premiumSolar .appContent .salesArchive .salesFilterPanel.card.form :is(input,select){width:100%;min-width:0;max-width:100%;height:40px;min-height:40px;margin:0;padding:7px 6px!important;border:1px solid #cedce4;border-radius:9px;background:#f9fbfd;color:#173e50;font-size:16px!important;line-height:1.3;box-shadow:none;box-sizing:border-box}
+.premiumSolar .appContent .salesArchive .salesFilterPanel.card.form select{font-size:14px!important}
+.salesArchive .salesFilterPanel input:focus-visible,.salesArchive .salesFilterPanel select:focus-visible{outline:2px solid #169b8c;outline-offset:1px}
+.salesArchive .salesFilterPanel .recordDateShortcuts{display:flex;gap:5px;align-items:center;margin:0;padding:0;min-width:0}
+.salesArchive .salesFilterPanel .recordDateShortcuts button{flex:1;min-width:0;height:40px;min-height:40px;padding:5px 6px;margin:0;border-radius:9px;font-size:11px;white-space:nowrap}
+.salesArchive .salesFilterPanel .archiveSearchSubmit{height:40px;min-height:40px;width:100%;padding:7px 10px;margin:0;border-radius:9px;font-size:13px;line-height:1.3}
+.salesArchive>.recordViewSwitch{margin-block:0}
+@media(min-width:900px){.salesArchive .salesFilterPanel.card.form{grid-template-columns:repeat(4,minmax(0,1fr));padding:16px;gap:12px}.salesArchive .salesFilterPanel:not(.hasUserFilter)>.archiveSearchField{grid-column:auto}}
+@media(max-width:360px){.salesArchive .salesFilterPanel.card.form{padding:11px;gap:8px}.premiumSolar .appContent .salesArchive .salesFilterPanel.card.form select{font-size:13px!important}}
