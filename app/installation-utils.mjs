@@ -6,12 +6,15 @@ export function installationLocalDay(value){const parts=Object.fromEntries(new I
 export const installationTime=value=>new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Baghdad',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(value));
 export function installationStart(day,time){if(!/^\d{4}-\d{2}-\d{2}$/.test(day||'')||!/^([01]\d|2[0-3]):[0-5]\d$/.test(time||''))return NaN;return Date.parse(day+'T'+time+':00+03:00');}
 export const bookingSelectionKey=(day,id,time,exclude='')=>JSON.stringify([day||'',id||'',time||'',exclude||'']);
-export function installationConflict(slots,day,time){const start=installationStart(day,time),end=start+6*3600000;return Number.isFinite(start)?slots.find(s=>Date.parse(s.start)<end&&Date.parse(s.end)>start):null;}
+export function installationConflict(slots,day,time){const start=installationStart(day,time),end=start+3*3600000;return Number.isFinite(start)?slots.find(s=>Date.parse(s.start)<end&&Date.parse(s.end)>start):null;}
 export function installationSlotsForDay(slots,day){const start=installationStart(day,'00:00'),end=start+24*3600000;return slots.filter(s=>Date.parse(s.start)<end&&Date.parse(s.end)>start);}
 
+export const hasInstallationAppointment=job=>!!job.installDate&&!!job.installTime;
+export function installationDailyTask(job,day){return ['pending','in_progress'].includes(job.installationStatus)&&(!job.createdDay||job.createdDay<=day)&&(!hasInstallationAppointment(job)||job.installDate<=day);}
+export function installationFlexibleTask(job,day){return installationDailyTask(job,day)&&(!hasInstallationAppointment(job)||job.installDate<day);}
 export function installationMatchesStatus(job,status,today){
  if(status==='all')return true;
- if(status==='today')return job.installDate===today&&job.installationStatus!=='closed';
+ if(status==='today')return installationDailyTask(job,today)||(job.installDate===today&&job.installationStatus==='completed');
  if(status==='open')return job.installationStatus!=='closed';
  return job.installationStatus===status;
 }

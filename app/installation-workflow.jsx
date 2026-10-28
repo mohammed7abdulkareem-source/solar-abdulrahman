@@ -5,7 +5,7 @@ import AppIcon from './app-icons';
 import WarehouseBadge from './warehouse-badge';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import InstallationCalendar from './installation-calendar';
-import {installationStages as stages,installationIndex,installationLocalDay,installationMatchesStatus} from './installation-utils.mjs';
+import {installationStages as stages,installationIndex,installationLocalDay,installationMatchesStatus,installationFlexibleTask,hasInstallationAppointment} from './installation-utils.mjs';
 import {saveRequest} from './save-request.mjs';
 import {unlockNotificationSound,playNotificationSound} from './notification-sound.mjs';
 import {supabase} from './supabase';
@@ -43,16 +43,16 @@ export default function InstallationWorkflow({profile,onChanged,selectedJob=''})
  }
  useEffect(()=>{const update=()=>{if(document.visibilityState==='visible'&&!actionBusy.current)refresh().catch(()=>{});};const timer=setInterval(update,5000);window.addEventListener('solar-notification',update);window.addEventListener('focus',update);document.addEventListener('visibilitychange',update);return()=>{clearInterval(timer);window.removeEventListener('solar-notification',update);window.removeEventListener('focus',update);document.removeEventListener('visibilitychange',update);};},[refresh]);
  const today=installationLocalDay(Date.now());
- const summaries=[['today','مواعيد اليوم'],['in_progress','قيد التنفيذ'],['completed','بانتظار المراجعة'],['closed','مكتملة ومغلقة']].map(([key,label])=>({key,label,count:jobs.filter(j=>installationMatchesStatus(j,key,today)).length}));
+ const summaries=[['today','أعمال اليوم'],['in_progress','قيد التنفيذ'],['completed','بانتظار المراجعة'],['closed','مكتملة ومغلقة']].map(([key,label])=>({key,label,count:jobs.filter(j=>installationMatchesStatus(j,key,today)).length}));
  const resultsTitle=summaries.find(s=>s.key===status)?.label||stages.find(([key])=>key===status)?.[1]||(status==='all'?'جميع التنصيبات':'التنصيبات المفتوحة');
  function selectSummary(key){setStatus(key);setQuery('');setShowCalendar(false);requestAnimationFrame(()=>{resultsHeading.current?.focus({preventScroll:true});resultsHeading.current?.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});});}
- const visible=jobs.filter(j=>installationMatchesStatus(j,status,today)&&(!query||[j.party,j.customerPhone,j.customerAddress,j.installerName,j.creatorName,String(j.receiptNo),...(selectedJob?[String(j.id)]:[])].join(' ').includes(query.trim())));
+ const visible=jobs.filter(j=>installationMatchesStatus(j,status,today)&&(!query||[j.party,j.customerPhone,j.customerAddress,j.installerName,j.creatorName,String(j.receiptNo),String(j.id)].join(' ').includes(query.trim())));
  return <div className="workflow installationRefresh">
   {toast&&createPortal(<div className="installationActionToast" role="status"><AppIcon name="check" size={22}/><div><b>تم الغلق</b><span>تم اعتماد المصاريف وإغلاق ملف التنصيب بنجاح.</span></div><button type="button" aria-label="إغلاق تنبيه الغلق" onClick={()=>setToast(false)}>×</button></div>,document.body)}
   <div className="workflowHero"><div><small>متابعة التنفيذ خطوة بخطوة</small><h2>{engineer?'مهامي الميدانية':'إدارة التنصيبات'}</h2><p>{engineer?'المواعيد والمواد وإنجاز خطواتك بمكان واحد':'جدول مشترك ومراحل موحّدة مع مهندس التنصيب'}</p></div><span aria-hidden="true"><AppIcon name="tools" size={26}/></span></div>
   <div className="workflowStats" role="group" aria-label="ملخص حالات التنصيب">{summaries.map(({key,label,count})=><button type="button" key={key} aria-pressed={status===key} disabled={loading} onClick={()=>selectSummary(key)}><b>{loading?'—':fmt(count)}</b><span>{label}</span></button>)}</div>
   <button className="installationCalendarToggle" aria-expanded={showCalendar} onClick={()=>setShowCalendar(v=>!v)}><AppIcon name="calendar" size={19}/> جدول مواعيد المهندسين <span>{showCalendar?'إخفاء':'عرض الحجوزات'}</span></button>
-  {showCalendar&&<InstallationCalendar/>}
+  {showCalendar&&<InstallationCalendar onOpenJob={j=>{setQuery(String(j.id));setStatus('today');setShowCalendar(false);}}/>}
   <div className="workflowSearch"><input aria-label="بحث بالتنصيبات" value={query} onChange={e=>setQuery(e.target.value)} placeholder="بحث بالزبون، المستخدم أو الهاتف…"/><button disabled={loading||busy!==null} onClick={async()=>{setLoading(true);setError('');try{await refresh()}catch{setError('تعذر التحديث. تحقق من الاتصال.')}finally{setLoading(false)}}}>تحديث</button></div>
   <div className="statusTabs" aria-label="تصفية المهام">{[['open','المفتوحة'],...stages,['all','الكل']].map(([value,label])=><button key={value} aria-pressed={status===value} onClick={()=>setStatus(value)}>{label}</button>)}</div>
   {error&&<div className="workflowError" role="alert">{error}</div>}{message&&<div className="workflowSuccess" role="status">{message}</div>}
@@ -62,13 +62,15 @@ export default function InstallationWorkflow({profile,onChanged,selectedJob=''})
 }
 function JobCard({job,engineer,busy,change}){
  const index=installationIndex(job.installationStatus),report=job.installationReport||{};
+ const flexible=installationFlexibleTask(job,installationLocalDay(Date.now())),carried=flexible&&hasInstallationAppointment(job);
  return <article className="workflowJob">
   <header><div><small>ملف #{receiptNumber(job)}</small><h3>{job.party||'عميل منظومة'}</h3>{job.warehouseName&&<small className="orderWarehouseLabel">{job.warehouseName}</small>}</div><span className={'workflowStatus '+job.installationStatus}>{stages[index][1]}</span></header>
   {!engineer&&job.sellingPrice!=null&&Number.isFinite(Number(job.sellingPrice))&&<div className="jobSalePrice"><span>سعر بيع المنظومة</span><strong><bdi>{fmt(job.sellingPrice)}</bdi> <small>د.ع</small></strong></div>}
   <div className="jobResponsible"><AppIcon name="user" size={17}/><span>المستخدم المسؤول <b>{job.creatorName||'غير محدد'}</b></span><PhoneActions phone={job.creatorPhone} label={'بالمسؤول '+job.creatorName}/></div>
   <ol className="workflowSteps" aria-label="مراحل التنصيب">{stages.map(([stage,label],i)=><li key={stage} className={i<=index?'reached':''} aria-current={i===index?'step':undefined}><span>{i<index||job.installationStatus==='closed'?'✓':i+1}</span><small>{label}</small></li>)}</ol>
   <WarehouseBadge status={job.warehouseStatus} compact/>
-  <div className="jobDetails"><div><small>موعد التنصيب</small><b>{job.installDate||'لم يحدد'} • {job.installTime?.slice(0,5)||'الوقت غير محدد'}</b></div><div><small>مهندس التنصيب</small><b>{job.installerName||'غير مسند'}</b></div><div className="jobAddress"><small>العنوان</small><b>{job.customerAddress||'العنوان غير محدد'}</b></div></div>
+  {flexible&&<p className={'installationNoAppointment'+(carried?' carried':'')}>{carried?'مرحّل إلى أعمال اليوم · يُنفّذ حسب الوقت المتاح':'بدون موعد · ضمن أعمال كل يوم إلى أن يُنجز'}</p>}
+  <div className="jobDetails"><div><small>{carried?'الموعد السابق':'موعد التنصيب'}</small><b>{hasInstallationAppointment(job)?job.installDate+' • '+job.installTime.slice(0,5):'بدون موعد محدد'}</b></div><div><small>مهندس التنصيب</small><b>{job.installerName||'غير مسند'}</b></div><div className="jobAddress"><small>العنوان</small><b>{job.customerAddress||'العنوان غير محدد'}</b></div></div>
   <div className="jobContact">{job.customerPhone?<PhoneActions phone={job.customerPhone} label={'بالزبون '+job.party}/>:<span>رقم الهاتف غير متوفر</span>}</div>
   <details className="jobMaterials" open><summary>مواد التنصيب <span>{job.items?.length||0} مادة</span></summary>{job.items?.length?job.items.map((item,i)=><div key={item.id||i}><span>{item.name}{item.brand&&<small>{item.brand}</small>}</span><b>× {fmt(item.qty)}</b></div>):<p>لا توجد مواد مسجلة</p>}</details>
   <div className="jobTimes">{job.installationStartedAt&&<span>بدء العمل: {dateText(job.installationStartedAt)}</span>}{job.installationCompletedAt&&<span>إرسال التقرير: {dateText(job.installationCompletedAt)}</span>}{job.installationClosedAt&&<span>إغلاق الملف: {dateText(job.installationClosedAt)}</span>}</div>

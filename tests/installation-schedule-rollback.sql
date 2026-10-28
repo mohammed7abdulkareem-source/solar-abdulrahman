@@ -19,10 +19,10 @@ select set_config('test.stock',(select qty::text from products where id=-366001)
 select set_config('test.books',(select count(*)::text from transactions),true);
 set local role authenticated;
 do $$declare r jsonb;t text;begin
- foreach t in array array['04:01','09:00','10:00','15:59'] loop
+ foreach t in array array['07:01','09:00','10:00','12:59'] loop
   begin perform public.solar_invoice_save(gen_random_uuid(),current_setting('test.payload')::jsonb||jsonb_build_object('installTime',t));raise exception 'FAIL overlap %',t;exception when sqlstate 'PT409' then null;end;
  end loop;
- foreach t in array array['04:00','16:00'] loop
+ foreach t in array array['07:00','13:00'] loop
   perform public.solar_invoice_save(gen_random_uuid(),current_setting('test.payload')::jsonb||jsonb_build_object('installTime',t));
  end loop;
  perform public.solar_invoice_save(gen_random_uuid(),current_setting('test.payload')::jsonb||'{"installerId":"00000000-0000-0000-0000-000000003664"}');
@@ -30,8 +30,8 @@ do $$declare r jsonb;t text;begin
  r:=public.solar_installation_schedule('2026-10-26','2026-10-26','00000000-0000-0000-0000-000000003663',current_setting('test.job')::bigint);
  if jsonb_array_length(r->'slots')<>2 or r::text like '%"id": '||current_setting('test.job')||',%' then raise exception 'FAIL exclusion';end if;
  perform public.solar_invoice_save(gen_random_uuid(),current_setting('test.payload')::jsonb||'{"installDate":"2026-10-28","installTime":"22:00"}');
- begin perform public.solar_invoice_save(gen_random_uuid(),current_setting('test.payload')::jsonb||'{"installDate":"2026-10-29","installTime":"03:59"}');raise exception 'FAIL midnight overlap';exception when sqlstate 'PT409' then null;end;
- perform public.solar_invoice_save(gen_random_uuid(),current_setting('test.payload')::jsonb||'{"installDate":"2026-10-29","installTime":"04:00"}');
+ begin perform public.solar_invoice_save(gen_random_uuid(),current_setting('test.payload')::jsonb||'{"installDate":"2026-10-29","installTime":"00:59"}');raise exception 'FAIL midnight overlap';exception when sqlstate 'PT409' then null;end;
+ perform public.solar_invoice_save(gen_random_uuid(),current_setting('test.payload')::jsonb||'{"installDate":"2026-10-29","installTime":"01:00"}');
 end$$;
 do $$declare r jsonb;t public.transactions;candidate jsonb;begin
  begin
@@ -128,5 +128,5 @@ select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003662'
 do $$begin begin perform public.solar_admin_announcement('send','all','غير مسموح','غير مسموح',gen_random_uuid());raise exception 'FAIL staff broadcast';exception when insufficient_privilege then null;end;end$$;
 reset role;
 set constraints all immediate;
-\echo PASS six-hour shared calendar, boundaries, midnight, canonical closure/reopen, creator contact, scoped privacy, stale revision, notifications, atomic stock and role guards
+\echo PASS three-hour shared calendar, boundaries, midnight, canonical closure/reopen, creator contact, scoped privacy, stale revision, notifications, atomic stock and role guards
 rollback;
