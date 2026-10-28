@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cashBalance,cashRowsFor,canOpenPage,canSeeCash,isAdministrator} from '../app/access-utils.mjs';
+import {cashBalance,cashRowsFor,canOpenPage,canSeeCash,isAdministrator,canDeleteSale} from '../app/access-utils.mjs';
 const rows=[
  {id:1,cash:true,createdBy:'admin',cashboxUserId:'staff',kind:'cash_income',total:500},
  {id:2,cash:true,createdBy:'staff',cashboxUserId:'staff',kind:'cash_expense',total:70},
@@ -8,6 +8,16 @@ const rows=[
  {id:4,cash:false,createdBy:'staff',kind:'sale',total:800},
  {id:5,cash:true,createdBy:null,kind:'cash_income',total:40}
 ];
+test('all active office users can browse and delete their own past sales, including legacy permission=false',()=>{
+ const p={id:'owner',active:true,user_type:'admin_staff',permissions:{salesDeleteOwn:false}};
+ assert.equal(canOpenPage(p,'salesHistory'),true);
+ assert.equal(canDeleteSale(p,'owner'),true);
+ assert.equal(canDeleteSale(p,'other'),false);
+ assert.equal(canDeleteSale({...p,is_admin:true},'other'),true);
+ for(const profile of [{...p,active:false},{...p,user_type:'warehouse',is_admin:true},{...p,user_type:'installer',is_admin:true}]){
+  assert.equal(canOpenPage(profile,'salesHistory'),false);assert.equal(canDeleteSale(profile,'owner'),false);
+ }
+});
 test('staff cash includes admin deposits into their box, excludes other boxes and credit',()=>{
  assert.equal(cashBalance(rows,'staff'),430);
  assert.deepEqual(cashRowsFor(rows,'staff').map(x=>x.id),[1,2]);

@@ -7,6 +7,7 @@ export const statementDate=value=>value?value.split('-').reverse().join('/'):'�
 export function cashStatementDetails(r){
  const parts=[];
  if(r.party)parts.push(r.party);
+ if(r.invoice_deleted)parts.push('الوصل محذوف — أُلغيت مصاريفه');
  if(r.receipt_no!=null)parts.push('وصل #'+r.receipt_no);
  if(r.job_receipt!=null&&r.job_receipt!==r.receipt_no)parts.push('منظومة #'+r.job_receipt);
  if(r.warehouse_name)parts.push('المخزن: '+r.warehouse_name);

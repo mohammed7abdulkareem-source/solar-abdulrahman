@@ -27,9 +27,10 @@ export function canOpenPage(profile, page) {
   if (page === 'cashTransfers') return !!(profile.permissions?.cashTransferSend || profile.permissions?.financeReceive);
   if (page === 'installations') return !!(profile.permissions?.installations || profile.permissions?.system);
   if (page === 'paymentHistory') return paymentKinds.some(([kind])=>canReadPaymentKind(profile,kind));
-  if (page === 'salesHistory') return !!(profile.permissions?.salesHistory || profile.permissions?.sale || profile.permissions?.system || profile.permissions?.installations || profile.permissions?.salesDeleteOwn);
+  if (page === 'salesHistory') return true;
   return !!profile.permissions?.[page];
 }
+export const canDeleteSale = (profile, ownerId) => !!profile?.active && !isEngineer(profile) && !isWarehouse(profile) && (isAdministrator(profile) || (!!ownerId && profile.id === ownerId));
 export const canSeeCash = profile => !isEngineer(profile) && canOpenPage(profile,'cash');
 
 export const canManageQuotes = profile => canOpenPage(profile,'tahseel') && (isAdministrator(profile) || profile.permissions?.tahseelFull === true);
