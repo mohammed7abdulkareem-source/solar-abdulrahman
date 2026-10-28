@@ -9,7 +9,7 @@ import {enablePush,disablePush,pushSupported,registeredOnThisDevice} from './pus
 function BellIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>}
 function PowerIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9M6.4 6.4a8 8 0 1 0 11.2 0"/></svg>}
 
-export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse,onStockTransfer,onProfit,warehouse=false,admin=false}){
+export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse,onStockTransfer,onProfit,onDeleteRequest,warehouse=false,admin=false}){
  const [toast,setToast]=useState(null),[sound,setSound]=useState(false);
  const tracker=useRef(createNoticeTracker()),alive=useRef(true),latestLoad=useRef(0);
  const [enabled,setEnabled]=useState(false),[supported,setSupported]=useState(true),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[notices,setNotices]=useState([]),[open,setOpen]=useState(false),[error,setError]=useState(false);
@@ -20,7 +20,7 @@ export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse
  }
  async function load(initial=false){
   const request=++latestLoad.current;
-  const {data,error}=await supabase.from('solar_notifications').select('id,job_id,transfer_id,stock_transfer_id,event,title,body,created_at,read_at').order('created_at',{ascending:false}).limit(30);
+  const {data,error}=await supabase.from('solar_notifications').select('id,job_id,transfer_id,stock_transfer_id,delete_request_id,event,title,body,created_at,read_at').order('created_at',{ascending:false}).limit(30);
   if(!alive.current||request!==latestLoad.current)return;
   if(!error){receive(data||[],initial);setNotices(data||[]);}
  }
@@ -57,7 +57,7 @@ export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse
    {warehouse&&!enabled&&<p className="pushHint">فعّل الإشعارات على جهاز مسؤول التجهيز حتى تصله الفواتير الجديدة خارج البرنامج.</p>}
    {message&&<p role={error?'alert':'status'} className={error?'pushMessage error':'pushMessage'}>{message}</p>}
    {admin&&<AdminAnnouncement onSent={()=>load()}/>}
-   <div className="notificationList">{notices.length?notices.map(n=><button key={n.id} className={n.read_at?'read':''} onClick={async()=>{if(!n.read_at){const readAt=new Date().toISOString();const {error}=await supabase.from('solar_notifications').update({read_at:readAt}).eq('id',n.id);if(!error)setNotices(v=>v.map(x=>x.id===n.id?{...x,read_at:readAt}:x));}if(n.stock_transfer_id){setOpen(false);onStockTransfer?.(n.stock_transfer_id);}else if(n.event?.startsWith('profit_')){setOpen(false);onProfit?.();}else if(n.transfer_id){setOpen(false);onTransfer?.(n.transfer_id);}else if(n.job_id&&n.event?.startsWith('warehouse_')){setOpen(false);onWarehouse?.(String(n.job_id),n.event);}else if(n.job_id){setOpen(false);onOpen(String(n.job_id));}}}><b>{n.title}</b><span>{n.body}</span><small>{new Date(n.created_at).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad'})}</small></button>):<p>لا توجد إشعارات بعد.</p>}</div>
+   <div className="notificationList">{notices.length?notices.map(n=><button key={n.id} className={n.read_at?'read':''} onClick={async()=>{if(!n.read_at){const readAt=new Date().toISOString();const {error}=await supabase.from('solar_notifications').update({read_at:readAt}).eq('id',n.id);if(!error)setNotices(v=>v.map(x=>x.id===n.id?{...x,read_at:readAt}:x));}if(n.delete_request_id){setOpen(false);onDeleteRequest?.(n.delete_request_id);}else if(n.stock_transfer_id){setOpen(false);onStockTransfer?.(n.stock_transfer_id);}else if(n.event?.startsWith('profit_')){setOpen(false);onProfit?.();}else if(n.transfer_id){setOpen(false);onTransfer?.(n.transfer_id);}else if(n.job_id&&n.event?.startsWith('warehouse_')){setOpen(false);onWarehouse?.(String(n.job_id),n.event);}else if(n.job_id){setOpen(false);onOpen(String(n.job_id));}}}><b>{n.title}</b><span>{n.body}</span><small>{new Date(n.created_at).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad'})}</small></button>):<p>لا توجد إشعارات بعد.</p>}</div>
   </section></div>,document.body)}
  </div>;
 }

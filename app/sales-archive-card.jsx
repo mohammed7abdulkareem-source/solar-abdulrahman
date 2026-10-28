@@ -31,6 +31,6 @@ export default function SalesArchiveCard({row,profile,warehouseStatus,doc,openA4
    {(profile?.is_admin||(row.created_by===profile?.id&&profile?.permissions?.[row.kind]))&&<WarrantyManage invoiceId={row.id} onChanged={onWarrantyChanged}/>}
    {system&&onFollow&&<button type="button" className="workflowSecondary archiveFollow" onClick={()=>onFollow(String(row.id))}><AppIcon name="tools" size={15}/>متابعة ملف التنصيب</button>}
   </div>}
-  {row.canDelete&&<button type="button" className="dangerMini archiveDelete saleHistoryDelete" disabled={deleting!==null} onClick={()=>onDelete(row)}><AppIcon name="trash" size={18}/>{deleting===row.id?'جاري مراجعة الحذف…':'حذف الوصل'}</button>}
+  {row.canDelete&&<button type="button" className="dangerMini archiveDelete saleHistoryDelete" disabled={deleting!==null} onClick={()=>onDelete(row)}><AppIcon name="trash" size={18}/>{deleting===row.id?'جاري إرسال الطلب…':'طلب حذف الوصل'}</button>}
  </article>;
 }

@@ -1,4 +1,5 @@
 import './invoice-attempt.css';
+import './deletion-requests.css';
 import './globals.css';
 import './solar-theme.css';
 import './workflow.css';

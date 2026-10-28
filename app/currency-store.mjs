@@ -1,3 +1,4 @@
+import {requestReceiptDeletion} from './receipt-deletion.mjs';
 import {supabase} from './supabase';
 import {saveRequest} from './save-request.mjs';
 import {invoicePayload} from './currency-utils.mjs';
@@ -30,7 +31,4 @@ export async function saveCurrencyInvoice(attempt,kind,meta,items,original){
   send:record=>saveRequest(signal=>supabase.rpc('solar_invoice_save',{request_id:record.requestId,payload:record.payload}).abortSignal(signal))
  });}catch(error){if(error.code==='PT409')refreshValuation();if(!error.invoiceRecovery&&!/^[0-9A-Z]{5}$/.test(error.code||'')&&!/[\u0600-\u06ff]/.test(error.message||''))throw new Error('لم يصل تأكيد الحفظ. استخدم «التحقق من الحفظ السابق» قبل إعادة المحاولة.',{cause:error});throw error;}
 }
-export async function deleteCurrencyPurchase(invoice){
-  const {error}=await supabase.rpc('solar_purchase_delete',{invoice_id:invoice.id,expected_revision:invoice.pricingRevision||0});
-  if(error)throw error;
-}
+export async function deleteCurrencyPurchase(invoice){return requestReceiptDeletion(invoice.id);}

@@ -1,0 +1,33 @@
+'use client';
+import {useEffect,useRef,useState} from 'react';
+import {supabase} from './supabase';
+import {isAdministrator} from './access-utils.mjs';
+import {deletionKind} from './receipt-deletion.mjs';
+import {formatMoney} from './money-format.mjs';
+import {saveRequest} from './save-request.mjs';
+const labels={pending:'بانتظار موافقة الإدارة',approved:'تم الحذف بموافقة الإدارة',rejected:'مرفوض',cancelled:'ملغى'};
+export default function DeletionRequests({profile,initialId='',onChanged}){
+ const admin=isAdministrator(profile),[rows,setRows]=useState([]),[filter,setFilter]=useState('pending'),[selected,setSelected]=useState(initialId),[detail,setDetail]=useState(null),[note,setNote]=useState(''),[revision,setRevision]=useState(0),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
+ const lock=useRef(false);
+ useEffect(()=>{if(initialId)setSelected(initialId);},[initialId]);
+ useEffect(()=>{let live=true;setLoading(true);supabase.rpc('solar_receipt_delete_requests',{action:'list',payload:{status:filter}}).then(({data,error})=>{if(!live)return;if(error)setError(error.message);else setRows(data.rows||[]);}).catch(()=>live&&setError('تعذر تحميل طلبات الحذف.')).finally(()=>live&&setLoading(false));return()=>{live=false};},[filter,revision]);
+ useEffect(()=>{setDetail(null);setNote('');},[selected]);
+ useEffect(()=>{let live=true;if(!selected)return;supabase.rpc('solar_receipt_delete_requests',{action:'get',request_id:selected}).then(({data,error})=>{if(!live)return;if(error)setError(error.message);else setDetail(data);}).catch(()=>live&&setError('تعذر فتح الطلب.'));return()=>{live=false};},[selected,revision]);
+ useEffect(()=>{const update=()=>{if(!lock.current&&document.visibilityState==='visible')setRevision(n=>n+1);};window.addEventListener('solar-notification',update);const timer=setInterval(update,15000);return()=>{clearInterval(timer);window.removeEventListener('solar-notification',update)};},[]);
+ async function decide(action){if(lock.current||!detail||detail.id!==selected)return;if(!confirm(action==='approve'?'تأكيد الموافقة وحذف الوصل وتصحيح المصاريف والمخزون والحساب؟':action==='reject'?'رفض طلب الحذف وإبقاء الوصل كما هو؟':'إلغاء طلب الحذف؟'))return;
+  lock.current=true;setBusy(true);setError('');setMessage('');try{const r=await saveRequest(signal=>supabase.rpc('solar_receipt_delete_requests',{action,request_id:detail.id,payload:{expectedToken:detail.reviewToken,note}}).abortSignal(signal));if(r.error)throw r.error;setMessage(labels[r.data.status]||'تم حفظ القرار');setRevision(n=>n+1);if(onChanged)void Promise.resolve().then(onChanged).catch(()=>{});}catch(e){setError(e.message||'لم يتأكد الرد؛ حدّث الطلب قبل المحاولة مجددًا.');setRevision(n=>n+1);}finally{lock.current=false;setBusy(false);}}
+ const c=detail?.current||detail?.snapshot;
+ return <section className="deletionRequests"><header className="deletionRequestsHead"><div><h2>{admin?'موافقات حذف الوصولات':'طلبات حذف وصولاتي'}</h2><p>{admin?'راجع الوصل ثم وافق على الحذف أو ارفضه.':'إرسال الطلب لا يغيّر الحساب أو القاصة؛ الحذف بعد موافقة الإدارة فقط.'}</p></div><button disabled={busy||loading} onClick={()=>{setError('');setRevision(n=>n+1)}}>تحديث</button></header>
+  {error&&<p className="workflowError" role="alert">{error}</p>}{message&&<p className="workflowSuccess" role="status">{message}</p>}
+  <label className="deletionFilter">حالة الطلب<select aria-label="حالة طلبات الحذف" value={filter} onChange={e=>setFilter(e.target.value)}><option value="pending">بانتظار الموافقة</option><option value="">جميع الطلبات</option>{Object.entries(labels).filter(([k])=>k!=='pending').map(([k,v])=><option value={k} key={k}>{v}</option>)}</select></label>
+  {selected&&<section className="deletionReview" aria-label="مراجعة طلب الحذف"><header><h3>مراجعة طلب الحذف</h3><button disabled={busy} onClick={()=>setSelected('')}>إغلاق</button></header>{!detail||detail.id!==selected?<p role="status">جاري فتح الطلب…</p>:<><span className={'deletionStatus '+detail.status}>{labels[detail.status]}</span><h3>{deletionKind(c.kind)} #{c.receiptNo} · {c.party||'نقدي'}</h3><p>طالب الحذف: <b>{detail.requesterName}</b> · صاحب الوصل: {c.ownerName}</p><strong className="deletionAmount">{formatMoney(Math.abs(c.total))} {c.currency==='USD'?'$':'د.ع'}</strong>
+   {detail.reason&&<p>سبب الطلب: {detail.reason}</p>}{detail.decisionNote&&<p>ملاحظة الإدارة: {detail.decisionNote}</p>}
+   {(c.items||[]).length>0&&<details open><summary>فقرات الوصل ({c.items.length})</summary>{c.items.map((i,n)=><div className="deletionItem" key={i.id||n}><span>{i.product_name}<small>{[i.brand_name,i.category].filter(Boolean).join(' · ')}</small></span><b>× {formatMoney(i.qty)}</b></div>)}</details>}
+   {(c.expenseRefunds||[]).length>0&&<div className="deletionRefunds"><h4>المصاريف التي ترجع عند الموافقة</h4>{c.expenseRefunds.map(r=><p key={r.ownerId}>{r.name} <b>{formatMoney(r.amount)} د.ع</b></p>)}</div>}
+   {c.retainedPayments>0&&<p>التسديدات المرتبطة ({c.retainedPayments}) تبقى بحساب الزبون والقاصة، وتتحول إلى الحساب العام.</p>}
+   {detail.status==='pending'&&<>{detail.stale&&<p className="workflowError">تغيّر الوصل بعد إرسال الطلب. يُلغى أو يُرفض هذا الطلب، ثم يُرسل طلب جديد من النسخة الحالية.</p>}{c.blockedReason&&<p className="workflowError">{c.blockedReason}</p>}{admin&&<label>ملاحظة القرار · اختياري<textarea aria-label="ملاحظة قرار الحذف" value={note} maxLength={1000} disabled={busy} onChange={e=>setNote(e.target.value)}/></label>}
+    <div className="deletionDecisionActions">{admin?<><button className="approve" disabled={busy||detail.stale||!!c.blockedReason} onClick={()=>decide('approve')}>موافقة وحذف الوصل</button><button disabled={busy} onClick={()=>decide('reject')}>رفض طلب الحذف</button></>:<button disabled={busy} onClick={()=>decide('cancel')}>إلغاء طلب الحذف</button>}</div></>}
+  </>}</section>}
+  {loading?<p role="status">جاري تحميل الطلبات…</p>:<div className="deletionRequestList">{rows.map(r=><button key={r.id} className={'deletionRequestRow '+(selected===r.id?'selected':'')} disabled={busy} onClick={()=>{setError('');setSelected(r.id)}}><span><small>{deletionKind(r.kind)} #{r.receiptNo}</small><b>{r.party||'وصل نقدي'}</b><small>{r.requesterName} · {new Date(r.createdAt).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad'})}</small></span><span><b>{formatMoney(Math.abs(r.total))} {r.currency==='USD'?'$':'د.ع'}</b><small className={'deletionStatus '+r.status}>{labels[r.status]}</small></span></button>)}{!rows.length&&<p className="empty">لا توجد طلبات ضمن هذا الاختيار.</p>}</div>}
+ </section>;
+}

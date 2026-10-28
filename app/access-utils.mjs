@@ -27,7 +27,7 @@ export function canOpenPage(profile, page) {
   if (page === 'cashTransfers') return !!(profile.permissions?.cashTransferSend || profile.permissions?.financeReceive);
   if (page === 'installations') return !!(profile.permissions?.installations || profile.permissions?.system);
   if (page === 'paymentHistory') return paymentKinds.some(([kind])=>canReadPaymentKind(profile,kind));
-  if (page === 'salesHistory') return true;
+  if (page === 'salesHistory' || page === 'deletionRequests') return true;
   return !!profile.permissions?.[page];
 }
 export const canDeleteSale = (profile, ownerId) => !!profile?.active && !isEngineer(profile) && !isWarehouse(profile) && (isAdministrator(profile) || (!!ownerId && profile.id === ownerId));

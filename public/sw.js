@@ -1,4 +1,4 @@
-const CACHE='abdulrahman-solar-v3-83-0';
+const CACHE='abdulrahman-solar-v3-84-0';
 const CORE=['/manifest.webmanifest','/icon-192.png','/icon-512.png','/apple-touch-icon.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('abdulrahman-solar-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))});
@@ -35,17 +35,18 @@ self.addEventListener('push',event=>{
   if(!data?.userId||await pushIdentity()!==data.userId)return;
   await self.registration.showNotification(data.title||'عبدالرحمن سولار',{
    body:data.body||'لديك تحديث جديد في البرنامج',icon:'/icon-192.png',badge:'/icon-192.png',
-   tag:'solar-'+data.id,lang:'ar',dir:'rtl',data:{jobId:data.jobId,userId:data.userId,transferId:data.transferId,stockTransferId:data.stockTransferId,event:data.event,invoiceKind:data.invoiceKind},silent:false,vibrate:[200,90,200],renotify:!!(data.event?.startsWith('warehouse_')||data.event?.startsWith('stock_transfer_')||data.event?.startsWith('profit_'))
+   tag:'solar-'+data.id,lang:'ar',dir:'rtl',data:{deleteRequestId:data.deleteRequestId,jobId:data.jobId,userId:data.userId,transferId:data.transferId,stockTransferId:data.stockTransferId,event:data.event,invoiceKind:data.invoiceKind},silent:false,vibrate:[200,90,200],renotify:!!(data.event?.startsWith('warehouse_')||data.event?.startsWith('stock_transfer_')||data.event?.startsWith('profit_'))
   });
  })());
 });
 self.addEventListener('notificationclick',event=>{
  event.notification.close();
  event.waitUntil((async()=>{
-  const {jobId,userId,transferId,stockTransferId,event:noticeEvent,invoiceKind}=event.notification.data||{};
+  const {jobId,userId,transferId,stockTransferId,deleteRequestId,event:noticeEvent,invoiceKind}=event.notification.data||{};
   if(await pushIdentity()!==userId)return;
   const url=new URL('/',self.location.origin);
-  if(stockTransferId&&/^[0-9a-f-]{36}$/i.test(stockTransferId)){url.searchParams.set('section','warehouse');url.searchParams.set('stockTransfer',stockTransferId);}
+  if(deleteRequestId&&/^[0-9a-f-]{36}$/i.test(deleteRequestId)){url.searchParams.set('section','deletionRequests');url.searchParams.set('deleteRequest',deleteRequestId);}
+  else if(stockTransferId&&/^[0-9a-f-]{36}$/i.test(stockTransferId)){url.searchParams.set('section','warehouse');url.searchParams.set('stockTransfer',stockTransferId);}
   else if(transferId&&/^[0-9a-f-]{36}$/i.test(transferId)){url.searchParams.set('section','cashTransfers');url.searchParams.set('transfer',transferId);}
   else if(noticeEvent?.startsWith('profit_')){url.searchParams.set('section','profit');url.searchParams.set('profitTab','settlements');}
   else if(jobId&&/^-?\d+$/.test(String(jobId))){url.searchParams.set('section',noticeEvent==='warehouse_ready'?(invoiceKind==='system'?'installations':'salesHistory'):noticeEvent?.startsWith('warehouse_')?'warehouse':'installations');url.searchParams.set('job',String(jobId));}
