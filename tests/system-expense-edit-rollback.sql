@@ -41,17 +41,26 @@ do $$declare j transactions;p jsonb;r jsonb;nonce uuid:=gen_random_uuid();balanc
  assert (select count(*)from transactions where party_id=-379101)=1;
  perform set_config('test.expense_edit_nonce',nonce::text,true);
  begin perform public.solar_invoice_save(gen_random_uuid(),p);raise exception 'Stale edit accepted';exception when sqlstate 'PT409' then null;end;
- -- A failed cash increase must roll back items, total, balances and request cache.
+ -- An approved increase can overdraw the actor's cashbox, posting only its delta.
  p:=p||jsonb_build_object('expectedRevision',j.pricing_revision,'expectedInstallationRevision',j.installation_revision,'total',3000000,'approvedInstallationExpenses',9000000);
- begin perform public.solar_invoice_save(gen_random_uuid(),p);raise exception 'Insufficient cash accepted';exception when sqlstate 'P0002' then null;end;
- assert (select total from transactions where id=j.id)=2500000;
+ balance_before:=solar_private.cash_balance(auth.uid());nonce:=gen_random_uuid();
+ r:=public.solar_invoice_save(nonce,p);assert public.solar_invoice_save(nonce,p)=r,'Overdraw replay response mismatch';
+ assert solar_private.cash_balance(auth.uid())=balance_before-8900000;
+ assert solar_private.cash_balance(auth.uid())<0;
+ assert (select total from transactions where id=j.id)=3000000;
  assert (select qty from products where id=-379101)=8;
- assert (select -sum(delta)from solar_cash_entries where job_id=j.id)=100000;
+ assert (select -sum(delta)from solar_cash_entries where job_id=j.id)=9000000;
+ select * into j from transactions where id=j.id;
+ -- Invalid amounts still leave the invoice, inventory and cash unchanged.
+ p:=p||jsonb_build_object('expectedRevision',j.pricing_revision,'expectedInstallationRevision',j.installation_revision,'total',3500000,'approvedInstallationExpenses',1000000001);
+ begin perform public.solar_invoice_save(gen_random_uuid(),p);raise exception 'Invalid expense accepted';exception when sqlstate '22023' then null;end;
+ assert (select total from transactions where id=j.id)=3000000;
+ assert (select -sum(delta)from solar_cash_entries where job_id=j.id)=9000000;
  -- Cancelling expenses doesn't close the installation, and refunds only once.
  perform public.solar_installation_action(j.id,j.installation_revision,'clear_expenses','{"notes":"إلغاء المصاريف للتصحيح"}');
  assert (select installation_expenses from transactions where id=j.id)=0;
  assert (select -sum(delta)from solar_cash_entries where job_id=j.id)=0;
- assert (select profit from transactions where id=j.id)=2100000;
+ assert (select profit from transactions where id=j.id)=2600000;
  begin perform public.solar_installation_action(j.id,j.installation_revision,'clear_expenses');raise exception 'Stale cancellation accepted';exception when sqlstate 'PT409' then null;end;
  assert (select -sum(delta)from solar_cash_entries where job_id=j.id)=0;
 end$$;

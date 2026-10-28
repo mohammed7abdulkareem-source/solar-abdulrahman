@@ -38,7 +38,7 @@ export default function InstallationWorkflow({profile,onChanged,selectedJob=''})
    await refresh().catch(()=>setError('تم حفظ الخطوة. تعذر تحديث القائمة؛ اضغط تحديث لرؤية آخر حالة.'));
    if(onChanged)void Promise.resolve().then(onChanged).catch(()=>{});
    return true;
-  }catch(e){setError(e.code==='P0002'?'رصيد قاصتك لا يكفي لدفع المصاريف. أضف الرصيد أو راجع المبلغ.':['40001','PT409'].includes(e.code)?'تغيّرت حالة الملف. تم تحديث المهام؛ راجعها وأعد المحاولة.':e.message?.includes('لم يصل تأكيد')?'لم يصل تأكيد العملية. حدّث المهام للتحقق من المرحلة قبل إعادة المحاولة.':'تعذر تنفيذ العملية. حدّث المهام وتأكد من الصلاحية والمرحلة الحالية.');await refresh().catch(()=>{});return false;}
+  }catch(e){setError(['40001','PT409'].includes(e.code)?'تغيّرت حالة الملف. تم تحديث المهام؛ راجعها وأعد المحاولة.':e.message?.includes('لم يصل تأكيد')?'لم يصل تأكيد العملية. حدّث المهام للتحقق من المرحلة قبل إعادة المحاولة.':'تعذر تنفيذ العملية. حدّث المهام وتأكد من الصلاحية والمرحلة الحالية.');await refresh().catch(()=>{});return false;}
   finally{actionBusy.current=false;setBusy(null);}
  }
  useEffect(()=>{const update=()=>{if(document.visibilityState==='visible'&&!actionBusy.current)refresh().catch(()=>{});};const timer=setInterval(update,5000);window.addEventListener('solar-notification',update);window.addEventListener('focus',update);document.addEventListener('visibilitychange',update);return()=>{clearInterval(timer);window.removeEventListener('solar-notification',update);window.removeEventListener('focus',update);document.removeEventListener('visibilitychange',update);};},[refresh]);
@@ -105,6 +105,6 @@ function ApproveInstallation({job,busy,onSubmit}){
   <label className="workflowField">ملاحظات الاعتماد (اختياري)<textarea value={notes} maxLength={4000} disabled={busy||stale} placeholder="يمكن إغلاق الملف بدون كتابة سبب" onChange={e=>setNotes(e.target.value)}/></label>
   <div className="approvalTotals"><span>الكلفة النهائية <b>{fmt(cost)} د.ع</b></span><span>الربح النهائي <b>{fmt(Number(job.total||0)-cost)} د.ع</b></span></div>
   {Number.isFinite(difference)&&<p className="workflowHint expenseDifference" role="status">{difference>0?'المبلغ الإضافي المطلوب من القاصة: '+fmt(difference)+' د.ع':difference<0?'المبلغ الذي يرجع لقاصة من دفعه: '+fmt(-difference)+' د.ع':'لا يوجد صرف إضافي؛ المبلغ مسجل سابقًا.'}</p>}
-  <p className="workflowHint">اعتماد الصفر يلغي أثر المصاريف السابقة ويرجع المدفوع لقاصة صاحبه. السجل يحفظ الصرف والإرجاع للتدقيق.</p>{error&&<p className="workflowError" role="alert">{error}</p>}<button className="workflowPrimary" disabled={busy||stale}>{busy?'جاري الاعتماد…':'اعتماد المصاريف وإغلاق الملف'}</button>
+  <p className="workflowHint">تنخصم المصاريف حتى لو صار رصيد القاصة سالبًا؛ تسديدات الزبائن تُضاف إليه تلقائيًا. اعتماد الصفر يرجع المدفوع لقاصة صاحبه، والسجل يحفظ الصرف والإرجاع للتدقيق.</p>{error&&<p className="workflowError" role="alert">{error}</p>}<button className="workflowPrimary" disabled={busy||stale}>{busy?'جاري الاعتماد…':'اعتماد المصاريف وإغلاق الملف'}</button>
  </form>;
 }
