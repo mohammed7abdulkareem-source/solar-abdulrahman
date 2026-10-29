@@ -79,6 +79,24 @@ do $$declare c jsonb;r jsonb;s jsonb;b jsonb;nonce uuid:=gen_random_uuid();begin
  c:=public.solar_cash_record('get','profit:'||current_setting('test.settlement'));select value into s from jsonb_array_elements(c->'suppliers')where(value->>'id')::bigint=-389002;
  perform public.solar_cash_record('update','profit:'||current_setting('test.settlement'),gen_random_uuid(),jsonb_build_object('amount',1000000,'note','إعادة توزيع على مورد دولار','supplierId',-389002,'supplierToken',s->>'token','expectedToken',c->>'token'));
 end$$;
+-- A second administrator corrects the allocation without moving the source
+-- supplier account attribution away from the original approving administrator.
+reset role;
+insert into profiles(id,display_name,is_admin,user_type,permissions)values('00000000-0000-0000-0000-000000003895','مدير آخر للتصحيح',true,'admin_staff','{}');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003895',true);
+do $$declare c jsonb;s jsonb;begin
+ c:=public.solar_cash_record('get','profit:'||current_setting('test.settlement'));select value into s from jsonb_array_elements(c->'suppliers')where(value->>'id')::bigint=-389002;
+ perform public.solar_cash_record('update','profit:'||current_setting('test.settlement'),gen_random_uuid(),jsonb_build_object('amount',900000,'note','تصحيح من المدير الثاني','supplierId',-389002,'supplierToken',s->>'token','expectedToken',c->>'token'));
+end$$;
+reset role;
+do $$begin
+ if exists(select 1 from solar_private.supplier_fx_entries where owner_id='00000000-0000-0000-0000-000000003895')then raise exception 'Supplier debt shifted to the editing admin';end if;
+ if not exists(select 1 from transactions t join solar_private.supplier_fx_entries e on e.transaction_id=t.id where t.profit_supplier_settlement_id=current_setting('test.settlement')::uuid and t.created_by='00000000-0000-0000-0000-000000003890'and t.cashbox_user_id=t.created_by and e.owner_id=t.created_by)then raise exception 'Original supplier owner/author not retained';end if;
+ if not exists(select 1 from solar_private.receipt_change_audit where actor_id='00000000-0000-0000-0000-000000003895'and action='profit_allocation_update')then raise exception 'Editing administrator audit missing';end if;
+end$$;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003890',true);
 -- A failure after reversing the supplier must roll back every financial leg.
 reset role;
 create function pg_temp.record_fingerprint()returns text language sql as $$select md5(jsonb_build_object('tx',(select jsonb_agg(to_jsonb(t)order by id)from transactions t),'supplier',(select jsonb_agg(to_jsonb(e)order by id)from solar_private.supplier_fx_entries e),'wallet',(select jsonb_agg(to_jsonb(e)order by id)from solar_private.wallet_fx_entries e),'requests',(select jsonb_agg(to_jsonb(e)order by request_id)from solar_private.finance_requests e),'fxRequests',(select jsonb_agg(to_jsonb(e)order by request_id)from solar_private.fx_requests e),'checkpoints',(select jsonb_agg(to_jsonb(e)order by source_key)from solar_private.profit_checkpoints e))::text)$$;
@@ -89,7 +107,7 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003890',true);
 do $$declare c jsonb;s jsonb;begin
  c:=public.solar_cash_record('get','profit:'||current_setting('test.settlement'));select value into s from jsonb_array_elements(c->'suppliers')where(value->>'id')::bigint=-389002;
- begin perform public.solar_cash_record('update','profit:'||current_setting('test.settlement'),gen_random_uuid(),jsonb_build_object('amount',900000,'note','فشل متعمد بعد عكس المورد','supplierId',-389002,'supplierToken',s->>'token','expectedToken',c->>'token'));raise exception 'FAIL partial allocation';exception when raise_exception then if sqlerrm<>'forced_record_failure'then raise;end if;end;
+ begin perform public.solar_cash_record('update','profit:'||current_setting('test.settlement'),gen_random_uuid(),jsonb_build_object('amount',800000,'note','فشل متعمد بعد عكس المورد','supplierId',-389002,'supplierToken',s->>'token','expectedToken',c->>'token'));raise exception 'FAIL partial allocation';exception when raise_exception then if sqlerrm<>'forced_record_failure'then raise;end if;end;
 end$$;
 reset role;
 do $$begin if pg_temp.record_fingerprint()<>current_setting('test.fingerprint')then raise exception 'Partial supplier/cash correction survived failure';end if;end$$;
