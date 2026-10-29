@@ -12,8 +12,8 @@ export function useWarehouseStatuses(rows,onChanged){
    for(const response of responses){if(response.status!=='fulfilled'||response.value.error)continue;for(const r of response.value.data||[]){updates[r.id]=r.status;const original=inputs.current.find(x=>String(x.id)===String(r.id)),prior=observed.current[r.id];if((prior!=null&&prior!==r.revision)||(prior==null&&original&&(original.warehouseStatus||original.warehouse_status||'pending')!==r.status))changed=true;observed.current[r.id]=r.revision;}}
    setStatuses(s=>({...s,...updates}));if(changed)await callback.current?.();
   }catch{}finally{busy=false;}};
-  load();const timer=setInterval(load,15000);window.addEventListener('focus',load);window.addEventListener('solar-notification',load);document.addEventListener('visibilitychange',load);
-  return()=>{live=false;clearInterval(timer);window.removeEventListener('focus',load);window.removeEventListener('solar-notification',load);document.removeEventListener('visibilitychange',load);};
+  load();const timer=setInterval(load,15000);window.addEventListener('solar-warehouse-changed',load);window.addEventListener('focus',load);window.addEventListener('solar-notification',load);document.addEventListener('visibilitychange',load);
+  return()=>{live=false;clearInterval(timer);window.removeEventListener('solar-warehouse-changed',load);window.removeEventListener('focus',load);window.removeEventListener('solar-notification',load);document.removeEventListener('visibilitychange',load);};
  // The invoice IDs define the subscription; callbacks and current rows are refs.
  },[key]);
  return statuses;

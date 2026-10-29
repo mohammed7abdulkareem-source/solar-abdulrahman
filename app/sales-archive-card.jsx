@@ -1,6 +1,7 @@
 'use client';
 import AppIcon from './app-icons';
 import WarehouseBadge from './warehouse-badge';
+import SalePreparation from './sale-preparation';
 import WarrantyManage from './warranty-manage';
 import {statusLabel,formatMoney} from './sales-document.mjs';
 import {receiptNumber} from './supplier-utils.mjs';
@@ -13,7 +14,7 @@ function CopyActions({row,customer,doc,openA4,saveA4,shareA4}){
   <button type="button" className={'saleHistoryAction '+(customer?'customerPreview':'warehousePreview')} aria-label={customer?'معاينة وصل الزبون':'معاينة الوصل المخزني'} onClick={()=>openA4(doc(row,customer))}><span className="saleHistoryActionIcon"><AppIcon name={customer?'eye':'warehouse'} size={21}/></span><span>معاينة<br/>{copy}</span></button>
  </div>;
 }
-export default function SalesArchiveCard({row,profile,warehouseStatus,doc,openA4,saveA4,shareA4,onFollow,onDelete,deleting,onWarrantyChanged,onEdit,editBusy=false}){
+export default function SalesArchiveCard({row,profile,warehouseStatus,doc,openA4,saveA4,shareA4,onFollow,onDelete,deleting,onWarrantyChanged,onPrepared,onEdit,editBusy=false}){
  const system=row.kind==='system',items=row.items||[],date=new Date(row.created_at).toLocaleDateString('en-CA',{timeZone:'Asia/Baghdad'}).replaceAll('-','/');
  return <article className="card archiveInvoice saleHistoryCard" aria-label={(system?'بيع منظومة':'بيع جملة')+' رقم '+receiptNumber(row)}>
   <header className="saleHistoryHeader">
@@ -23,7 +24,8 @@ export default function SalesArchiveCard({row,profile,warehouseStatus,doc,openA4
    </div>
    <div className="saleHistoryTotal" data-wide-amount={formatMoney(row.total).length>12}><div><span className="saleHistoryMoneyIcon"><AppIcon name="coins" size={20}/></span><strong><bdi dir="ltr">{formatMoney(row.total)}</bdi><small>د.ع</small></strong></div><span>{system?'إجمالي قيمة المنظومة':'إجمالي قيمة الجملة'}</span></div>
   </header>
-  <div className={'saleHistoryWarehouse '+(warehouseStatus==='ready'?'ready':'pending')}><span><AppIcon name="warehouse" size={20}/>{row.warehouse_name||'مخزن التجهيز'}</span><WarehouseBadge status={warehouseStatus} compact/></div>
+  <div className={'saleHistoryWarehouse '+(warehouseStatus==='ready'?'ready':'pending')}><span><AppIcon name="warehouse" size={20}/>مخزن التجهيز: {row.warehouse_name||row.warehouseName||'غير محدد'}</span><WarehouseBadge status={warehouseStatus} compact/></div>
+  {!system&&<SalePreparation invoice={{...row,warehouse_status:warehouseStatus}} profile={profile} onPrepared={onPrepared}/>}
   {system&&<div className="saleHistoryInstallation"><AppIcon name="tools" size={15}/><span>{statusLabel[row.installation_status]||'غير محدد'} · المهندس: {row.installerName||'غير محدد'}</span></div>}
   <details className="saleHistoryMaterials"><summary><span><AppIcon name="package" size={19}/>تفاصيل المواد ({items.length})</span><AppIcon name="chevron" size={17}/></summary><div className="saleHistoryMaterialRows">{items.map((item,i)=><div className="archiveLine" key={item.id||i}><span>{item.product_name}<small>{[item.brand_name,item.category].filter(Boolean).join(' · ')}</small></span><b>× <bdi>{formatMoney(item.qty)}</bdi></b></div>)}</div></details>
   <div className="saleHistoryCopies"><CopyActions {...{row,doc,openA4,saveA4,shareA4}} customer/><CopyActions {...{row,doc,openA4,saveA4,shareA4}} customer={false}/></div>

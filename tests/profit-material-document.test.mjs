@@ -1,0 +1,6 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+import {profitMaterialDocument} from '../app/profit-material-document.mjs';
+const b={receiptNo:4,kind:'sale',party:'<img>',creatorName:'A & B',warehouseName:'صيادة',date:'2026-10-28',sales:1000,total:1000,materialsCost:400,grossProfit:600,netProfit:550,profitAdjustment:-50,invoiceExpenses:50,installationExpenses:0,items:[{name:'بطارية',brand:'M',category:'بطاريات',code:'0001',qty:2,unitPrice:500,unitCost:200,lineSales:1000,lineCost:400,lineProfit:600}]};
+test('profit export includes materials, saved costs and line profits and reconciles the approved movement',()=>{const d=profitMaterialDocument(b,{settled:0,available:550});for(const s of ['بطارية','كود 0001','ربح الفقرة','كلفة الفقرة','600','550','-50','&lt;img&gt;','A &amp; B'])assert.ok(d.body.includes(s),s);assert.equal(d.total,'550 د.ع');});
+test('system profit export uses the agreed system price and material costs without inventing item prices',()=>{const d=profitMaterialDocument({...b,kind:'system',items:b.items.map(i=>({...i,unitPrice:null,lineSales:null,lineProfit:null}))},{settled:0,available:550});assert.ok(d.body.includes('سعر المنظومة إجمالي'));assert.ok(d.body.includes('بطارية'));assert.ok(!d.body.includes('<th>ربح الفقرة'));assert.ok(!d.body.includes('<th>سعر البيع'));assert.equal(d.total,'550 د.ع');});

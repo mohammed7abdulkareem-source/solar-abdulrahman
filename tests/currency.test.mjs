@@ -45,3 +45,7 @@ test('supplier balances use locked IQD values, not current exchange rates',()=>{
  const tx=[{kind:'purchase',party:'مورد',sourceCurrency:'USD',exchangeRate:1500,total:150000,cash:false,date:'2026-10-12'},{kind:'supplier_payment',party:'مورد',total:50000,date:'2026-10-12'}];
  assert.equal(supplierLedger(tx,{name:'مورد'}).balance,100000);
 });
+test('direct preparation is included only on a new wholesale sale',()=>{
+ assert.equal(invoicePayload('sale',{directPreparation:true},[]).directPreparation,true);
+ for(const result of [invoicePayload('sale',{directPreparation:false},[]),invoicePayload('sale',{directPreparation:true},[],{id:1}),invoicePayload('purchase',{directPreparation:true},[]),invoicePayload('system',{directPreparation:true},[])])assert.equal(Object.hasOwn(result,'directPreparation'),false);
+});
