@@ -14,6 +14,7 @@ begin
  if t.kind not in('cash_income','cash_expense','profit_distribution') or t.id is null then
   return solar_private.receipt_delete_context_v387(invoice_id);
  end if;
+ if not solar_private.cash_allowed('view')then raise exception 'لا تملك صلاحية الصندوق'using errcode='42501';end if;
  uid:=coalesce(t.cashbox_user_id,t.created_by);
  if uid is null or(not p.is_admin and uid<>p.id)then raise exception 'يمكنك طلب حذف وصولاتك فقط' using errcode='42501';end if;
  select coalesce(jsonb_agg(to_jsonb(x)order by x.id),'[]')into wallet from solar_private.wallet_fx_entries x where x.transaction_id=t.id;
@@ -88,7 +89,15 @@ begin
  definition:=pg_get_functiondef('solar_private.receipt_delete_requests(text,uuid,jsonb)'::regprocedure);
  needle:=$needle$  elsif t.kind='system_payment'then delete from public.cash_ledger where transaction_id=t.id;delete from public.transactions where id=t.id;$needle$;
  if strpos(definition,needle)=0 then raise exception 'Deletion approval dispatch contract missing';end if;
- execute replace(definition,needle,needle||E'\n  elsif t.kind in(''cash_income'',''cash_expense'',''profit_distribution'')then perform solar_private.cash_receipt_delete(t.id,r.id);');
+ definition:=replace(definition,needle,needle||E'\n  elsif t.kind in(''cash_income'',''cash_expense'',''profit_distribution'')then perform solar_private.cash_receipt_delete(t.id,r.id);');
+ needle:=$needle$where(p.is_admin or q.owner_id=p.id)and(coalesce(payload->>'status','')=''or q.status=payload->>'status')$needle$;
+ if strpos(definition,needle)=0 then raise exception 'Deletion request list scope contract missing';end if;
+ definition:=replace(definition,needle,$replacement$where(p.is_admin or q.owner_id=p.id)and(q.kind not in('cash_income','cash_expense','profit_distribution')or solar_private.cash_allowed('view'))and(coalesce(payload->>'status','')=''or q.status=payload->>'status')$replacement$);
+ needle:=$needle$ if action='get'then$needle$;
+ if strpos(definition,needle)=0 then raise exception 'Deletion request review contract missing';end if;
+ definition:=replace(definition,needle,$replacement$ if r.kind in('cash_income','cash_expense','profit_distribution')and not solar_private.cash_allowed('view')then raise exception 'لا تملك صلاحية الصندوق'using errcode='42501';end if;
+ if action='get'then$replacement$);
+ execute definition;
  definition:=pg_get_functiondef('solar_private.guard_receipt_delete_approval()'::regprocedure);
  needle:=$needle$'system_payment','supplier_payment')$needle$;
  if strpos(definition,needle)=0 then raise exception 'Deletion admin guard contract missing';end if;
