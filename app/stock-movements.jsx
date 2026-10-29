@@ -2,6 +2,8 @@
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {inventoryCall,useWarehouseInventory} from './warehouse-data';
 import {supabase} from './supabase';
+import dynamic from 'next/dynamic';
+const MaterialMovementLedger=dynamic(()=>import('./material-movement-ledger'));
 import {downloadPdf} from './pdf-share.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 import {quantity,warehouseDate,movementDocument,escapeHtml} from './warehouse-utils.mjs';
@@ -13,11 +15,11 @@ function Icon({name='movement'}){
 const emptyFilters={warehouse:'',query:'',product:'',customer:'',from:'',to:''};
 const dayInBaghdad=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Baghdad',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
 const label=r=>r.kind==='transfer_reserved'?'حجز لطلب نقل':r.kind==='transfer_cancelled'?'إلغاء حجز النقل':r.kind==='transfer_return_in'?'إلغاء نقل / دخول':r.kind==='transfer_return_out'?'إلغاء نقل / خروج':r.kind==='transfer_in'?'نقل وارد':r.kind==='transfer_out'?'نقل صادر':r.kind==='stock_adjustment'?'تسوية رصيد':r.kind==='purchase'?'شراء':r.kind==='system'?'بيع منظومة':'بيع جملة';
-export default function StockMovements({a4,openA4,shareA4}){
+export default function StockMovements({a4,openA4,shareA4,profile}){
  const inventory=useWarehouseInventory({aggregate:true});
- const [tab,setTab]=useState('materials'),[draft,setDraft]=useState(emptyFilters),[applied,setApplied]=useState(emptyFilters),[direction,setDirection]=useState('all'),[preset,setPreset]=useState('all'),[stock,setStock]=useState([]),[rows,setRows]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[exportError,setExportError]=useState(''),[exporting,setExporting]=useState(false),[page,setPage]=useState(0);const request=useRef(0);
+ const [tab,setTab]=useState('ledger'),[draft,setDraft]=useState(emptyFilters),[applied,setApplied]=useState(emptyFilters),[direction,setDirection]=useState('all'),[preset,setPreset]=useState('all'),[stock,setStock]=useState([]),[rows,setRows]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[exportError,setExportError]=useState(''),[exporting,setExporting]=useState(false),[page,setPage]=useState(0);const request=useRef(0),tabFilters=useRef(emptyFilters);
  const load=useCallback(async filters=>{const generation=++request.current;setLoading(true);setError('');try{const data=await inventoryCall('movements',{warehouseId:filters.warehouse?Number(filters.warehouse):null,productId:filters.product?Number(filters.product):null,customer:filters.customer.trim(),from:filters.from||null,to:filters.to||null});if(generation!==request.current)return;setRows(data||[]);setApplied(filters);setPage(0)}catch{if(generation===request.current)setError('تعذر تحميل السجل. اضغط تحديث للمحاولة مرة أخرى.')}finally{if(generation===request.current)setLoading(false)}},[]);
- useEffect(()=>{let live=true;load(emptyFilters);supabase.rpc('solar_stock_quantities').then(({data,error})=>{if(live&&!error)setStock(data||[])});return()=>{live=false;request.current++}},[load]);
+ useEffect(()=>{if(tab==='ledger')return;let live=true;load(tabFilters.current);supabase.rpc('solar_stock_quantities').then(({data,error})=>{if(live&&!error)setStock(data||[])});return()=>{live=false;request.current++}},[load,tab]);
  const shown=useMemo(()=>{const codes=new Map(stock.map(p=>[String(p.id),p.code]));const words=normalizeSearch(applied.query).replace(/#/g,'').split(/\s+/).filter(Boolean);return rows.filter(r=>{const text=normalizeSearch([r.name,r.warehouseName,r.brand,r.category,codes.get(String(r.productId)),r.receiptNo,r.party,r.note,label(r)].join(' '));return words.every(w=>text.includes(w))&&(direction==='all'||(direction==='in'?Number(r.inQty)>0:Number(r.outQty)>0))})},[rows,stock,applied.query,direction]);
  const totals=shown.reduce((s,r)=>({in:s.in+Number(r.inQty||0),out:s.out+Number(r.outQty||0)}),{in:0,out:0}),pageCount=Math.max(1,Math.ceil(shown.length/30)),currentPage=Math.min(page,pageCount-1),visible=shown.slice(currentPage*30,currentPage*30+30);
  const period=applied.from||applied.to?`${applied.from||'البداية'} — ${applied.to||'اليوم'}`:'جميع الفترات';
@@ -25,12 +27,13 @@ export default function StockMovements({a4,openA4,shareA4}){
  const html=()=>a4(title,'<div class="meta"><div>الفترة: '+escapeHtml(period)+'</div><div>نوع الحركة: '+({all:'الكل',in:'دخول',out:'خروج'}[direction])+'</div>'+(applied.query?'<div>البحث: '+escapeHtml(applied.query)+'</div>':'')+'</div>'+movementDocument(shown),'عدد الحركات: '+quantity(shown.length),'بدون أسعار');
  async function exportFile(type){if(exporting)return;setExporting(true);setExportError('');try{if(type==='preview')await openA4(html());else if(type==='download')await downloadPdf(title,html());else await shareA4(title,'',html())}catch{setExportError('تعذر تجهيز المستند. حاول مرة أخرى.')}finally{setExporting(false)}}
  function quickRange(value){const today=dayInBaghdad();let from='';if(value==='today')from=today;if(value==='month')from=today.slice(0,8)+'01';if(value==='week'){const date=new Date(today+'T12:00:00Z');date.setUTCDate(date.getUTCDate()-6);from=date.toISOString().slice(0,10)}const filters={...draft,from,to:value==='all'?'':today};setPreset(value);setDraft(filters);load(filters)}
- function switchTab(value){setTab(value);const filters={...draft,customer:'',product:''};setDraft(filters);load(filters)}
+ function switchTab(value){setTab(value);const filters={...draft,customer:'',product:''};setDraft(filters);tabFilters.current=filters;}
  const edit=(key,value)=>setDraft(s=>({...s,[key]:value}));
  return <section className="movementWorkspace">
   <header className="movementHero"><div className="movementHeroIcon"><Icon/></div><div><h1>حركة المواد</h1><p>الوارد والصادر ورصيد حركة المواد</p></div></header>
-  <div className="movementTabs" role="tablist" aria-label="نوع سجل الحركة"><button role="tab" aria-selected={tab==='materials'} aria-controls="movement-panel" id="movement-materials-tab" onClick={()=>switchTab('materials')}>حركة المواد</button><button role="tab" aria-selected={tab==='customer'} aria-controls="movement-panel" id="movement-customer-tab" onClick={()=>switchTab('customer')}>حركة المادة وعميل</button></div>
-  <div role="tabpanel" id="movement-panel" aria-labelledby={tab==='materials'?'movement-materials-tab':'movement-customer-tab'}>
+  <div className="movementTabs movementTabsThree" role="tablist" aria-label="نوع سجل الحركة"><button role="tab" aria-selected={tab==='ledger'} aria-controls="movement-panel" id="movement-ledger-tab" onClick={()=>switchTab('ledger')}>كشف مادة مفصل</button><button role="tab" aria-selected={tab==='materials'} aria-controls="movement-panel" id="movement-materials-tab" onClick={()=>switchTab('materials')}>جميع الحركات</button><button role="tab" aria-selected={tab==='customer'} aria-controls="movement-panel" id="movement-customer-tab" onClick={()=>switchTab('customer')}>حركة المادة وعميل</button></div>
+  <div role="tabpanel" id="movement-panel" aria-labelledby={tab==='ledger'?'movement-ledger-tab':tab==='materials'?'movement-materials-tab':'movement-customer-tab'}>
+  {tab==='ledger'?<MaterialMovementLedger inventory={inventory} profile={profile} a4={a4}/>:<>
   <div className="movementSectionHead"><div className="movementHeading"><span><Icon/></span><div><small>المواد والمخزن</small><h2>{tab==='materials'?'سجل حركة المواد':'حركة المادة والعميل'}</h2></div></div><button className="movementRefresh" disabled={loading} onClick={()=>load(applied)}><Icon name="refresh"/>تحديث</button></div>
   <form className="movementFilters" onSubmit={e=>{e.preventDefault();load({...draft,customer:tab==='customer'?draft.customer:''})}}>
    <label>المخزن<select aria-label="مخزن حركة المواد" value={draft.warehouse} onChange={ev=>edit('warehouse',ev.target.value)}><option value="">جميع المخازن المسموحة</option>{inventory.warehouses.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select></label>
@@ -48,6 +51,6 @@ export default function StockMovements({a4,openA4,shareA4}){
    <div className="movementTable"><div className="movementTableHead"><span>المادة / الطرف</span><span>المستند / التاريخ</span><span>دخول</span><span>خروج</span><span>الرصيد</span></div>{visible.map(r=><article className="movementEntry" key={r.id}><div className="movementMaterial"><b dir="auto">{r.name}</b><small>{[r.warehouseName,r.brand,r.category].filter(Boolean).join(' • ')}</small><span>{r.kind==='stock_adjustment'?'مطابقة الجرد':r.party||'زبون نقدي'}</span></div><div className="movementDoc"><span className={'movementBadge '+(r.kind==='stock_adjustment'?'adjust':Number(r.inQty)>0?'in':'out')}>{label(r)} <b>#{r.receiptNo}</b></span><time>{warehouseDate(r.date)}</time></div><div className="movementAmount"><small>دخول</small><b>{quantity(r.inQty)}</b></div><div className="movementAmount"><small>خروج</small><b>{quantity(r.outQty)}</b></div><div className="movementAmount movementBalance"><small>الرصيد</small><b>{quantity(r.balance)}</b></div>{r.note&&<p className="movementNote">{r.note}</p>}</article>)}</div>
    {pageCount>1&&<nav className="movementPagination" aria-label="صفحات الحركات"><button disabled={!currentPage} onClick={()=>setPage(p=>p-1)}>السابق</button><span>{currentPage+1} / {pageCount}</span><button disabled={currentPage+1>=pageCount} onClick={()=>setPage(p=>p+1)}>التالي</button></nav>}</>}
    <p className="movementFootnote">الرصيد بعد كل حركة يخص المادة في المخزن المذكور معها. ملف PDF يشمل جميع نتائج البحث.</p>
-  </section></div>
+  </section></>}</div>
  </section>;
 }

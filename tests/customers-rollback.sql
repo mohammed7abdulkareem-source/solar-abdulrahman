@@ -46,12 +46,13 @@ do $$declare current jsonb; changed jsonb; old_token text;payload jsonb;begin
  begin perform public.solar_customer_save('delete','00000000-0000-0000-0000-000000332008',jsonb_build_object('id',-332001,'token',changed->>'token'));raise exception 'FAIL deleting financial customer';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
 end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003322',true);
-do $$declare checks jsonb;begin
+do $$declare checks jsonb;affected integer;begin
  if jsonb_array_length(public.solar_customer_directory())<>0 then raise exception 'FAIL cross-user customer directory';end if;
  begin perform public.solar_customer_get(-332001);raise exception 'FAIL cross-user opening access';exception when insufficient_privilege then null;end;
  checks:=public.solar_customer_check('احمد علي الجديد','',null);
  if jsonb_array_length(checks)<>1 or checks->0->>'id' is not null or checks->0->>'name' is not null then raise exception 'FAIL cross-user duplicate privacy';end if;
- begin update public.customers set phone='07709876543' where id=-332001;raise exception 'FAIL raw cross-user edit';exception when insufficient_privilege then null;end;
+ -- RLS may silently filter a forbidden UPDATE to zero rows, or deny the command.
+ begin update public.customers set phone='07709876543' where id=-332001;get diagnostics affected=row_count;if affected<>0 then raise exception 'FAIL raw cross-user edit';end if;exception when insufficient_privilege then null;end;
 end $$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003324',true);
 do $$begin

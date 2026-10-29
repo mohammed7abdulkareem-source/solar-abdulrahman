@@ -740,3 +740,14 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 التحقق الإضافي: `tests/cash-finance-v2-browser.mjs` يمر من المتصفح إلى PostgREST وPostgreSQL محليين، ويفحص الواجهات الثماني، سلامة الحساب قبل وبعد التصفح والتقارير، العمليات، تكرار الضغط وانقطاع الرد وإعادة الفتح، التحويلين القديم والمباشر، مطابقة القاصة ضمن الصلاحية، البحث والدفعات، معاينة PDF والتنزيل والمشاركة، وعروض 360/768/1440 دون تمرير أفقي للصفحة. `tests/cash-deletion-zero-settlement-browser.mjs` يفحص موافقة الإدارة على حذف المصروف والتسوية بصفر عند الاعتماد والتعديل.
 
 إعداد النشر: هذا الإصدار يجهّز على فرع Preview منفصل. ترحيلا `profit_settlement_zero_share` و`cash_movement_deletion_approvals` اختُبرا على قاعدة معزولة فقط؛ يُطبّقان قبل إصدار الإنتاج بعد اعتماد النشر. بيانات الإنتاج وصلاحياتها تبقى كما هي أثناء المراجعة.
+
+
+### V3.89.0
+
+- The primary profit figure is now the current retained profit after the full user/supplier allocation and administrative distributions, using the existing `retained_profit` accounting guard. Historical period earnings and settlement checkpoints remain separate; date/type filters cannot reopen settled profits. Company, own-user, cash summary and PDF views agree.
+- Debtor customer cards open the existing compact customer account directly, including statements, movements and PDF actions. Returning preserves debtor search and filters. Existing customer/statement API permissions are enforced; debt-list permission alone does not grant a new statement permission.
+- Material movements now start with a searchable exact material picker. The detailed ledger shows warehouse, supplier/customer, original creator, saved preparer and preparation time, incoming/outgoing quantity and the existing running stock balance. The existing all-movements and material/customer views remain accessible.
+- Material PDF preview/download/share supports a quantity-only view and authorized historical IQD prices. Warehouse users receive no financial price data at the API. System component prices are explicitly undistributed; no unit revenue is guessed. Transfer values use their saved book costs.
+- Both new database migrations only add private read helpers and route them through the existing authenticated RPCs. They do not write business rows, change stock/balances, rewrite history or expand RLS.
+- Validation: isolated PostgreSQL regression scenarios, production Next build, 181 Node tests, browser → local API → database checks for profits/debt navigation and material ledgers, PDF/download/share, role/warehouse isolation and 360/768/1440px layouts. Financial and stock fingerprints are unchanged after read-only navigation and reporting. The older customer RLS test now accepts the standard zero-row denial as well as a permission exception.
+- Prepared for Preview review; production publication requires the user's explicit release approval.

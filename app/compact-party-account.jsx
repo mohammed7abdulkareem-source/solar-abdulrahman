@@ -10,7 +10,7 @@ import {baghdadToday,balanceDate} from './party-balances-utils.mjs';
 import {compactPeriod,compactStatementBody,compactMovementBody,partyInitials} from './compact-party-utils.mjs';
 import {supplierDocument} from './supplier-utils.mjs';
 
-export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,onPayment,onSale,onSettings,onMovementEdit,canEditMovement,renderMatch,initialView='overview',extraControls}){
+export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,onPayment,onSale,onSettings,onMovementEdit,canEditMovement,renderMatch,initialView='overview',extraControls,backLabel}){
  const [view,setView]=useState(initialView),[category,setCategory]=useState('all'),[from,setFrom]=useState(''),[to,setTo]=useState(''),[query,setQuery]=useState(''),[selected,setSelected]=useState(null),[exportOpen,setExportOpen]=useState(false),[limit,setLimit]=useState(30),[days,setDays]=useState('all');
  const [detailOrigin,setDetailOrigin]=useState('movements');
  const supplier=account.type==='supplier',currency=account.currency,period=useMemo(()=>compactPeriod(account.rows,from,to,category,query),[account.rows,from,to,category,query]);
@@ -31,7 +31,7 @@ export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,
   const url=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='كشف-'+account.name+'.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
  }
  return <section className="miniPartyAccount miniParty" data-party-type={account.type}>
-  <header className="miniPageHead"><button type="button" className="miniIcon" aria-label={view==='overview'?'رجوع للقائمة':'رجوع للحساب'} onClick={back}><AppIcon name="arrow" size={19}/></button><h1>{title}</h1><button type="button" className="miniIcon" aria-label="تحديث الحساب" onClick={onRefresh}><AppIcon name="refresh" size={18}/></button></header>
+  <header className="miniPageHead"><button type="button" className="miniIcon" aria-label={view==='overview'?(backLabel||'رجوع للقائمة'):'رجوع للحساب'} onClick={back}><AppIcon name="arrow" size={19}/></button><h1>{title}</h1><button type="button" className="miniIcon" aria-label="تحديث الحساب" onClick={onRefresh}><AppIcon name="refresh" size={18}/></button></header>
   {view!=='detail'&&<div className="miniIdentity"><span className="miniAvatar">{partyInitials(account.name)}</span><div><h2>{account.name}</h2><small>{supplier?'عملة الحساب: '+currency:(account.customerType==='wholesale'?'جملة':'مفرد · منظومات')}{account.ownerName?' · '+account.ownerName:''}</small></div><span className="miniCurrency">{currency}</span></div>}
   {account.phone&&<div className="miniIdentityPhone"><PhoneActions phone={account.phone} label={account.name}/></div>}
   {view!=='detail'&&view!=='match'&&<div className="miniPeriod"><div className="miniDates"><label>من<input aria-label="من تاريخ" type="date" value={from} max={to||undefined} onChange={e=>{setFrom(e.target.value);setDays('');}}/></label><label>إلى<input aria-label="إلى تاريخ" type="date" value={to} min={from||undefined} onChange={e=>{setTo(e.target.value);setDays('');}}/></label></div><div className="miniSegments" aria-label="فترة الحساب">{[['7','7 أيام'],['30','30 يوم'],['90','3 أشهر'],['all','كل الفترة']].map(([key,label])=><button type="button" key={key} aria-pressed={days===key} onClick={()=>chooseDays(key)}>{label}</button>)}</div>{extraControls}</div>}
