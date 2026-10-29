@@ -751,3 +751,14 @@ The `solar_save_rows_v31` function was installed in the existing Solar database 
 - Both new database migrations only add private read helpers and route them through the existing authenticated RPCs. They do not write business rows, change stock/balances, rewrite history or expand RLS.
 - Validation: isolated PostgreSQL regression scenarios, production Next build, 181 Node tests, browser → local API → database checks for profits/debt navigation and material ledgers, PDF/download/share, role/warehouse isolation and 360/768/1440px layouts. Financial and stock fingerprints are unchanged after read-only navigation and reporting. The older customer RLS test now accepts the standard zero-row denial as well as a permission exception.
 - Prepared for Preview review; production publication requires the user's explicit release approval.
+
+
+### V3.90.0 — الحد الأدنى لربح المنظومات والبيع الحر
+
+- بطاقة مستقلة للإدارة في إيقاف البيع والشراء: البيع الحر، أو ربح إلزامي ١٥٪ أو ٢٥٪ من الكلفة الكلية. هذا حد أدنى ويُسمح بسعر أعلى؛ إيقاف بيع المنظومات بالكامل يبقى مستقلاً.
+- الحد الأدنى يخص المنظومة كاملة: كلف المواد المحفوظة بعد التقريب المحاسبي، والمصاريف الأولية والتنصيب المعتمدة. السعر الأدنى يُقرّب إلى الأعلى إلى جزء من مئة، ويظهر في البيع وتعديل الفاتورة مع زر تعبئته.
+- قاعدة البيانات تفحص الحفظ والتعديل واعتماد المصاريف والكتابات القديمة. السعر أو الكلفة المرسلة من المتصفح لا تتجاوز التحقق من كلف المواد الفعلية المحفوظة. الفشل يرجع العملية كاملة، بما فيها القاصة والمخزون وحساب الزبون.
+- تغيير الحالة أو النسبة يرسل إشعاراً لكل المستخدمين الفعالين ويستخدم طابور إشعارات الجهاز الحالي. مراجعة النسخة وطلب الحفظ نفسه يمنعان تكرار التغيير والإشعارات بعد انقطاع الرد. التحكم للإدارة المالية الفعالة فقط؛ لا تتوسع RLS أو صلاحيات المخزن والمهندس.
+- التفعيل اختياري، وافتراض الترحيل هو بقاء البيع الحر متاحاً. لا يعيد الترحيل تسعير الفواتير القديمة أو كتابة أي قيد مالي. الاتفاقات السابقة تحتفظ بسعرها عند تعديل بياناتها الوصفية؛ إعادة التسعير أو تغيير المواد تتبع سياسة الإدارة الحالية. المنظومة المقيدة تحتفظ بنسبتها المعتمدة عند مراجعة مصاريفها لاحقاً.
+- التحقق: 184 اختبار Node، بناء Next للإصدار 3.90، ترحيل من قاعدة معزولة، 11 مجموعة اختبارات PostgreSQL تشمل السياسة والتعديلات والحذف والتسويات والمصاريف، ومتصفح فعلي إلى API وقاعدة محليتين: 15/25، السعر الأعلى، المصاريف وإعادة التسعير، البيع الحر، الإشعار الظاهر وطلب الإشعار للجهاز، انقطاع الرد وتكرار الضغط، الصلاحيات، وعدم التمرير الأفقي عند 360/768/1440. لا توجد بيانات تجريبية أو إشعارات اختبار في الإنتاج.
+- يجهّز الإصدار على فرع Preview. يُضاف دعم قاعدة البيانات المتوافق مع الإصدار السابق دون تشغيل القيد؛ نشر واجهة الإنتاج وتفعيل الإدارة للسياسة خطوتان منفصلتان.
