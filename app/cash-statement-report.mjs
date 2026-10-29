@@ -31,6 +31,6 @@ export function cashStatementTable(g){
 }
 export function cashStatementDocument(data,a4){
  const title='كشف صندوق حسب الفترة',range=statementDate(data.from)+' — '+statementDate(data.to);
- const body='<section class="cashStatementDocument"><div class="cashStatementHeading"><h2>'+e(data.ownerName)+'</h2><p>للفترة من '+e(statementDate(data.from))+' إلى '+e(statementDate(data.to))+'</p><small>وقت الاحتساب: '+e(cashDate(data.asOf))+' · '+e(data.count)+' حركة</small></div>'+data.ledgers.map(cashStatementTable).join('')+'<p class="cashStatementFootnote">كل قاصة وعملة مستقلة. الرصيد السابق يسبق بداية الفترة، ورصيد النهاية يشمل آخر يوم. يعكس الكشف الحركات الحالية بعد التعديل والحذف وقت الاحتساب.</p></section>';
+ const body='<section class="cashStatementDocument"><div class="cashStatementHeading"><h2>'+e(data.ownerName)+'</h2><p>للفترة من '+e(statementDate(data.from))+' إلى '+e(statementDate(data.to))+'</p><small>وقت الاحتساب: '+e(cashDate(data.asOf))+' · '+e(data.count)+' حركة</small></div>'+(data.filterLabel?'<p class="cashStatementFootnote">نوع الحركة: '+e(data.filterLabel)+' · عرض '+e(data.count)+' من '+e(data.unfilteredCount)+' حركة. الأرصدة والمجاميع تشمل كل حركات الفترة؛ تصفية النوع تختصر صفوف الجدول فقط.</p>':'')+data.ledgers.map(cashStatementTable).join('')+'<p class="cashStatementFootnote">كل قاصة وعملة مستقلة. الرصيد السابق يسبق بداية الفترة، ورصيد النهاية يشمل آخر يوم. يعكس الكشف الحركات الحالية بعد التعديل والحذف وقت الاحتساب.</p></section>';
  return a4(title,body,'',e(range));
 }
