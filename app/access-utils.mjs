@@ -34,3 +34,5 @@ export const canDeleteSale = (profile, ownerId) => !!profile?.active && !isEngin
 export const canSeeCash = profile => !isEngineer(profile) && canOpenPage(profile,'cash');
 
 export const canManageQuotes = profile => canOpenPage(profile,'tahseel') && (isAdministrator(profile) || profile.permissions?.tahseelFull === true);
+
+export const canManageQuoteDefaults = profile => canManageQuotes(profile) && (isAdministrator(profile) || profile.permissions?.tahseelDefaults === true);

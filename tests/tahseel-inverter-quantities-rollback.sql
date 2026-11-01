@@ -16,18 +16,18 @@ select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003912'
 set local role authenticated;
 do $$declare r jsonb;saved jsonb;bad jsonb;begin
  r:=public.solar_limited_quote('preview',pg_temp.quote_input());
- assert jsonb_array_length(r->'errors')=0 and(r->>'price')::numeric=4789750,'Two units must use actual unit cost, fixed shop expenses and 15%';
+ assert jsonb_array_length(r->'errors')=0 and(r->>'price')::numeric=5083000,'Two units must use actual unit cost, fixed shop expenses and 15%';
  assert(r->>'inverterQty')::numeric=2;
  assert(select(v->>'qty')::numeric=2 from jsonb_array_elements(r->'materials')v where v->>'key'='inverter');
  assert r::text!~'unitCost|materialsTotal|expensesTotal|"cost"','Preview exposes private costs';
  r:=public.solar_limited_quote('preview',pg_temp.quote_input('"3"'));
- assert(r->>'price')::numeric=5364750 and(r->>'inverterQty')::numeric=3,'Three inverters priced as one';
+ assert(r->>'price')::numeric=5658000 and(r->>'inverterQty')::numeric=3,'Three inverters priced as one';
  foreach bad in array array['""'::jsonb,'0','-1','1.5','1001','null','true','[2]','{}','"2e0"']loop
   r:=public.solar_limited_quote('preview',pg_temp.quote_input(bad));
   assert r->'price'='null'::jsonb and jsonb_array_length(r->'errors')>0,'Invalid quantity yielded a final price';
  end loop;
  r:=public.solar_limited_quote('preview',pg_temp.quote_input()-'inverterQty'||'{"schema":3}');
- assert(r->>'price')::numeric=4214750 and(r->>'inverterQty')::numeric=1,'Old client or draft no longer means one inverter';
+ assert(r->>'price')::numeric=4508000 and(r->>'inverterQty')::numeric=1,'Old client or draft no longer means one inverter';
  saved:=public.solar_limited_quote('save',pg_temp.quote_input(),'00000000-0000-0000-0000-000000391002');
  assert saved->'payload'->>'inverterQty'='2'and saved->'payload'->>'notes'=pg_temp.quote_input()->>'notes';
  assert not(saved->'payload'?'expenses')and not(saved->'payload'?'perPanel')and not(saved->'payload'->'inverter'?'cost'),'Saved quote exposes private cost fields';
@@ -36,7 +36,7 @@ do $$declare r jsonb;saved jsonb;bad jsonb;begin
  assert(saved->>'revision')::int=2 and saved->'payload'->>'inverterQty'='3';
  begin perform public.solar_limited_quote('save',pg_temp.quote_input(),'00000000-0000-0000-0000-000000391002',1);raise exception 'FAIL stale update';exception when raise_exception then if sqlerrm='FAIL stale update'then raise;end if;end;
  r:=public.solar_limited_quote('list');
- assert exists(select 1 from jsonb_array_elements(r)v where v->>'id'='00000000-0000-0000-0000-000000391002'and v->'payload'->>'inverterQty'='3'and(v->'result'->>'price')::numeric=5364750),'Reload lost quantity or quote price';
+ assert exists(select 1 from jsonb_array_elements(r)v where v->>'id'='00000000-0000-0000-0000-000000391002'and v->'payload'->>'inverterQty'='3'and(v->'result'->>'price')::numeric=5658000),'Reload lost quantity or quote price';
  assert r::text!~'unitCost|materialsTotal|expensesTotal|"cost"','List exposes private prices';
 end$$;
 reset role;

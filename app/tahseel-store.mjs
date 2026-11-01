@@ -25,7 +25,7 @@ export function quoteStore(client) {
 }
 
 export function limitedQuoteStore(client){
- const call=async(action,args={})=>{const {data,error}=await client.rpc('solar_limited_quote',{action,...args});if(error)throw new Error(error.message||'تعذر احتساب العرض. حاول مجدداً.');return data};
+ const call=async(action,args={})=>{const {data,error}=await client.rpc('solar_limited_quote',{action,...args});if(error)throw Object.assign(new Error(error.message||'تعذر احتساب العرض. حاول مجدداً.'),{code:error.code});return data};
  return {
   preview:payload=>call('preview',{quote_payload:payload}),
   async list(){const rows=[];for(let offset=0;;offset+=100){const page=await call('list',{page_offset:offset});rows.push(...page);if(page.length<100)return rows}},

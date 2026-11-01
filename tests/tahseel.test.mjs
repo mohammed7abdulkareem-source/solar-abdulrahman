@@ -3,9 +3,10 @@ import assert from 'node:assert/strict';
 import {newQuote,calculateQuote,quoteDocument,normalizeNumber} from '../app/tahseel-utils.mjs';
 import {canOpenPage,canManageQuotes} from '../app/access-utils.mjs';
 const complete=()=>({...newQuote(),day:'15',night:'15',batteryCapacity:'15',panel:{id:1,name:'لوح 600W',cost:'100000'},battery:{id:2,name:'بطارية 15 كيلو',cost:'2000000'},inverter:{id:3,name:'انفيرتر 6kW',cost:'500000'}});
-test('15×15: 7 panels, one battery, 465,000 expenses; 5% includes all costs',()=>{
+const legacy=()=>({...complete(),schema:3,perPanel:'30000',expenses:{crane:'25000',worker:'20000',programmer:'35000',delivery:'25000',electrical:'150000'}});
+test('15×15: 7 panels, one battery, 720,000 expenses including commission; 5% includes all costs',()=>{
  const q=calculateQuote(complete());
- assert.deepEqual([q.panelQty,q.batteryQty,q.materialsTotal,q.expensesTotal,q.cost,q.markup,q.price],[7,1,3200000,465000,3665000,183250,3848250]);
+ assert.deepEqual([q.panelQty,q.batteryQty,q.materialsTotal,q.expensesTotal,q.cost,q.markup,q.price],[7,1,3200000,720000,3920000,196000,4116000]);
  assert.deepEqual(q.errors,[]);
 });
 test('quantities round UP without floating point error at a panel boundary',()=>{
@@ -23,14 +24,14 @@ test('missing, negative or zero product cost cannot produce a final quotation',(
  assert.throws(()=>quoteDocument(newQuote()));
 });
 test('editable expenses are counted and cannot be negative',()=>{
- const f=complete();f.expenses.crane='0';assert.equal(calculateQuote(f).expensesTotal,440000);
+ const f=complete();f.expenses.crane='0';assert.equal(calculateQuote(f).expensesTotal,680000);
  f.expenses.crane='-1';assert.ok(calculateQuote(f).errors.length);
 });
 test('customer copy hides costs and markup, internal copy shows them; all free text escaped',()=>{
  const f=complete();f.customer='<script>alert(1)</script>';f.notes='<img src=x onerror=alert(1)>';f.panel.name='<b>panel</b>';
  const customer=quoteDocument(f),internal=quoteDocument(f,true);
  assert.ok(!customer.includes('<script>'));assert.ok(!customer.includes('<img'));assert.ok(customer.includes('&lt;b&gt;'));
- assert.ok(!customer.includes('183,250'));assert.ok(!customer.includes('2,000,000'));assert.ok(internal.includes('183,250'));assert.ok(internal.includes('2,000,000'));
+ assert.ok(!customer.includes('196,000'));assert.ok(!customer.includes('2,000,000'));assert.ok(internal.includes('196,000'));assert.ok(internal.includes('2,000,000'));
 });
 test('Arabic decimal inputs normalize without changing value',()=>assert.equal(normalizeNumber('١٬٢٣٤٫٥'),'1234.5'));
 test('quote permissions exclude engineers/warehouse/inactive and respect explicit false',()=>{
@@ -56,12 +57,12 @@ test('capacity must be selected for night demand; zero night needs no battery',(
  assert.deepEqual(calculateQuote({...complete(),night:'0',batteryCapacity:'',battery:null}).errors,[]);
 });
 test('legacy drafts retain their 15-kilo calculation and new drafts retain capacity on reload',()=>{
- const old={...complete(),schema:1};delete old.batteryCapacity;assert.equal(calculateQuote(old).price,3848250);
+ const old={...legacy(),schema:1};delete old.batteryCapacity;assert.equal(calculateQuote(old).price,3848250);
  const f=JSON.parse(JSON.stringify({...complete(),night:'50',batteryCapacity:'25'}));assert.equal(calculateQuote(f).batteryQty,2);assert.ok(quoteDocument(f).includes('بطارية 25 كيلو'));
 });
 
 test('profit percentage supports presets, custom values, zero and legacy 5%',()=>{
- for(const rate of [0,5,10,12.5,15]){const form={...complete(),markupPercent:String(rate)},q=calculateQuote(form);assert.equal(q.price,3665000+Math.round(3665000*rate)/100);assert.deepEqual(q.errors,[]);assert.match(quoteDocument(form,true),new RegExp('إضافة '+rate+'%'));}
+ for(const rate of [0,5,10,12.5,15]){const form={...complete(),markupPercent:String(rate)},q=calculateQuote(form);assert.equal(q.price,3920000+Math.round(3920000*rate)/100);assert.deepEqual(q.errors,[]);assert.match(quoteDocument(form,true),new RegExp('إضافة '+rate+'%'));}
  const old=complete();delete old.markupPercent;assert.equal(calculateQuote(old).markupPercent,5);
  for(const rate of ['',-1,'NaN',Infinity,1001])assert.ok(calculateQuote({...complete(),markupPercent:rate}).errors.length);
 });
@@ -76,14 +77,14 @@ test('two or three selected inverters multiply unit cost, overall cost and marku
  for(const qty of [2,3]){
   const form={...complete(),inverterQty:String(qty)},q=calculateQuote(form),line=q.materials.find(x=>x.key==='inverter');
   assert.equal(line.qty,qty);assert.equal(line.total,500000*qty);
-  assert.equal(q.cost,3665000+500000*(qty-1));assert.equal(q.price,q.cost+Math.round(q.cost*5)/100);assert.deepEqual(q.errors,[]);
+  assert.equal(q.cost,3920000+500000*(qty-1));assert.equal(q.price,q.cost+Math.round(q.cost*5)/100);assert.deepEqual(q.errors,[]);
   assert.match(quoteDocument(form),new RegExp('انفيرتر 6kW[\\s\\S]*?<td>'+qty+'</td>'));
   assert.match(quoteDocument(form,true),new RegExp('انفيرتر 6kW[\\s\\S]*?<td>'+qty+'</td><td>500,000</td><td>'+moneyForTest(500000*qty)+'</td>'));
  }
 });
 function moneyForTest(value){return Number(value).toLocaleString('en-US',{maximumFractionDigits:2});}
 test('older missing inverter quantity remains one, while explicit invalid quantities cannot be exported',()=>{
- const old=complete();delete old.inverterQty;assert.equal(calculateQuote(old).price,3848250);assert.equal(calculateQuote(old).inverterQty,1);
+ const old=legacy();delete old.inverterQty;assert.equal(calculateQuote(old).price,3848250);assert.equal(calculateQuote(old).inverterQty,1);
  for(const inverterQty of ['',0,-1,1.5,'NaN','Infinity',1001,null,true,[2],{},'2e0']){
   const form={...complete(),inverterQty};assert.ok(calculateQuote(form).errors.some(e=>e.includes('عدد الانفيرترات')),String(inverterQty));assert.throws(()=>quoteDocument(form));
  }

@@ -7,7 +7,7 @@ do $$declare actor uuid; other_actor uuid; f jsonb; expected numeric; begin
  update public.profiles set permissions=permissions||'{"tahseel":true,"tahseelFull":false}' where id=actor;
  f:=jsonb_build_object('day','15','night','15','batteryCapacity','15','markupPercent','0','perPanel','0','expenses','{}'::jsonb);
  f:=f||jsonb_build_object('panel',(select jsonb_build_object('id',id,'cost','1') from public.products where cost>0 and category ~* 'ألواح|الواح|panel' limit 1),'battery',(select jsonb_build_object('id',id,'cost','1') from public.products where cost>0 and category ~* 'بطاري|batter' limit 1),'inverter',(select jsonb_build_object('id',id,'cost','1') from public.products where cost>0 and category ~* 'انفيرتر|إنفيرتر|inverter|all in one' limit 1));
- expected:=465000+(select cost*7 from public.products where id=(f->'panel'->>'id')::bigint)+(select cost from public.products where id=(f->'battery'->>'id')::bigint)+(select cost from public.products where id=(f->'inverter'->>'id')::bigint);
+ expected:=720000+(select cost*7 from public.products where id=(f->'panel'->>'id')::bigint)+(select cost from public.products where id=(f->'battery'->>'id')::bigint)+(select cost from public.products where id=(f->'inverter'->>'id')::bigint);
  if expected is null then raise exception 'Products required';end if;
  perform set_config('quote_test.expected',(expected+round(expected*.15,2))::text,true);perform set_config('quote_test.payload',f::text,true);
 end $$;
@@ -39,7 +39,7 @@ update public.profiles set permissions=permissions||'{"tahseelFull":true}' where
 set local role authenticated;
 do $$begin
  perform set_config('request.jwt.claim.sub',current_setting('quote_test.actor'),true);
- if not exists(select 1 from public.solar_quotes where id=current_setting('quote_test.id')::uuid and payload->>'markupPercent'='15' and payload->>'perPanel'='30000') then raise exception 'FAIL full access or server rules';end if;
+ if not exists(select 1 from public.solar_quotes where id=current_setting('quote_test.id')::uuid and payload->>'markupPercent'='15' and payload->>'perPanel'='45000') then raise exception 'FAIL full access or server rules';end if;
  update public.solar_quotes set payload=payload||'{"markupPercent":"12.5"}' where id=current_setting('quote_test.id')::uuid;
 end $$;
 reset role;
