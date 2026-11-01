@@ -71,3 +71,23 @@ test('full quote access is separate, explicit and excludes denied or special rol
  assert.equal(canManageQuotes({...p,is_admin:true}),true);
  for(const changes of [{active:false},{user_type:'warehouse'},{user_type:'installer'},{permissions:{tahseel:false,tahseelFull:true}}])assert.equal(canManageQuotes({...p,is_admin:false,permissions:{tahseel:true,tahseelFull:true},...changes}),false);
 });
+
+test('two or three selected inverters multiply unit cost, overall cost and markup in the quotation',()=>{
+ for(const qty of [2,3]){
+  const form={...complete(),inverterQty:String(qty)},q=calculateQuote(form),line=q.materials.find(x=>x.key==='inverter');
+  assert.equal(line.qty,qty);assert.equal(line.total,500000*qty);
+  assert.equal(q.cost,3665000+500000*(qty-1));assert.equal(q.price,q.cost+Math.round(q.cost*5)/100);assert.deepEqual(q.errors,[]);
+  assert.match(quoteDocument(form),new RegExp('انفيرتر 6kW[\\s\\S]*?<td>'+qty+'</td>'));
+  assert.match(quoteDocument(form,true),new RegExp('انفيرتر 6kW[\\s\\S]*?<td>'+qty+'</td><td>500,000</td><td>'+moneyForTest(500000*qty)+'</td>'));
+ }
+});
+function moneyForTest(value){return Number(value).toLocaleString('en-US',{maximumFractionDigits:2});}
+test('older missing inverter quantity remains one, while explicit invalid quantities cannot be exported',()=>{
+ const old=complete();delete old.inverterQty;assert.equal(calculateQuote(old).price,3848250);assert.equal(calculateQuote(old).inverterQty,1);
+ for(const inverterQty of ['',0,-1,1.5,'NaN','Infinity',1001,null,true,[2],{},'2e0']){
+  const form={...complete(),inverterQty};assert.ok(calculateQuote(form).errors.some(e=>e.includes('عدد الانفيرترات')),String(inverterQty));assert.throws(()=>quoteDocument(form));
+ }
+ const form=JSON.parse(JSON.stringify({...complete(),inverterQty:normalizeNumber('٣'),notes:'ثلاثة انفيرترات\nملاحظة <script> & تفاصيل'}));
+ assert.equal(calculateQuote(form).inverterQty,3);
+ for(const internal of[false,true]){const html=quoteDocument(form,internal);assert.ok(html.includes('ملاحظات العرض'));assert.ok(html.includes('ثلاثة انفيرترات<br>ملاحظة &lt;script&gt; &amp; تفاصيل'));}
+});
