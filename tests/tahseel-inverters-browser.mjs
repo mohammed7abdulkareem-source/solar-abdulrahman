@@ -10,7 +10,7 @@ if(!/^solar_[a-z0-9_]+_browser$/.test(db))throw Error('An isolated local browser
 const dir=process.env.SOLAR_ARTIFACT_DIR||'/workspace/solar-review/v391/browser';await mkdir(dir,{recursive:true});
 const sql=q=>execFileSync('python',['/workspace/solar-review/v359/db.py',db],{input:q,encoding:'utf8'}).trim();
 const ids={full:'00000000-0000-0000-0000-000000003911',limited:'00000000-0000-0000-0000-000000003912',warehouse:'00000000-0000-0000-0000-000000003914',installer:'00000000-0000-0000-0000-000000003915'};
-const dirApi='http://127.0.0.1:3079',base='http://127.0.0.1:3073',contexts=[],calls=[],errors=[],enc=x=>Buffer.from(JSON.stringify(x)).toString('base64url');
+const dirApi=process.env.SOLAR_FIXTURE_API||'http://127.0.0.1:3079',base=process.env.SOLAR_APP_URL||'http://127.0.0.1:3073',contexts=[],calls=[],errors=[],enc=x=>Buffer.from(JSON.stringify(x)).toString('base64url');
 const tokenFor=uid=>{const raw=enc({alg:'HS256',typ:'JWT'})+'.'+enc({role:'authenticated',sub:uid,exp:Math.floor(Date.now()/1000)+3600});return raw+'.'+createHmac('sha256','solar-local-test-only-signing-secret-347').update(raw).digest('base64url');};
 const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});let page;
 async function open(who){
