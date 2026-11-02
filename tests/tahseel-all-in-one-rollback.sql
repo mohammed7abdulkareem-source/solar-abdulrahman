@@ -36,6 +36,12 @@ do $$declare r jsonb;saved jsonb;bad jsonb;begin
  assert jsonb_array_length(r->'materials')=2 and r::text!~'unitCost|materialsTotal|expensesTotal|"cost"','Preview exposed costs or included separate battery/inverter';
  r:=public.solar_limited_quote('preview',pg_temp.aio_input('"1"')||'{"allInOne":{"id":396003}}');
  assert (r->>'price')::numeric=9108000,'10KW device price is incorrect';
+ r:=public.solar_limited_quote('preview',pg_temp.aio_input()||'{"night":""}');
+ assert(r->>'price')::numeric=9683000 and(r->>'panelQty')::int=7,'Daytime-only automatic panel count failed';
+ r:=public.solar_limited_quote('preview',pg_temp.aio_input()||'{"day":"","night":""}');
+ assert r->'price'='null'::jsonb,'Empty demand without a manual panel count yielded a price';
+ r:=public.solar_limited_quote('preview',pg_temp.aio_input()||'{"night":"-1"}');
+ assert r->'price'='null'::jsonb,'Invalid nighttime demand yielded a price';
  r:=public.solar_limited_quote('preview',pg_temp.aio_input()||'{"day":"","night":"","allInOnePanelQty":"10"}');
  assert(r->>'price')::numeric=10183250 and(r->>'panelQty')::int=10,'Manual panels without amps must use the same expenses';
  foreach bad in array array['"0"'::jsonb,'"-1"','"1.5"','"1001"','true','[1]'] loop

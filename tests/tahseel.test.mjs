@@ -106,6 +106,9 @@ test('ALL IN ONE uses only panels and integrated devices, with the same expenses
  const manual={...form,day:'',night:'',allInOnePanelQty:'10'},m=calculateQuote(manual);
  assert.deepEqual([m.panelQty,m.expensesTotal,m.materialsTotal,m.price],[10,855000,8000000,9297750]);assert.deepEqual(m.errors,[]);
  assert.ok(quoteDocument(manual).includes('<bdi>—</bdi>'));
+ const dayOnly=calculateQuote({...form,day:'15',night:'',allInOnePanelQty:''});assert.equal(dayOnly.panelQty,7);assert.deepEqual(dayOnly.errors,[]);
+ assert.ok(calculateQuote({...form,day:'15',night:'-1',allInOnePanelQty:''}).errors.length);
+
  for(const allInOnePanelQty of ['0','-1','1.5','1001',true,[1]])assert.ok(calculateQuote({...manual,allInOnePanelQty}).errors.some(e=>e.includes('عدد الألواح')));
  assert.equal(calculateQuote({...manual,day:'0',night:'0',allInOnePanelQty:''}).errors.length>0,true);
  const standard={...complete()};delete standard.systemType;assert.equal(calculateQuote(standard).price,4116000);

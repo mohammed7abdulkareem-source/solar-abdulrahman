@@ -45,6 +45,9 @@ export function calculateQuote(form) {
   if(manualPanels){
     if(!manualPanelsValid)errors.push('أدخل عدد الألواح كعدد صحيح من 1 إلى 1000.');
     if((String(form.day??'').trim()!==''&&!valid(form.day,1000))||(String(form.night??'').trim()!==''&&!valid(form.night,1000)))errors.push('أدخل الأمبير النهاري والليلي بشكل صحيح.');
+  }else if(allInOne){
+    const dayText=String(form.day??'').trim(),nightText=String(form.night??'').trim();
+    if((dayText!==''&&!valid(form.day,1000))||(nightText!==''&&!valid(form.night,1000))||Number(dayText||0)+Number(nightText||0)<=0)errors.push('أدخل الأمبير النهاري أو الليلي بشكل صحيح، أو حدّد عدد الألواح.');
   }else if(!valid(form.day,1000)||!valid(form.night,1000)||Number(form.day)+Number(form.night)<=0) errors.push('أدخل الأمبير النهاري والليلي بشكل صحيح؛ يجب أن يكون أحدهما أكبر من صفر.');
   const panelQty=manualPanels?(manualPanelsValid?panelNumber:0):valid(form.day,1000)?exactSizing?roundedUpRatio(form.day,100,215):Math.ceil(Number(form.day)*100/215):0;
   const capacity=Number(batteryCapacity(form)), capacityValid=BATTERY_CAPACITIES.includes(capacity);

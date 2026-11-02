@@ -61,6 +61,7 @@ try{
  await p.getByTestId('quote-final-price').filter({hasText:'8,841,000'}).waitFor();
  await p.getByTestId('quote-materials-cost').filter({hasText:'7,700,000'}).waitFor();
  await p.getByTestId('quote-allinone-total').filter({hasText:'7,000,000'}).waitFor();
+ await p.getByRole('tab',{name:'الطلب',exact:true}).click();await p.getByLabel('أمبير ليلي',{exact:true}).fill('');await p.getByTestId('quote-final-price').filter({hasText:'8,841,000'}).waitFor();
  for(const width of[320,360,390,768,1440]){
   await p.setViewportSize({width,height:920});await p.getByRole('tab',{name:'الطلب',exact:true}).click();await p.evaluate(()=>scrollTo(0,0));
   assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Integrated quote overflow '+width);
@@ -90,6 +91,7 @@ try{
  await p.getByRole('radio',{name:/ALL IN ONE/}).check();await p.getByRole('tab',{name:'المواد',exact:true}).click();assert.equal(await p.getByLabel('عدد أجهزة ALL IN ONE',{exact:true}).inputValue(),'2');
  const limited=await open('limited'),l=limited.p;page=l;await fillAllInOne(l,'عرض متكامل محدود');
  await l.getByTestId('quote-final-price').filter({hasText:'9,683,000'}).waitFor();assert.equal(await l.locator('.quoteMaterialCosts,.quoteCostBreakdown').count(),0);
+ await l.getByRole('tab',{name:'الطلب',exact:true}).click();await l.getByLabel('أمبير ليلي',{exact:true}).fill('');await l.getByTestId('quote-final-price').filter({hasText:'9,683,000'}).waitFor();
  await l.getByRole('tab',{name:'الطلب',exact:true}).click();await l.getByLabel('أمبير نهاري',{exact:true}).fill('');await l.getByLabel('أمبير ليلي',{exact:true}).fill('');await l.getByLabel('عدد الألواح',{exact:true}).fill('10');await l.getByTestId('quote-final-price').filter({hasText:'10,183,250'}).waitFor();
  await l.getByRole('button',{name:'حفظ كمسودة',exact:true}).click();await l.getByRole('status').filter({hasText:'تم حفظ المسودة في حسابك.'}).waitFor();
  await pdf(l,'all-in-one-limited.pdf');htmls=await l.evaluate(()=>window.__documentHtmls);doc=htmls.findLast(x=>x.includes('5KW/ALLINONE'));assert.ok(doc&&!doc.includes('3,500,000')&&!doc.includes('7,000,000'));
