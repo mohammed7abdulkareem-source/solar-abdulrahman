@@ -11,7 +11,8 @@ function PowerIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d=
 
 export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse,onStockTransfer,onProfit,onDeleteRequest,warehouse=false,admin=false}){
  const [toast,setToast]=useState(null),[sound,setSound]=useState(false);
- const tracker=useRef(createNoticeTracker()),alive=useRef(true),latestLoad=useRef(0);
+ const tracker=useRef(createNoticeTracker()),alive=useRef(true),latestLoad=useRef(0),panel=useRef(null);
+ const [loadError,setLoadError]=useState(''),[loading,setLoading]=useState(false);
  const [enabled,setEnabled]=useState(false),[supported,setSupported]=useState(true),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[notices,setNotices]=useState([]),[open,setOpen]=useState(false),[error,setError]=useState(false);
  function receive(rows,initial=false,realtime=false){
   if(!alive.current)return;
@@ -20,9 +21,15 @@ export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse
  }
  async function load(initial=false){
   const request=++latestLoad.current;
-  const {data,error}=await supabase.from('solar_notifications').select('id,job_id,transfer_id,stock_transfer_id,delete_request_id,event,title,body,created_at,read_at').order('created_at',{ascending:false}).limit(30);
-  if(!alive.current||request!==latestLoad.current)return;
-  if(!error){receive(data||[],initial);setNotices(data||[]);}
+  setLoading(true);
+  try{
+   const {data,error}=await supabase.from('solar_notifications').select('id,job_id,transfer_id,stock_transfer_id,delete_request_id,event,title,body,created_at,read_at').order('created_at',{ascending:false}).limit(30);
+   if(!alive.current||request!==latestLoad.current)return;
+   if(error)throw error;
+   receive(data||[],initial);setNotices(data||[]);setLoadError('');
+  }catch{if(alive.current&&request===latestLoad.current)setLoadError('تعذر تحميل الإشعارات. تحقق من الاتصال وأعد المحاولة.');}
+  finally{if(alive.current&&request===latestLoad.current)setLoading(false);}
+
  }
  useEffect(()=>{
   alive.current=true;tracker.current=createNoticeTracker();setSupported(pushSupported());setSound(soundEnabled(userId));
@@ -35,7 +42,7 @@ export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse
   return()=>{alive.current=false;latestLoad.current++;supabase.removeChannel(channel);clearInterval(timer);window.removeEventListener('focus',refresh);window.removeEventListener('solar-push-setting',settings);window.removeEventListener('solar-sound-setting',settings);document.removeEventListener('pointerdown',unlock)};
  },[userId]);
  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(null),8000);return()=>clearTimeout(timer)},[toast]);
- useEffect(()=>{if(!open)return;const close=e=>{if(e.key==='Escape')setOpen(false)};window.addEventListener('keydown',close);return()=>window.removeEventListener('keydown',close)},[open]);
+ useEffect(()=>{if(!open)return;const previous=document.activeElement,overflow=document.body.style.overflow;document.body.style.overflow='hidden';panel.current?.querySelector('button')?.focus();const close=e=>{if(e.key==='Escape')setOpen(false);if(e.key==='Tab'){const nodes=[...(panel.current?.querySelectorAll('button:not(:disabled),input:not(:disabled),textarea:not(:disabled),select:not(:disabled),a[href]')||[])].filter(n=>n.getClientRects().length),first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}};window.addEventListener('keydown',close);return()=>{document.body.style.overflow=overflow;window.removeEventListener('keydown',close);if(previous?.isConnected)previous.focus({preventScroll:true});};},[open]);
  async function action(fn){if(busy)return;setBusy(true);setMessage('');setError(false);try{await fn()}catch(e){setError(true);setMessage(e.message||'تعذر تنفيذ العملية')}finally{setBusy(false)}}
  async function togglePush(){
   if(!supported){setOpen(true);return}
@@ -49,7 +56,7 @@ export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse
   <button className="notificationBell" aria-label="فتح الإشعارات" title="الإشعارات" aria-expanded={open} onClick={()=>{setOpen(true);load()}}><BellIcon/>{unread>0&&<span>{unread>9?'9+':unread}</span>}</button>
   <button className={'pushToggle '+(enabled?'enabled':'disabled')} aria-label={enabled?'إيقاف إشعارات هذا الجهاز':'تشغيل إشعارات هذا الجهاز'} title={enabled?'إيقاف الإشعارات':'تشغيل الإشعارات'} disabled={busy} onClick={togglePush}><PowerIcon/></button>
   {toast&&createPortal(<button className="notificationToast" role="status" onClick={()=>{setOpen(true);setToast(null)}}><b>{toast.title}</b><span>{toast.body}</span></button>,document.body)}
-  {open&&createPortal(<div className="notificationOverlay" role="presentation" onClick={()=>setOpen(false)}><section className="notificationPanel" role="dialog" aria-modal="true" aria-labelledby="notification-title" onClick={e=>e.stopPropagation()}>
+  {open&&createPortal(<div className="notificationOverlay" role="presentation" onClick={()=>setOpen(false)}><section ref={panel} className="notificationPanel" role="dialog" aria-modal="true" aria-labelledby="notification-title" onClick={e=>e.stopPropagation()}>
    <header><div><h2 id="notification-title">الإشعارات</h2><small className={enabled?'on':'off'}>{enabled?'الإشعارات مفعّلة على هذا الجهاز':'الإشعارات متوقفة على هذا الجهاز'}</small></div><button className="notificationClose" aria-label="إغلاق" onClick={()=>setOpen(false)}>×</button></header>
    {!supported&&<p className="pushHint">افتح التطبيق بمتصفح يدعم الإشعارات. في iPhone أضفه للشاشة الرئيسية وافتحه من الأيقونة.</p>}
    {supported&&<div className="panelPushActions"><button className={enabled?'stop':'start'} disabled={busy} onClick={togglePush}><PowerIcon/>{enabled?'إيقاف الإشعارات':'تشغيل الإشعارات'}</button>{enabled&&<button className="pushTest" disabled={busy} onClick={()=>action(async()=>{const {error}=await supabase.rpc('solar_push_test');if(error)throw new Error('تعذر إرسال التجربة. انتظر دقيقة إذا أرسلت إشعاراً للتو.');setMessage('تم طلب الإشعار التجريبي. راقب إشعارات الموبايل.');await load()})}>إرسال تجربة</button>}</div>}
@@ -57,7 +64,7 @@ export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse
    {warehouse&&!enabled&&<p className="pushHint">فعّل الإشعارات على جهاز مسؤول التجهيز حتى تصله الفواتير الجديدة خارج البرنامج.</p>}
    {message&&<p role={error?'alert':'status'} className={error?'pushMessage error':'pushMessage'}>{message}</p>}
    {admin&&<AdminAnnouncement onSent={()=>load()}/>}
-   <div className="notificationList">{notices.length?notices.map(n=><button key={n.id} className={n.read_at?'read':''} onClick={async()=>{if(!n.read_at){const readAt=new Date().toISOString();const {error}=await supabase.from('solar_notifications').update({read_at:readAt}).eq('id',n.id);if(!error)setNotices(v=>v.map(x=>x.id===n.id?{...x,read_at:readAt}:x));}if(n.delete_request_id){setOpen(false);onDeleteRequest?.(n.delete_request_id);}else if(n.stock_transfer_id){setOpen(false);onStockTransfer?.(n.stock_transfer_id);}else if(n.event?.startsWith('profit_')){setOpen(false);onProfit?.();}else if(n.transfer_id){setOpen(false);onTransfer?.(n.transfer_id);}else if(n.job_id&&n.event?.startsWith('warehouse_')){setOpen(false);onWarehouse?.(String(n.job_id),n.event);}else if(n.job_id){setOpen(false);onOpen(String(n.job_id));}}}><b>{n.title}</b><span>{n.body}</span><small>{new Date(n.created_at).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad'})}</small></button>):<p>لا توجد إشعارات بعد.</p>}</div>
+   <div className="notificationList" aria-busy={loading}>{loadError&&<p role="alert">{loadError}<button type="button" disabled={loading} onClick={()=>load()}>إعادة المحاولة</button></p>}{loading&&!notices.length&&<p role="status">جاري تحميل الإشعارات…</p>}{notices.length?notices.map(n=><button key={n.id} className={n.read_at?'read':''} onClick={async()=>{if(!n.read_at){const readAt=new Date().toISOString();const {error}=await supabase.from('solar_notifications').update({read_at:readAt}).eq('id',n.id);if(!error)setNotices(v=>v.map(x=>x.id===n.id?{...x,read_at:readAt}:x));}if(n.delete_request_id){setOpen(false);onDeleteRequest?.(n.delete_request_id);}else if(n.stock_transfer_id){setOpen(false);onStockTransfer?.(n.stock_transfer_id);}else if(n.event?.startsWith('profit_')){setOpen(false);onProfit?.();}else if(n.transfer_id){setOpen(false);onTransfer?.(n.transfer_id);}else if(n.job_id&&n.event?.startsWith('warehouse_')){setOpen(false);onWarehouse?.(String(n.job_id),n.event);}else if(n.job_id){setOpen(false);onOpen(String(n.job_id));}}}><b>{n.title}</b><span>{n.body}</span><small>{new Date(n.created_at).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad'})}</small></button>):!loading&&!loadError?<p>لا توجد إشعارات بعد.</p>:null}</div>
   </section></div>,document.body)}
  </div>;
 }

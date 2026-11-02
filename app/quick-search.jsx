@@ -40,8 +40,8 @@ export default function QuickSearch({open,onClose,profile,onNavigate,onOpenAccou
   return()=>{live=false;clearTimeout(timer);clearTimeout(requestTimer);controller.abort();};
  },[open,query,category,ready,profile.id,profile.active,profile.user_type,profile.is_admin,permissionKey,retry,requestKey]);
  const count=result.customers.length+result.products.length+result.suppliers.length+sectionRows.length;
- function account(kind,row){onClose();onOpenAccount(kind,row);}
- function navigate(id){onClose();onNavigate(id);}
+ function account(kind,row){if(onOpenAccount(kind,row)!==false)onClose();}
+ function navigate(id){if(onNavigate(id)!==false)onClose();}
  function more(kind){if(category===kind)input.current?.focus();setCategory(kind);dialog.current?.querySelector('.quickSearchBody')?.scrollTo({top:0});}
  if(!open)return null;
  return <dialog ref={dialog} className="quickSearchDialog" aria-labelledby="quick-search-title" onCancel={e=>{e.preventDefault();onClose();}} onClick={e=>{if(e.target===e.currentTarget){const r=e.currentTarget.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)onClose();}}}>

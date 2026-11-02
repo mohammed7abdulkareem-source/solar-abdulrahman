@@ -1,15 +1,17 @@
 'use client';
-import {useCallback,useEffect,useState} from 'react';
+import {createContext,useCallback,useContext,useEffect,useState} from 'react';
 import {supabase} from './supabase';
 import AppIcon from './app-icons';
 import {defaultSectionLayout,orderedSections,moveSection} from './section-layout-utils.mjs';
+export const SectionLayoutContext=createContext(null);
 export function useSectionLayout(userId){
+ const shared=useContext(SectionLayoutContext),inherited=shared?.userId===userId?shared:null;
  const [layout,updateLayout]=useState(defaultSectionLayout),[error,setError]=useState(''),[loading,setLoading]=useState(true);
  const setLayout=useCallback(next=>{updateLayout(next);window.dispatchEvent(new CustomEvent('solar-section-layout',{detail:{userId,layout:next}}));},[userId]);
- useEffect(()=>{let live=true;updateLayout(defaultSectionLayout);setLoading(true);setError('');
+ useEffect(()=>{if(inherited)return;let live=true;updateLayout(defaultSectionLayout);setLoading(true);setError('');
   const receive=e=>{if(e.detail?.userId===userId)updateLayout(current=>e.detail.layout.revision>=current.revision?e.detail.layout:current);};window.addEventListener('solar-section-layout',receive);
-  supabase.rpc('solar_section_layout',{action:'get'}).then(({data,error})=>{if(live){if(error)setError('تعذر تحميل ترتيب الأقسام.');else{updateLayout(current=>data.revision>=current.revision?{...defaultSectionLayout,...data}:current);setError('');}}}).catch(()=>live&&setError('تعذر تحميل ترتيب الأقسام.')).finally(()=>live&&setLoading(false));return()=>{live=false;window.removeEventListener('solar-section-layout',receive);};},[userId]);
- return {layout,setLayout,error,setError,loading};
+  supabase.rpc('solar_section_layout',{action:'get'}).then(({data,error})=>{if(live){if(error)setError('تعذر تحميل ترتيب الأقسام.');else{updateLayout(current=>data.revision>=current.revision?{...defaultSectionLayout,...data}:current);setError('');}}}).catch(()=>live&&setError('تعذر تحميل ترتيب الأقسام.')).finally(()=>live&&setLoading(false));return()=>{live=false;window.removeEventListener('solar-section-layout',receive);};},[userId,!!inherited]);
+ return inherited||{layout,setLayout,error,setError,loading};
 }
 
 export default function SectionLayoutEditor({layout,rows,onSaved,onCancel}){

@@ -1,6 +1,6 @@
 {
   "name": "solar-abdulrahman",
-  "version": "3.93.0",
+  "version": "3.94.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,9 +10,14 @@
   "dependencies": {
     "@supabase/supabase-js": "2.57.4",
     "jsqr": "^1.4.0",
-    "next": "15.5.9",
+    "next": "15.5.28",
     "qrcode": "^1.5.4",
-    "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "react": "19.1.10",
+    "react-dom": "19.1.10"
+  },
+  "overrides": {
+    "postcss": "8.5.32",
+    "sharp": "0.35.5",
+    "source-map-js": "1.2.2"
   }
 }
