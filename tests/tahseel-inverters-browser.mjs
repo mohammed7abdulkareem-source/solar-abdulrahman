@@ -15,6 +15,12 @@ const tokenFor=uid=>{const raw=enc({alg:'HS256',typ:'JWT'})+'.'+enc({role:'authe
 const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});let page;
 async function open(who){
  const uid=ids[who],token=tokenFor(uid),ctx=await browser.newContext({viewport:{width:390,height:920},hasTouch:true});contexts.push(ctx);ctx.setDefaultTimeout(25000);
+ // Optional saved presentation exercises the same real financial flows in a new design.
+ if(process.env.SOLAR_TEST_DESIGN){
+  assert.equal(new URL(dirApi).hostname,'127.0.0.1');
+  const state=await ctx.request.post(dirApi+'/rpc/solar_section_layout',{headers:{authorization:'Bearer '+token},data:{action:'get'}});assert.equal(state.status(),200);
+  const layout=await state.json(),saved=await ctx.request.post(dirApi+'/rpc/solar_section_layout',{headers:{authorization:'Bearer '+token},data:{action:'view',payload:{mode:process.env.SOLAR_TEST_DESIGN,expectedRevision:layout.revision}}});assert.equal(saved.status(),200);
+ }
  await ctx.addInitScript(({uid,token})=>{localStorage.setItem('sb-afxxaafsuscwyjzrnagc-auth-token',JSON.stringify({access_token:token,refresh_token:'local-fixture',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:{id:uid,email:'fixture@local.test',aud:'authenticated'}}));window.__documentHtmls=[];window.__sharedPdfs=[];Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{const f=data.files[0];window.__sharedPdfs.push({name:f.name,active:navigator.userActivation.isActive,hash:Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await f.arrayBuffer()))).map(x=>x.toString(16).padStart(2,'0')).join('')});}});const descriptor=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,'srcdoc');Object.defineProperty(HTMLIFrameElement.prototype,'srcdoc',{...descriptor,set(html){window.__documentHtmls.push(html);return descriptor.set.call(this,html);}});},{uid,token});
  await ctx.routeWebSocket(/supabase/,socket=>socket.close());
  await ctx.route('https://afxxaafsuscwyjzrnagc.supabase.co/**',async route=>{

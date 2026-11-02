@@ -1,0 +1,188 @@
+/* General design is opt-in and scoped to the saved presentation choice. */
+body.premiumSolar .smoothFrame.generalDesignTheme {
+  --general-ink: #153e4b;
+  --general-muted: #687e88;
+  --general-border: #e0e8ed;
+  --general-accent: #087f74;
+  --general-soft: #edf7f5;
+  --ui-ink: var(--general-ink);
+  --ui-muted: var(--general-muted);
+  --ui-line: var(--general-border);
+  --ui-radius: 12px;
+  background: #f5f8fa;
+  color: var(--general-ink);
+  font-size: 14px;
+  line-height: 1.75;
+}
+body.premiumSolar .generalDesignTheme .appContent > main {
+  width: 100%; max-width: 1360px !important; min-width: 0;
+  margin-inline: auto; padding: 24px 28px 48px !important;
+}
+body.premiumSolar .generalDesignTheme .premiumTopbar { height: 72px; box-shadow: 0 2px 10px #143b4706; }
+body.premiumSolar .generalDesignTheme .premiumMobileBrand b { font-size: 15px; }
+.generalDesignTheme :is(bdi,.moneyInput,.cfMovementMoney,.financeMetricValue) { font-variant-numeric: tabular-nums; }
+body.premiumSolar .generalDesignTheme :is(button,[role=button],summary) {
+  min-height: 44px !important; height: auto; line-height: 1.6 !important;
+  border-radius: 12px; font-family: inherit; font-size: 14px !important;
+  white-space: normal; touch-action: manipulation;
+}
+body.premiumSolar .generalDesignTheme :is(button,a,[role=button],summary):focus-visible {
+  outline: 3px solid #159f8d !important; outline-offset: 3px;
+}
+body.premiumSolar .generalDesignTheme :is(input,select,textarea):not([type=checkbox]):not([type=radio]):not([type=hidden]):not([type=file]):not([type=range]) {
+  min-height: 48px !important; height: auto; font-size: 16px !important; line-height: 1.6;
+  border-radius: 11px !important; max-width: 100%; min-width: 0;
+  border-color: #d8e3e8; background-color: #fbfcfd; color: #204958;
+}
+body.premiumSolar .generalDesignTheme input[type=checkbox],
+body.premiumSolar .generalDesignTheme input[type=radio] { accent-color: var(--general-accent); flex-shrink: 0; }
+body.premiumSolar .generalDesignTheme textarea { padding: 12px !important; resize: vertical; min-height: 98px !important; }
+body.premiumSolar .generalDesignTheme label { font-size: 13px; line-height: 1.7; }
+body.premiumSolar .generalDesignTheme label:has(> input[type=checkbox]),
+body.premiumSolar .generalDesignTheme label:has(> input[type=radio]) { min-height: 44px; align-items: center; }
+body.premiumSolar .generalDesignTheme .appContent .top { gap: 12px; margin: 0 0 20px; }
+body.premiumSolar .generalDesignTheme .appContent .top h2 { font-size: clamp(22px,2.2vw,28px); font-weight: 700; line-height: 1.6; }
+body.premiumSolar .generalDesignTheme .appContent .top .workspaceBack {
+  min-width: 78px; min-height: 44px !important; padding: 8px 12px !important;
+  border-radius: 12px !important; font-size: 13px !important;
+}
+
+/* The complete directory: every group is expanded on both screen sizes. */
+body.premiumSolar .generalDesignTheme .generalDashboard { display: block; min-width: 0; }
+.generalDirectory { min-width: 0; }
+.generalHomeHeading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.generalHomeHeading > div { min-width: 0; }
+.generalDesignLabel { display: inline-flex; align-items: center; gap: 6px; color: #0b8173; font-size: 12px; font-weight: 600; }
+.generalDesignTheme .generalHomeHeading h1 { margin: 5px 0 3px; color: #153e4b; font-size: 29px; line-height: 1.5; }
+.generalHomeHeading p { margin: 0; color: #6c838d; font-size: 13px; }
+.generalDesignTheme .generalRefresh { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 14px; border: 1px solid #dce7eb; background: white; color: #416978; flex-shrink: 0; }
+.generalHomeSearch { display: flex; align-items: center; gap: 11px; width: 100%; padding: 0 14px; border: 1px solid #dbe6eb; border-radius: 13px; background: white; color: #78929e; }
+body.premiumSolar .generalDesignTheme .appContent .generalHomeSearch input:not([type=checkbox]):not([type=radio]):not([type=hidden]) { flex: 1; min-height: 50px !important; border: 0 !important; background: transparent !important; outline: none; box-shadow: none !important; padding: 11px 0 !important; }
+.generalHomeSearch:focus-within { border-color: #68b5a8; box-shadow: 0 0 0 3px #07857310; }
+.generalHomeSearch > button { display: grid; place-items: center; width: 44px; flex: none; border: 0; background: transparent; color: #6c8792; padding: 0; }
+.generalDirectorySummary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 20px 0 12px; }
+.generalDirectorySummary > span { display: flex; align-items: center; gap: 7px; font-size: 13px; color: #627d88; }
+.generalDirectorySummary > b { font-size: 12px; font-weight: 600; color: #377467; border: 1px solid #d6eae3; border-radius: 8px; padding: 3px 9px; background: #eef8f3; white-space: nowrap; }
+.generalCategoryNav { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; padding-bottom: 3px; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
+.generalCategoryNav a { display: inline-flex; align-items: center; justify-content: center; flex: none; gap: 7px; min-height: 44px; padding: 8px 12px; border: 1px solid #dce7eb; border-radius: 11px; color: #536f7b; background: white; font-size: 12px; text-decoration: none; white-space: nowrap; }
+.generalCategoryNav a:hover { color: #087f70; border-color: #a4cfc4; background: #f3faf7; }
+.generalSectionGroups { display: grid; gap: 22px; min-width: 0; }
+.generalSectionGroup { --group-accent: #087f74; --group-soft: #e7f5f0; min-width: 0; scroll-margin-top: 94px; }
+.generalSectionGroup.blue { --group-accent: #287abb; --group-soft: #edf5fd; }
+.generalSectionGroup.orange { --group-accent: #b18031; --group-soft: #fcf4e6; }
+.generalSectionGroup.violet { --group-accent: #7762aa; --group-soft: #f1edfa; }
+.generalSectionGroup.rose { --group-accent: #b0678a; --group-soft: #fbeef4; }
+.generalSectionGroup.slate { --group-accent: #5f7b88; --group-soft: #ebf2f5; }
+.generalSectionGroup > header { display: flex; align-items: center; gap: 9px; margin: 0 0 11px; padding: 0 2px; }
+.generalGroupMark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 9px; background: var(--group-soft); color: var(--group-accent); flex: none; }
+body.premiumSolar .generalDesignTheme .generalSectionGroup h2 { font-size: 16px; font-weight: 700; color: #254b5a; line-height: 1.6; margin: 0; flex: 1; }
+.generalSectionGroup > header > small { font-size: 11px; color: #7f949e; white-space: nowrap; }
+.generalSectionGrid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 11px; min-width: 0; }
+.generalSectionCard { --card-ink: #138979; --card-soft: #e8f6f1; display: flex; align-items: center; gap: 12px; min-width: 0; min-height: 84px; padding: 16px 14px; border: 1px solid #e1eaee; border-radius: 14px; background: #fff; color: #2a5362; text-decoration: none; box-shadow: 0 2px 3px #163e4b02; transition: border-color .15s,background-color .15s,box-shadow .15s; }
+.generalSectionCard:hover { border-color: #a7d3c8; background: #fcfefe; box-shadow: 0 3px 12px #16443808; }
+.generalSectionCard[aria-current=page] { border-color: #93c8bc; background: #eef8f4; }
+.generalSectionCard b { flex: 1; min-width: 0; font-size: 14px; font-weight: 600; line-height: 1.7; overflow-wrap: break-word; }
+.generalSectionIcon { display: grid; place-items: center; flex: none; width: 43px; height: 43px; border-radius: 12px; background: var(--card-soft); color: var(--card-ink); }
+.generalSectionCard > svg { flex: none; color: #a2b3bb; width: 14px; }
+.generalSectionCard.tone-blue { --card-ink: #2584cf; --card-soft: #eaf4fe; }
+.generalSectionCard.tone-sky { --card-ink: #259bbf; --card-soft: #e9f8fc; }
+.generalSectionCard.tone-cyan { --card-ink: #278c9c; --card-soft: #e8f6f8; }
+.generalSectionCard.tone-violet { --card-ink: #8566bc; --card-soft: #f3edfc; }
+.generalSectionCard.tone-indigo { --card-ink: #6278b9; --card-soft: #edf1fc; }
+.generalSectionCard.tone-emerald { --card-ink: #159974; --card-soft: #e9f7ef; }
+.generalSectionCard.tone-amber { --card-ink: #b3832c; --card-soft: #fcf4e5; }
+.generalSectionCard.tone-rose { --card-ink: #b76d8d; --card-soft: #fbf0f5; }
+.generalSectionCard.tone-slate { --card-ink: #688390; --card-soft: #eef4f7; }
+.generalSearchEmpty { display: grid; justify-items: center; gap: 10px; text-align: center; padding: 50px 20px; color: #77909d; background: white; border: 1px dashed #d5e3e9; border-radius: 14px; }
+.generalSearchEmpty b { color: #345d6d; font-size: 15px; }.generalSearchEmpty p { margin: 0; font-size: 13px; }
+
+/* Shared interior proportions. Monetary colors and document styles are kept. */
+body.premiumSolar .generalDesignTheme :is(.card,.uiPanel,.cfPanel,.quoteCard,.inventoryCard,.workflowJob,.archiveInvoice,.miniParty,.miniPartyRow,.mlPanel,.accountSection,.accountCard) {
+  border-radius: 15px; border-color: #e0e9ed; box-shadow: 0 2px 8px #123c4803;
+}
+body.premiumSolar .generalDesignTheme :is(.uiPanel,.cfPanel,.quoteCard,.inventoryCard) { padding: 20px; }
+body.premiumSolar .generalDesignTheme :is(.panelTitle,.cfSectionTitle,.quoteSectionTitle,.inventorySectionTitle) { gap: 12px; margin-bottom: 16px; }
+body.premiumSolar .generalDesignTheme :is(.panelTitle h2,.cfSectionTitle h2,.quoteSectionTitle h2,.inventorySectionTitle h2,.miniPageHead h2) { font-size: 19px; line-height: 1.6; }
+body.premiumSolar .generalDesignTheme :is(.cfTabs,.quoteTabs,.inventoryTabs,.profitWorkspaceTabs,.statusTabs,.movementTabsThree) { gap: 6px; padding: 6px; border-radius: 13px; }
+body.premiumSolar .generalDesignTheme :is(.cfTabs,.quoteTabs,.inventoryTabs,.profitWorkspaceTabs,.statusTabs,.movementTabsThree) button { padding: 9px 12px; border-radius: 10px; }
+body.premiumSolar .generalDesignTheme :is(.cfEntryForm,.customerEditor,.formGrid,.quoteProductFields,.quoteExpenseFields,.inventoryPair) { gap: 16px; }
+body.premiumSolar .generalDesignTheme :is(.cfFilterGrid,.archiveFilters,.recordFilters,.miniDirectoryFilters) { gap: 12px; }
+body.premiumSolar .generalDesignTheme :is(.cfPrimary,.quoteSave,.customerPrimary,.inventoryPrimary,.workflowPrimary,.uiButton.primary) { min-height: 48px !important; border-radius: 12px !important; font-weight: 700; }
+body.premiumSolar .generalDesignTheme :is(.cfCashbox,.cfMovement,.miniPartyRow) { gap: 12px; padding: 15px; }
+body.premiumSolar .generalDesignTheme .cfCashboxAmounts bdi { font-size: 17px; }
+body.premiumSolar .generalDesignTheme .cfMovementMoney bdi { font-size: 16px; }
+body.premiumSolar .generalDesignTheme .cfBalanceCards { gap: 12px; }
+body.premiumSolar .generalDesignTheme .cfBalanceCard { border-radius: 15px; padding: 18px; }
+body.premiumSolar .generalDesignTheme .cfBalanceCard bdi { font-size: clamp(21px,2.4vw,30px); }
+body.premiumSolar .generalDesignTheme .cfBalanceCard bdi.cfLongAmount { font-size: clamp(17px,2vw,25px); }
+body.premiumSolar .generalDesignTheme .cfQuickAction { min-height: 76px !important; border-radius: 13px; padding: 12px 8px; }
+body.premiumSolar .generalDesignTheme :is(.deskHeader,.deskForm,.deskFooter) { padding: 18px; }
+body.premiumSolar .generalDesignTheme .deskHeader h1 { font-size: 22px; line-height: 1.6; }
+body.premiumSolar .generalDesignTheme .deskTable :is(th,td) { padding: 12px 10px; }
+body.premiumSolar .generalDesignTheme .deskTable input { min-height: 44px !important; }
+body.premiumSolar .generalDesignTheme :is(.miniIcon,.miniDelete,.expenseRemove,.quoteStepper button,.moneyStepper button,.deskRemove) { min-width: 44px !important; width: 44px; min-height: 44px !important; padding: 6px !important; }
+body.premiumSolar .generalDesignTheme .phoneActions a { min-width: 42px; min-height: 42px; }
+body.premiumSolar .generalDesignTheme .workspaceDialogBody > header { position: sticky; top: -12px; z-index: 2; background: #fff; padding-block: 12px; margin-bottom: 14px; }
+.generalDesignTheme .generalDirectoryCompact .generalSectionGrid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.generalDesignTheme .generalDirectoryCompact .generalSectionCard { min-height: 76px; padding: 12px 10px; gap: 9px; }
+.generalDesignTheme .generalDirectoryCompact .generalSectionCard b { font-size: 13px; }
+.generalDesignTheme .generalDirectoryCompact .generalSectionCard > svg { display: none; }
+.generalDesignTheme .generalDirectoryCompact .generalSectionIcon { width: 36px; height: 36px; border-radius: 10px; }
+.generalDesignTheme .generalDirectoryCompact .generalSectionIcon svg { width: 21px; height: 21px; }
+.generalDesignTheme .generalDirectoryCompact .generalCategoryNav { margin-bottom: 16px; }
+.generalDesignTheme .generalDirectoryCompact .generalSectionGroup { scroll-margin-top: 85px; }
+
+/* Portalled notices use the same touch sizes as the chosen workspace. */
+body[data-workspace-design=general] :is(.notificationPanel,.notificationToast) { font-family: inherit; color: #214958; border-radius: 16px; }
+body[data-workspace-design=general] .notificationPanel :is(button,input,textarea) { min-height: 44px !important; border-radius: 11px; font-size: 14px; line-height: 1.7; }
+body[data-workspace-design=general] .notificationPanel h2 { font-size: 23px; }
+
+@media(min-width:1250px) {
+  .generalDesignTheme .generalSectionGrid { grid-template-columns: repeat(5,minmax(0,1fr)); }
+}
+@media(min-width:701px) and (max-width:1000px) {
+  .generalDesignTheme .generalSectionGrid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+}
+@media(max-width:900px) {
+  body.premiumSolar .generalDesignTheme .appContent > main { padding: 20px 16px calc(105px + env(safe-area-inset-bottom)) !important; }
+  body.premiumSolar .generalDesignTheme .premiumTopbar { height: 66px; }
+  body.premiumSolar .generalDesignTheme .premiumMobileBrand b { font-size: 14px; }
+  body.premiumSolar .generalDesignTheme .appMobileBar :is(a,button) { min-height: 54px !important; font-size: 11px !important; }
+  body.premiumSolar .generalDesignTheme :is(.uiPanel,.cfPanel,.quoteCard,.inventoryCard) { padding: 16px; }
+  body.premiumSolar .generalDesignTheme :is(.cfBalanceCard,.deskHeader,.deskForm,.deskFooter) { padding: 15px; }
+  body.premiumSolar .generalDesignTheme .cfBalanceCard bdi { font-size: 23px; }
+  body.premiumSolar .generalDesignTheme .cfBalanceCard bdi.cfLongAmount { font-size: 17px; }
+  body.premiumSolar .generalDesignTheme .cfCurrencyIcon { width: 32px; height: 32px; }
+  body.premiumSolar .generalDesignTheme :is(.cfCashbox,.cfMovement,.miniPartyRow) { gap: 9px; padding: 13px; }
+  body.premiumSolar .generalDesignTheme .cfCashboxAmounts bdi { font-size: 16px; }
+  body.premiumSolar .generalDesignTheme :is(.panelTitle h2,.cfSectionTitle h2,.quoteSectionTitle h2,.inventorySectionTitle h2,.miniPageHead h2) { font-size: 18px; }
+}
+@media(max-width:700px) {
+  .generalDesignTheme .generalHomeHeading { margin-bottom: 16px; }
+  .generalDesignTheme .generalHomeHeading h1 { font-size: 25px; }
+  .generalDesignTheme .generalHomeHeading p { font-size: 12px; }
+  .generalDesignTheme .generalRefresh { font-size: 13px !important; padding: 9px 11px; }
+  .generalDesignTheme .generalSectionGrid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; }
+  .generalDesignTheme .generalSectionCard { gap: 9px; min-height: 83px; padding: 13px 10px; }
+  .generalDesignTheme .generalSectionCard b { font-size: 13px; line-height: 1.7; }
+  .generalDesignTheme .generalSectionCard > svg { display: none; }
+  .generalDesignTheme .generalSectionIcon { width: 37px; height: 39px; border-radius: 11px; }
+  .generalDesignTheme .generalSectionIcon svg { width: 23px; height: 23px; }
+  .generalDesignTheme .generalCategoryNav { margin-inline-end: -16px; padding-inline-end: 16px; gap: 7px; scrollbar-width: none; }
+  .generalDesignTheme .generalCategoryNav a { padding: 8px 10px; font-size: 11px; gap: 6px; }
+  .generalDesignTheme .generalSectionGroups { gap: 23px; }
+  body.premiumSolar .generalDesignTheme .generalSectionGroup h2 { font-size: 15px; }
+  body.premiumSolar .generalDesignTheme :is(.cfTabs,.quoteTabs,.inventoryTabs,.profitWorkspaceTabs,.statusTabs,.movementTabsThree) button { font-size: 13px !important; padding: 9px 8px; }
+  body.premiumSolar .generalDesignTheme .deskTable :is(th,td) { padding: 10px 8px; }
+  .generalDesignTheme .generalDirectoryCompact .generalCategoryNav { margin-inline-end: -17px; padding-inline-end: 17px; }
+}
+@media(max-width:370px) {
+  body.premiumSolar .generalDesignTheme .appContent > main { padding-inline: 12px !important; }
+  .generalDesignTheme .generalSectionGrid { gap: 8px; }
+  .generalDesignTheme .generalSectionCard { padding: 12px 8px; gap: 7px; }
+  .generalDesignTheme .generalSectionCard b { font-size: 12px; }
+  .generalDesignTheme .generalCategoryNav { margin-inline-end: 0; padding-inline-end: 0; }
+  body.premiumSolar .generalDesignTheme .cfBalanceCard { padding: 12px 10px; }
+  body.premiumSolar .generalDesignTheme .cfBalanceCard bdi { font-size: 20px; }
+  body.premiumSolar .generalDesignTheme .cfBalanceCard bdi.cfLongAmount { font-size: 16px; }
+}

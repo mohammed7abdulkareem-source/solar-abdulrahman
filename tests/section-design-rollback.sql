@@ -26,7 +26,10 @@ do $$declare r jsonb;begin
  if r->>'mode'<>'desk' then raise exception 'desk not saved';end if;
  r:=public.solar_section_layout('view','{"mode":"solar","expectedRevision":9}');
  if r->>'mode'<>'solar' or r->>'mobileColumns'<>'3' or r->'order'<>'["cash","sale"]' then raise exception 'solar design lost columns/order';end if;
- r:=public.solar_section_layout('view','{"mode":"groups","expectedRevision":10}');
+ r:=public.solar_section_layout('view','{"mode":"general","expectedRevision":10}');
+ if r->>'mode'<>'general' or r->>'mobileColumns'<>'3' or r->'order'<>'["cash","sale"]' then raise exception 'general design lost columns/order';end if;
+ if public.solar_section_layout('view','{"mode":"general","expectedRevision":10}')<>r then raise exception 'general retry changed state';end if;
+ r:=public.solar_section_layout('view','{"mode":"groups","expectedRevision":11}');
 
 end$$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003552',true);
@@ -37,9 +40,9 @@ do $$declare r jsonb;begin
  begin perform public.solar_section_layout('view','{"mode":"bad","expectedRevision":1}');raise exception 'invalid accepted';exception when raise_exception then if sqlerrm='invalid accepted' then raise;end if;end;
 end$$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003553',true);
-do $$begin perform public.solar_section_layout('view','{"mode":"columns","expectedRevision":0}');end$$;
+do $$begin perform public.solar_section_layout('view','{"mode":"general","expectedRevision":0}');end$$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003554',true);
-do $$begin perform public.solar_section_layout('view','{"mode":"columns","expectedRevision":0}');end$$;
+do $$begin perform public.solar_section_layout('view','{"mode":"general","expectedRevision":0}');end$$;
 reset role;
 update profiles set active=false where id='00000000-0000-0000-0000-000000003554';
 set local role authenticated;
