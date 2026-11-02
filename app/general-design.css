@@ -186,3 +186,174 @@ body[data-workspace-design=general] .notificationPanel h2 { font-size: 23px; }
   body.premiumSolar .generalDesignTheme .cfBalanceCard bdi { font-size: 20px; }
   body.premiumSolar .generalDesignTheme .cfBalanceCard bdi.cfLongAmount { font-size: 16px; }
 }
+
+/* A distinct, colourful workspace for the general design. */
+body.premiumSolar .smoothFrame.generalDesignTheme {
+  --general-ink: #153b52;
+  --general-accent: #007c73;
+  background: #eef4f9;
+}
+body.premiumSolar .smoothFrame.generalDesignTheme .premiumTopbar {
+  background: linear-gradient(110deg,#123c55,#075b65) !important;
+  border-color: #0e5961;
+  box-shadow: 0 6px 18px #0b354d1f;
+}
+body.premiumSolar .smoothFrame.generalDesignTheme .premiumMobileBrand b { color: #fff !important; }
+body.premiumSolar .smoothFrame.generalDesignTheme .premiumMobileBrand small { color: #c4e5e7; }
+body.premiumSolar .smoothFrame.generalDesignTheme .sectionsTopButton { color: #e4f6f4; }
+body.premiumSolar .smoothFrame.generalDesignTheme .globalSearchTopButton { color: #d2e9ec; background: #ffffff1c; border-color: #ffffff30; }
+body.premiumSolar .smoothFrame.generalDesignTheme :is(.premiumTopTools .notificationBell,.workspaceAccountButton) {
+  background: #ffffff20 !important; border: 1px solid #ffffff50 !important; color: #fff !important; box-shadow: none !important;
+}
+body.premiumSolar .smoothFrame.generalDesignTheme .appMobileBar { border-color: #c8dfe2; box-shadow: 0 -5px 22px #0c465312; }
+body.premiumSolar .smoothFrame.generalDesignTheme .appMobileBar :is([aria-current=page],[aria-expanded=true]) { color: #006f66 !important; }
+body.premiumSolar .smoothFrame.generalDesignTheme .appMobileBar :is([aria-current=page],[aria-expanded=true]) > span:first-child { color: #fff !important; background: linear-gradient(135deg,#048b7e,#006e78) !important; }
+
+.generalDesignTheme .generalHomeHeading {
+  position: relative; isolation: isolate; overflow: hidden;
+  min-height: 116px; margin-bottom: 14px; padding: 18px 20px;
+  border-radius: 20px; background: linear-gradient(112deg,#123d58 0%,#087f79 100%);
+  box-shadow: 0 10px 24px #0b6b6b24; color: #fff;
+}
+.generalDesignTheme .generalHomeHeading::after {
+  content: ''; position: absolute; z-index: -1; inset-inline-end: -24px; top: -75px;
+  width: 190px; height: 190px; border: 28px solid #ffffff0c; border-radius: 50%; pointer-events: none;
+}
+.generalDesignTheme .generalDesignLabel { color: #bdece0; font-size: 12px; font-weight: 700; }
+.generalDesignTheme .generalHomeHeading h1 { color: #fff; font-size: 26px; margin: 2px 0; line-height: 1.5; }
+.generalDesignTheme .generalHomeHeading p { color: #d1eceb; font-size: 13px; }
+body.premiumSolar .generalDesignTheme .generalRefresh {
+  color: #fff; background: #ffffff20; border: 1px solid #ffffff55;
+  border-radius: 12px; padding: 9px 12px; flex-shrink: 0;
+}
+.generalDesignTheme .generalRefresh:hover { background: #ffffff30; }
+.generalDesignTheme .generalHomeSearch { min-height: 54px; border-color: #c9dfe9; box-shadow: 0 4px 16px #1747600b; }
+.generalDesignTheme .generalHomeSearch > svg { color: #00897a; }
+.generalDesignTheme .generalDirectorySummary { margin: 18px 2px 10px; }
+.generalDesignTheme .generalDirectorySummary > span { color: #375b6e; font-size: 14px; font-weight: 700; }
+.generalDesignTheme .generalDirectorySummary > span svg { color: #00897b; }
+.generalDesignTheme .generalDirectorySummary > b { color: #087f70; background: #daf5eb; border-color: #a7ddc9; }
+.generalDesignTheme .generalCategoryNav { margin-bottom: 17px; }
+.generalDesignTheme .generalCategoryNav a { color: var(--group-accent); background: var(--group-soft); border-color: var(--group-border); font-weight: 700; }
+.generalDesignTheme .generalCategoryNav a:hover { color: var(--group-accent); background: var(--group-soft); filter: brightness(.97); }
+
+.generalDesignTheme :is(.generalSectionGroup,.generalCategoryNav a).green { --group-accent:#087d70; --group-soft:#def6ec; --group-border:#b6e5d7; }
+.generalDesignTheme :is(.generalSectionGroup,.generalCategoryNav a).blue { --group-accent:#226fb5; --group-soft:#e3f1ff; --group-border:#bfdcf6; }
+.generalDesignTheme :is(.generalSectionGroup,.generalCategoryNav a).orange { --group-accent:#a56b0b; --group-soft:#fff0d3; --group-border:#f4d49c; }
+.generalDesignTheme :is(.generalSectionGroup,.generalCategoryNav a).violet { --group-accent:#7154a8; --group-soft:#f0e9ff; --group-border:#d7c9f1; }
+.generalDesignTheme :is(.generalSectionGroup,.generalCategoryNav a).rose { --group-accent:#ae547b; --group-soft:#ffedf3; --group-border:#f2cadb; }
+.generalDesignTheme :is(.generalSectionGroup,.generalCategoryNav a).slate { --group-accent:#486d8a; --group-soft:#e8f1f8; --group-border:#c8dce9; }
+.generalDesignTheme .generalSectionGroups { gap: 16px; }
+.generalDesignTheme .generalSectionGroup { overflow: hidden; background: #fff; border: 1px solid #dae8ef; border-radius: 19px; box-shadow: 0 5px 16px #163f5309; }
+.generalDesignTheme .generalSectionGroup > header { gap: 10px; margin: 0; padding: 12px 14px; background: var(--group-soft); border-bottom: 1px solid var(--group-border); }
+.generalDesignTheme .generalGroupMark { width: 40px; height: 40px; border-radius: 12px; color: #fff; background: var(--group-accent); }
+.generalDesignTheme .generalGroupTitle { min-width: 0; flex: 1; }
+body.premiumSolar .generalDesignTheme .generalGroupTitle h2 { color: #183f54; font-size: 15px; line-height: 1.5; }
+.generalDesignTheme .generalGroupTitle p { margin: 2px 0 0; color: #587684; font-size: 11px; line-height: 1.5; }
+.generalDesignTheme .generalSectionGroup > header > small { color: var(--group-accent); background: #ffffffc9; border-radius: 9px; padding: 3px 8px; font-weight: 700; }
+.generalDesignTheme .generalSectionGrid { gap: 10px; padding: 12px; }
+.generalDesignTheme .generalSectionCard {
+  --card-ink:#087d75; --card-soft:#dbf5ed; --card-fade:#eefbf5; --card-edge:#addfcd;
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  min-height: 118px; gap: 9px; padding: 13px 9px; border: 1px solid var(--card-edge); border-radius: 14px;
+  background: linear-gradient(145deg,var(--card-soft),var(--card-fade)); color: #183d51;
+  box-shadow: 0 3px 9px #183c5008; overflow: hidden;
+}
+.generalDesignTheme .generalSectionCard::before { content:''; position:absolute; top:0; inset-inline:0; height:4px; background:var(--card-ink); }
+.generalDesignTheme .generalSectionCard:hover { border-color: var(--card-ink); background: linear-gradient(145deg,var(--card-soft),var(--card-fade)); box-shadow: 0 5px 15px #183c5018; }
+.generalDesignTheme .generalSectionCard[aria-current=page] { outline: 2px solid var(--card-ink); outline-offset: -2px; }
+.generalDesignTheme .generalSectionCard b { flex: none; width: 100%; color: #183d51; font-size: 13px; font-weight: 700; line-height: 1.5; overflow-wrap: anywhere; }
+.generalDesignTheme .generalSectionIcon { width: 43px; height: 43px; border-radius: 13px; color: #fff; background: var(--card-ink); box-shadow: 0 4px 10px #193d4e20; }
+.generalDesignTheme .generalSectionCard > svg { display:none; }
+.generalDesignTheme .generalSectionCard.tone-blue { --card-ink:#176cb7; --card-soft:#dceeff; --card-fade:#eef8ff; --card-edge:#b9daf7; }
+.generalDesignTheme .generalSectionCard.tone-sky { --card-ink:#147e9d; --card-soft:#ddf5fb; --card-fade:#effbfc; --card-edge:#b9e4ed; }
+.generalDesignTheme .generalSectionCard.tone-cyan { --card-ink:#087d86; --card-soft:#dbf4f4; --card-fade:#eafafa; --card-edge:#afe1df; }
+.generalDesignTheme .generalSectionCard.tone-violet { --card-ink:#7650aa; --card-soft:#f0e6fc; --card-fade:#faf4ff; --card-edge:#d9c5f1; }
+.generalDesignTheme .generalSectionCard.tone-indigo { --card-ink:#5d66b0; --card-soft:#e7eaff; --card-fade:#f5f5ff; --card-edge:#cbd0f1; }
+.generalDesignTheme .generalSectionCard.tone-emerald { --card-ink:#087d60; --card-soft:#d9f6e9; --card-fade:#edfdf3; --card-edge:#a8dfc4; }
+.generalDesignTheme .generalSectionCard.tone-amber { --card-ink:#95600b; --card-soft:#fff0d6; --card-fade:#fff9e9; --card-edge:#f0d3a3; }
+.generalDesignTheme .generalSectionCard.tone-rose { --card-ink:#ab5375; --card-soft:#ffe7ef; --card-fade:#fff4f7; --card-edge:#efc5d5; }
+.generalDesignTheme .generalSectionCard.tone-slate { --card-ink:#506e8c; --card-soft:#e6eff8; --card-fade:#f3f8fc; --card-edge:#c6d9e8; }
+
+/* Interior screens share the same palette while keeping financial colours. */
+body.premiumSolar .smoothFrame.generalDesignTheme .appContent .top {
+  padding: 12px 15px; border: 1px solid #c8e7e4; border-radius: 16px;
+  background: linear-gradient(105deg,#e0f4ed,#e5f1fb);
+}
+body.premiumSolar .smoothFrame.generalDesignTheme .appContent .top h2 { color: #123e52; }
+body.premiumSolar .smoothFrame.generalDesignTheme .appContent .top .workspaceBack { background:#fff; border-color:#b9dcd8; color:#087b72; }
+body.premiumSolar .smoothFrame.generalDesignTheme :is(.card,.uiPanel,.cfPanel,.quoteCard,.inventoryCard,.workflowJob,.archiveInvoice,.miniParty,.miniPartyRow,.mlPanel,.accountSection,.accountCard) { border-color:#d4e4eb; box-shadow:0 5px 16px #163f530c; }
+body.premiumSolar .smoothFrame.generalDesignTheme :is(.cfTabs,.quoteTabs,.inventoryTabs,.profitWorkspaceTabs,.statusTabs,.movementTabsThree) { background:#e8f1f4; }
+body.premiumSolar .smoothFrame.generalDesignTheme :is(.cfTabs,.quoteTabs,.inventoryTabs,.profitWorkspaceTabs,.statusTabs,.movementTabsThree) :is([aria-selected=true],[aria-pressed=true]) { box-shadow:0 3px 10px #087b701e; }
+body.premiumSolar .smoothFrame.generalDesignTheme :is(.cfPrimary,.quoteSave,.customerPrimary,.inventoryPrimary,.workflowPrimary,.uiButton.primary) { box-shadow:0 5px 14px #07837320; }
+
+.generalDesignTheme .generalDirectoryCompact .generalSectionGroup > header { padding: 10px 11px; }
+.generalDesignTheme .generalDirectoryCompact .generalGroupMark { width: 35px; height: 35px; }
+.generalDesignTheme .generalDirectoryCompact .generalGroupTitle p { display:none; }
+.generalDesignTheme .generalDirectoryCompact .generalSectionGrid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; padding:10px; }
+.generalDesignTheme .generalDirectoryCompact .generalSectionCard { flex-direction:row; justify-content:flex-start; min-height:68px; padding:10px; gap:8px; text-align:start; }
+.generalDesignTheme .generalDirectoryCompact .generalSectionCard b { flex:1; width:auto; font-size:12px; }
+.generalDesignTheme .generalDirectoryCompact .generalSectionIcon { width:35px; height:35px; border-radius:10px; }
+.generalDesignTheme .generalDirectoryCompact .generalSectionCard::before { width:3px; height:auto; inset-block:0; inset-inline-start:0; inset-inline-end:auto; }
+
+@media (min-width:701px) {
+  .generalDesignTheme .generalSectionGrid { grid-template-columns:repeat(4,minmax(0,1fr)); }
+}
+@media (min-width:1250px) {
+  .generalDesignTheme .generalSectionGrid { grid-template-columns:repeat(5,minmax(0,1fr)); }
+}
+@media (max-width:700px) {
+  .generalDesignTheme .generalHomeHeading { min-height:105px; margin-bottom:14px; padding:15px 16px; border-radius:18px; }
+  .generalDesignTheme .generalHomeHeading h1 { font-size:23px; }
+  .generalDesignTheme .generalHomeHeading p { font-size:12px; }
+  .generalDesignTheme .generalSectionGrid { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; padding:10px; }
+  .generalDesignTheme .generalSectionCard { min-height:108px; gap:7px; padding:11px 5px; }
+  .generalDesignTheme .generalSectionCard b { font-size:12px; line-height:1.45; }
+  .generalDesignTheme .generalSectionIcon { width:39px; height:39px; }
+  .generalDesignTheme .generalSectionIcon svg { width:23px; height:23px; }
+  .generalDesignTheme .generalSectionGroup > header { padding:10px 11px; }
+  .generalDesignTheme .generalGroupMark { width:36px; height:36px; }
+}
+@media (max-width:359px) {
+  .generalDesignTheme .generalSectionGrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .generalDesignTheme .generalSectionCard { min-height:96px; }
+}
+
+/* Clear, consistent headers in the existing financial and invoice screens. */
+body.premiumSolar .smoothFrame.generalDesignTheme .premiumMobileBrand small { color: #c4e5e7 !important; }
+body.premiumSolar .smoothFrame.generalDesignTheme .appContent .miniFinance .accountHero {
+  background:linear-gradient(112deg,#123e58,#087d75) !important; border:0; border-radius:17px;
+  padding:15px 16px !important; border-radius:17px !important; color:#fff; box-shadow:0 8px 20px #0b6c6a1c;
+}
+body.premiumSolar .smoothFrame.generalDesignTheme .appContent .miniFinance .accountHero h1 { color:#fff !important; }
+body.premiumSolar .smoothFrame.generalDesignTheme .appContent .miniFinance .accountHero .accountHeroIcon {
+  display:grid !important; width:39px; height:39px; flex:none; place-items:center;
+  color:#fff; background:#ffffff25; border:1px solid #ffffff40; border-radius:12px;
+}
+body.premiumSolar .smoothFrame.generalDesignTheme .appContent .miniFinance .accountHero .reportRefresh {
+  color:#096b69; background:#fff; border:1px solid #d5eeea; border-radius:11px;
+}
+body.premiumSolar .smoothFrame.generalDesignTheme .appContent .miniFinance .accountFilterPanel {
+  border-color:#d2e5eb; border-radius:16px; box-shadow:0 5px 16px #163f530c;
+}
+body.premiumSolar .smoothFrame.generalDesignTheme .appContent .miniFinance .supplierDirection button[aria-pressed=true] {
+  background:#d9f5e8; border-color:#96d7be; color:#076c58;
+}
+body.premiumSolar .smoothFrame.generalDesignTheme .appContent .miniFinance .supplierDirection button[aria-pressed=false] {
+  background:#edf3ff; border-color:#cfdbf5; color:#3c5d83;
+}
+body.premiumSolar .smoothFrame.generalDesignTheme .appContent .miniPageHead {
+  background:linear-gradient(105deg,#def4ed,#e4f0fb); border:1px solid #c9e5e6;
+  border-radius:15px; padding:10px 12px; margin-bottom:12px;
+}
+body.premiumSolar .smoothFrame.generalDesignTheme .appContent .invoiceWorkspace .deskHeader {
+  background:linear-gradient(105deg,#dff4ee,#e3f0ff); border:1px solid #c6e4e6; border-radius:16px;
+}
+@media(min-width:1250px) {
+  .generalDesignTheme .generalDashboard .generalSectionGroups { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .generalDesignTheme .generalDashboard .generalSectionGroup { grid-column:span 2; }
+  .generalDesignTheme .generalDashboard .generalSectionGroup[data-count='6'] .generalSectionGrid { grid-template-columns:repeat(6,minmax(0,1fr)); }
+  .generalDesignTheme .generalDashboard .generalSectionGroups:has(> [data-group='reports']):has(> [data-group='settings']) > :is([data-group='reports'],[data-group='settings']) { grid-column:span 1; }
+  .generalDesignTheme .generalDashboard .generalSectionGroup[data-group='reports'] .generalSectionGrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .generalDesignTheme .generalDashboard .generalSectionGroup[data-group='settings'] .generalSectionGrid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+}

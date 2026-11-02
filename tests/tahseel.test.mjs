@@ -92,3 +92,21 @@ test('older missing inverter quantity remains one, while explicit invalid quanti
  assert.equal(calculateQuote(form).inverterQty,3);
  for(const internal of[false,true]){const html=quoteDocument(form,internal);assert.ok(html.includes('ملاحظات العرض'));assert.ok(html.includes('ثلاثة انفيرترات<br>ملاحظة &lt;script&gt; &amp; تفاصيل'));}
 });
+
+
+test('ALL IN ONE uses only panels and integrated devices, with the same expenses and markup',()=>{
+ const form={...complete(),systemType:'all_in_one',allInOneQty:'2',batteryCapacity:'',battery:null,inverter:null,allInOne:{id:5,name:'5KW/ALLINONE',brand:'FULLMAX',cost:'3500000'}};
+ const q=calculateQuote(form);
+ assert.deepEqual([q.panelQty,q.batteryQty,q.inverterQty,q.allInOneQty,q.materialsTotal,q.expensesTotal,q.price],[7,0,0,2,7700000,720000,8841000]);
+ assert.deepEqual(q.materials.map(x=>x.key),['panel','allInOne']);assert.deepEqual(q.errors,[]);
+ for(const html of [quoteDocument(form),quoteDocument(form,true)]){assert.match(html,/5KW\/ALLINONE[\s\S]*?<td>2<\/td>/);assert.ok(!html.includes('بطارية 15 كيلو'));}
+ assert.ok(!quoteDocument(form).includes('3,500,000'));assert.ok(quoteDocument(form,true).includes('3,500,000'));
+ for(const n of ['',0,-1,1.5,1001,'2e0',null])assert.ok(calculateQuote({...form,allInOneQty:n}).errors.some(e=>e.includes('ALL IN ONE')));
+ assert.ok(calculateQuote({...form,allInOne:null}).errors.some(e=>e.includes('ALL IN ONE')));
+ const manual={...form,day:'',night:'',allInOnePanelQty:'10'},m=calculateQuote(manual);
+ assert.deepEqual([m.panelQty,m.expensesTotal,m.materialsTotal,m.price],[10,855000,8000000,9297750]);assert.deepEqual(m.errors,[]);
+ assert.ok(quoteDocument(manual).includes('<bdi>—</bdi>'));
+ for(const allInOnePanelQty of ['0','-1','1.5','1001',true,[1]])assert.ok(calculateQuote({...manual,allInOnePanelQty}).errors.some(e=>e.includes('عدد الألواح')));
+ assert.equal(calculateQuote({...manual,day:'0',night:'0',allInOnePanelQty:''}).errors.length>0,true);
+ const standard={...complete()};delete standard.systemType;assert.equal(calculateQuote(standard).price,4116000);
+});

@@ -54,16 +54,18 @@ async function chooseGeneral(p){
 const expectedFor=profile=>sections.flatMap(([,rows])=>rows).filter(([id])=>id!=='home'&&canOpenPage(profile,id)).map(([id])=>id).sort();
 async function checkDirectory(p,profile,root='.generalDashboard'){
  const cards=p.locator(root+' .generalSectionCard'),rows=await cards.evaluateAll(nodes=>nodes.map(n=>({id:new URL(n.href).searchParams.get('section'),w:n.getBoundingClientRect().width,h:n.getBoundingClientRect().height,text:n.innerText,labelFits:n.querySelector('b').scrollHeight<=n.querySelector('b').clientHeight+1})));
- assert.deepEqual(rows.map(x=>x.id).sort(),expectedFor(profile));assert.equal(new Set(rows.map(x=>x.id)).size,rows.length);assert.ok(rows.every(x=>x.w>=100&&x.h>=44&&x.text&&x.labelFits),'Cards are hidden, clipped, duplicated or too small');
+ assert.deepEqual(rows.map(x=>x.id).sort(),expectedFor(profile));assert.equal(new Set(rows.map(x=>x.id)).size,rows.length);assert.ok(rows.every(x=>x.w>=78&&x.h>=44&&x.text&&x.labelFits),'Cards are hidden, clipped, duplicated or too small');
 }
 try{
  const before=hash(),admin=await open('admin'),{p,ctx,token}=admin,profile=JSON.parse(sql("select to_json(p)from profiles p where id='"+ids.admin+"'"));
  await chooseGeneral(p);await checkDirectory(p,profile);assert.equal(await p.locator('.generalSectionGroup').count(),6);
  for(const width of[320,360,390,430,768,1024,1366,1600]){
   await p.setViewportSize({width,height:920});await shot(p,'general-home-'+width);await checkDirectory(p,profile);
-  const columns=await p.locator('.generalSectionGrid').first().evaluate(n=>getComputedStyle(n).gridTemplateColumns.split(' ').length);assert.equal(columns,width<=700?2:width<=1000?3:width<1250?4:5);
+  const columns=await p.locator('.generalSectionGrid').first().evaluate(n=>getComputedStyle(n).gridTemplateColumns.split(' ').length);assert.equal(columns,width<360?2:width<=700?3:width<1250?4:5);
+  if(width===390)await p.screenshot({path:dir+'/general-home-viewport.png',animations:'disabled'});
  }
- checks.allSectionsAlwaysVisible=true;checks.responsive=[320,360,390,430,768,1024,1366,1600];
+ const colours=await p.locator('.generalDashboard .generalSectionCard').evaluateAll(nodes=>new Set(nodes.map(n=>getComputedStyle(n).backgroundImage)).size);assert.ok(colours>=6,'Section cards need visibly distinct background colours');
+ checks.allSectionsAlwaysVisible=true;checks.distinctCardColours=colours;checks.responsive=[320,360,390,430,768,1024,1366,1600];
  await p.setViewportSize({width:390,height:920});await p.getByRole('navigation',{name:'الانتقال إلى مجموعة أقسام',exact:true}).getByRole('link',{name:'الإعدادات والنظام',exact:true}).click();await p.waitForTimeout(350);await checkDirectory(p,profile);assert.equal(new URL(p.url()).searchParams.get('section'),null);checks.categoryLinksOnlyScroll=true;
  await p.getByLabel('البحث في الأقسام',{exact:true}).fill('تسديد مورد');assert.equal(await p.locator('.generalDashboard .generalSectionCard').count(),1);await p.getByRole('button',{name:'مسح البحث في الأقسام',exact:true}).click();await checkDirectory(p,profile);checks.searchAcrossGroups=true;
  const state=await ctx.request.post(api+'/rpc/solar_section_layout',{headers:{authorization:'Bearer '+token},data:{action:'get'}});assert.equal(state.status(),200);assert.equal((await state.json()).mode,'general');
