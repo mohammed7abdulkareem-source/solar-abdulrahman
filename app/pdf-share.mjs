@@ -86,7 +86,18 @@ export function reportPages(sheet,doc){
     copy.remove();if(!current.body.rows.length)current.copy.remove();removeEmpty();addPage();current=makeTable();current.body.append(copy);
     if(!fits())throw new Error('أحد صفوف التقرير طويل جداً لصفحة PDF. اختصر وصف المادة.');
    }}
-   if(source.tFoot){const foot=source.tFoot.cloneNode(true);current.copy.append(foot);if(!fits()){foot.remove();addPage();current=makeTable();current.copy.append(foot);if(!fits())throw new Error('ملخص الجدول أطول من صفحة PDF');}}
+   if(source.tFoot){
+    const foot=source.tFoot.cloneNode(true);current.copy.append(foot);
+    if(!fits()){
+     foot.remove();
+     // An itemized invoice should not leave its subtotal on a page by itself.
+     const lastRow=source.hasAttribute('data-pdf-keep-footer-with-row')?current.body.lastElementChild:null;
+     if(lastRow){lastRow.remove();if(!current.body.rows.length)current.copy.remove();removeEmpty();}
+     addPage();current=makeTable();if(lastRow)current.body.append(lastRow);current.copy.append(foot);
+     if(!fits()&&lastRow){foot.remove();if(!fits())throw new Error('أحد صفوف التقرير طويل جداً لصفحة PDF. اختصر وصف المادة.');addPage();current=makeTable();current.copy.append(foot);}
+     if(!fits())throw new Error('ملخص الجدول أطول من صفحة PDF');
+    }
+   }
   }else if(source.nodeType===1&&source.querySelector('table')){
    for(const child of source.childNodes)flow(child,[...ancestors,source]);
   }else appendBlock(source,ancestors);

@@ -218,3 +218,33 @@ body.premiumSolar .appContent .miniPartyEditor .fxCurrencyManager>p{font-size:12
 
 body.premiumSolar .appContent .miniContextBack{display:flex;align-items:center;gap:7px;max-width:800px;width:100%;margin:0 auto 10px;background:#fff;color:#355e70;border:1px solid #e0e9ef;border-radius:8px;font-size:13px;min-height:39px;padding:8px 12px;cursor:pointer}
 body.premiumSolar .appContent .miniContextBack svg{transform:rotate(180deg)}
+
+/* Account statements and itemized invoice reports. */
+body.premiumSolar .appContent .partyReportActions{border:1px solid #dceae9;border-radius:12px;background:#f7fbfa;padding:12px;margin:12px 0 16px}
+body.premiumSolar .appContent .partyReportActionsTitle{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;color:#244e5a;font-size:13px}
+body.premiumSolar .appContent .partyReportActionsTitle span{font-size:11px;color:#718f98}
+body.premiumSolar .appContent .miniParty .reportExportButtons.withPrint{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
+body.premiumSolar .appContent .miniParty .reportExportButtons.withPrint .reportButton{min-height:44px;white-space:nowrap}
+body.premiumSolar .appContent .partyInvoiceCard{border:1px solid #dfe9ee;border-radius:11px;margin:10px 0;background:#fff;overflow:hidden}
+body.premiumSolar .appContent .partyInvoiceCard .miniMovementRow{padding:12px;min-height:72px;background:#f5f9fc}
+body.premiumSolar .appContent .partyInvoiceItems{padding:8px 12px 10px}
+body.premiumSolar .appContent .partyInvoiceItemsHead,body.premiumSolar .appContent .partyInvoiceItem{display:grid;grid-template-columns:minmax(0,2fr) minmax(45px,.65fr) minmax(80px,1fr) minmax(80px,1fr);gap:8px;align-items:center}
+body.premiumSolar .appContent .partyInvoiceItemsHead{font-size:10px;color:#78909b;padding:6px 0;border-bottom:1px solid #e5edf1}
+body.premiumSolar .appContent .partyInvoiceItem{padding:9px 0;border-bottom:1px solid #eef2f4;font-size:12px;color:#284a5a;line-height:1.7}
+body.premiumSolar .appContent .partyInvoiceItem>span{min-width:0;overflow-wrap:anywhere}
+body.premiumSolar .appContent .partyInvoiceItem>span:first-child{display:grid;gap:2px}
+body.premiumSolar .appContent .partyInvoiceItem small{display:block;font-size:10px;color:#78909b}
+body.premiumSolar .appContent .partyInvoiceItem>span:not(:first-child)>small{display:none}
+body.premiumSolar .appContent .partyInvoiceItem bdi{font-variant-numeric:tabular-nums}
+body.premiumSolar .appContent .partyInvoiceItems p,body.premiumSolar .appContent .partyInvoiceHint{font-size:10px;color:#728d98;line-height:1.8;margin:9px 0 0}
+body.premiumSolar .appContent .partyInvoiceHint{padding:2px 12px 12px}
+body.premiumSolar .appContent .partyOriginalDocuments{border:1px solid #e1ebed;border-radius:10px;margin-top:14px;padding:12px;color:#365d6a}
+body.premiumSolar .appContent .partyOriginalDocuments summary{cursor:pointer;font-size:12px;font-weight:600}
+@media(max-width:580px){
+ body.premiumSolar .appContent .miniParty .reportExportButtons.withPrint{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.premiumSolar .appContent .partyInvoiceItemsHead{display:none}
+ body.premiumSolar .appContent .partyInvoiceItem{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px 8px}
+ body.premiumSolar .appContent .partyInvoiceItem>span:first-child{grid-column:1/-1}
+ body.premiumSolar .appContent .partyInvoiceItem>span:not(:first-child)>small{display:block}
+}
+body.premiumSolar .appContent .partyStatementNote{display:block;white-space:normal;overflow-wrap:anywhere;color:#718c99;font-size:10px;max-width:220px}

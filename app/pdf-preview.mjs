@@ -24,7 +24,7 @@ function previewHost(){
 }
 
 // Both the preview images and the downloaded PDF use the same rendered pages.
-export async function previewPdf(html,name,prepared){
+export async function previewPdf(html,name,prepared,{autoPrint=false}={}){
  const host=previewHost(),popup=host.view;
  const urls=[];const cleanup=()=>{for(const url of urls)URL.revokeObjectURL(url);urls.length=0};
  popup.document.write(previewMarkup(window.location.origin));
@@ -63,13 +63,14 @@ export async function previewPdf(html,name,prepared){
    }finally{share.disabled=false;}
   };
   const print=doc.getElementById('pdfPrint');print.disabled=false;print.onclick=()=>{popup.focus();popup.print()};
+  if(autoPrint){try{print.click()}catch{ /* The preview keeps its print button when a browser blocks automatic printing. */ }}
   doc.getElementById('pdfClose').focus();
  }catch(error){
   cleanup();console.error('PDF preview',error);if(host.closed())return;
   // Native HTML remains viewable and printable if PDF rasterization fails.
   const pages=doc.querySelector('.pdfPages');pages.replaceChildren();
   const frame=doc.createElement('iframe');frame.title='المستند للطباعة المباشرة';frame.className='nativeDocumentPreview';frame.style.cssText='display:block;width:100%;min-height:1123px;border:0;background:#fff;';pages.append(frame);
-  frame.onload=()=>{try{const original=frame.contentDocument;original.querySelectorAll('.previewNav,.actions').forEach(n=>n.remove());frame.style.height=Math.max(1123,original.documentElement.scrollHeight)+'px';const print=doc.getElementById('pdfPrint');print.disabled=false;print.onclick=()=>{frame.contentWindow.focus();frame.contentWindow.print()};}catch{}};
+  frame.onload=()=>{try{const original=frame.contentDocument;original.querySelectorAll('.previewNav,.actions').forEach(n=>n.remove());frame.style.height=Math.max(1123,original.documentElement.scrollHeight)+'px';const print=doc.getElementById('pdfPrint');print.disabled=false;print.onclick=()=>{frame.contentWindow.focus();frame.contentWindow.print()};if(autoPrint)print.click();}catch{}};
   frame.srcdoc=html;
   const notice=doc.getElementById('pdfNotice');notice.textContent='يمكنك معاينة المستند وطباعته مباشرة. تعذر تجهيز PDF؛ أعد المحاولة للحفظ والمشاركة.';notice.hidden=false;
   const retry=doc.createElement('button');retry.type='button';retry.id='pdfRetry';retry.textContent='إعادة تجهيز PDF';retry.onclick=()=>{cleanup();host.close();void previewPdf(html,name)};doc.querySelector('.pdfSideActions').append(retry);doc.getElementById('pdfClose').focus();
