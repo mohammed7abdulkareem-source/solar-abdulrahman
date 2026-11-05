@@ -60,7 +60,8 @@ do $$declare c jsonb;r jsonb;b jsonb;n uuid:=gen_random_uuid();f text;begin
 end$$;
 reset role;
 do $$begin
- assert(select count(*)from solar_notifications where delete_request_id=current_setting('test.cash.request')::uuid and event='receipt_delete_requested')=1;
+ assert(select count(*)from solar_notifications where delete_request_id=current_setting('test.cash.request')::uuid and event='receipt_delete_requested')=(select count(*)from profiles where active and is_admin and user_type not in('warehouse','installer'));
+ assert exists(select 1 from solar_notifications where delete_request_id=current_setting('test.cash.request')::uuid and event='receipt_delete_requested' and user_id='00000000-0000-0000-0000-000000003880');
  assert not exists(select 1 from solar_notifications n join profiles p on p.id=n.user_id where n.delete_request_id=current_setting('test.cash.request')::uuid and n.event='receipt_delete_requested'and(p.user_type in('warehouse','installer')or not p.is_admin));
 end$$;
 -- Revoking cash viewing also protects previously saved deletion snapshots.

@@ -82,9 +82,14 @@ do $$declare c jsonb;r jsonb;d jsonb;nonce uuid:=gen_random_uuid();fingerprint t
 end$$;
 reset role;
 do $$declare r uuid:=current_setting('test.approval.request')::uuid;batch jsonb;begin
- assert(select count(*)from solar_notifications where delete_request_id=r and event='receipt_delete_requested')=2;
+ -- Existing isolated database fixtures may include other administrators. Every
+ -- eligible administrator must receive exactly one request notification.
+ assert(select count(*)from solar_notifications where delete_request_id=r and event='receipt_delete_requested')=
+  (select count(*)from profiles where active and is_admin and user_type not in('warehouse','installer'));
+ assert(select count(*)from solar_notifications where delete_request_id=r and event='receipt_delete_requested'and user_id in('00000000-0000-0000-0000-000000003830','00000000-0000-0000-0000-000000003840'))=2;
  assert not exists(select 1 from solar_notifications n join profiles p on p.id=n.user_id where n.delete_request_id=r and n.event='receipt_delete_requested'and(not p.is_admin or p.user_type in('warehouse','installer')));
- assert(select count(*)from solar_private.push_deliveries d join solar_notifications n on n.id=d.notification_id where n.delete_request_id=r and n.event='receipt_delete_requested')=2;
+ assert(select count(*)from solar_private.push_deliveries d join solar_notifications n on n.id=d.notification_id where n.delete_request_id=r and n.event='receipt_delete_requested')=
+  (select count(*)from solar_push_subscriptions s join profiles p on p.id=s.user_id where p.active and p.is_admin and p.user_type not in('warehouse','installer'));
  batch:=public.solar_push_claim();assert exists(select 1 from jsonb_array_elements(batch)x where x->'notification'->>'deleteRequestId'=r::text);
  assert(select qty from products where id=-383001)=9;
 end$$;
