@@ -41,3 +41,18 @@ test('stock report counts stocked products and preserves escaped names and brand
  const report=capitalStockReport([{name:'بطارية',brand:'A&B',category:'بطارية',qty:2,cost:1500},{name:'فارغ',qty:0,cost:5000}]);
  assert.equal(report.total,3000);assert.match(report.body,/A&amp;B/);assert.doesNotMatch(report.body,/فارغ/);assert.match(capitalStockReport([]).body,/لا توجد بيانات/);
 });
+test('capital snapshot explains scope and historical IQD value while retaining the original USD amount',()=>{
+ const snapshot={scope:'own',asOf:'2026-11-08T12:00:00Z',stock:{value:100},cash:{iqd:0,usd:10,usdBook:15670},customers:{receivable:0,advances:0},suppliers:{prepayments:0,payable:100},assets:15770,liabilities:100,net:15670},before=JSON.stringify(snapshot);
+ const report=capitalSnapshotReport(snapshot);
+ assert.equal(report.total,15670);assert.match(report.body,/توقيت بغداد/);assert.match(report.body,/حركات المستخدم وقاصته والمخازن المسموحة له/);
+ assert.doesNotMatch(report.body,/جميع حسابات الشركة/);assert.match(report.body,/الصافي · الموجودات − المطلوبات/);
+ assert.match(report.body,/رصيد قاصة الدولار الأصلي: <b>10 USD/);assert.match(report.body,/قيمته الدفترية المدرجة أعلاه: <b>15,670 د\.ع/);
+ assert.equal(JSON.stringify(snapshot),before);
+});
+test('supplier debt report labels source currency and IQD book value separately',()=>{
+ const accounts={rows:[{name:'مورد',phone:'',currency:'USD',amount:100,balance:146000}],total:146000,net:146000};
+ const report=capitalDebtReport(accounts,true);
+ assert.equal(report.total,146000);assert.match(report.body,/100 \$/);assert.match(report.body,/146,000/);
+ assert.match(report.body,/عملة المجاميع والقيمة الدفترية: الدينار العراقي · IQD/);
+ assert.match(report.body,/يعرض العملة الأصلية لكل حساب/);assert.match(report.body,/الموجب مستحق للموردين، والسالب سلف وأرصدة لنا عندهم/);
+});

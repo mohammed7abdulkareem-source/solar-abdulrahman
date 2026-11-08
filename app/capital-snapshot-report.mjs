@@ -10,9 +10,12 @@ export function capitalLines(s){
  ];
 }
 export function capitalSnapshotReport(s){
-
+ const scope=s.scope==='company'?'جميع حسابات الشركة':'حركات المستخدم وقاصته والمخازن المسموحة له';
+ const metric=(label,value)=>'<div class="reportMetric"><span>'+e(label)+'</span><strong>'+money(value)+' د.ع</strong></div>';
  return {title:s.scope==='company'?'تقرير رأس المال':'ملخص أرصدة المستخدم',total:s.net,body:
-  '<p>وقت الاحتساب: '+e(new Date(s.asOf).toLocaleString('en-GB',{timeZone:'Asia/Baghdad'}))+' · '+(s.scope==='company'?'جميع حسابات الشركة':'حركات المستخدم وقاصته والمخازن المسموحة له')+'</p>'+
-  '<table><thead><tr><th>البند</th><th>القيمة الدفترية د.ع</th></tr></thead><tbody>'+capitalLines(s).map(([label,value])=>'<tr><td>'+e(label)+'</td><td dir="ltr">'+money(value)+'</td></tr>').join('')+'</tbody></table>'+
-  '<p>جميع القيم بالدينار العراقي، وأرصدة الدولار محسوبة بكلفتها الدفترية المثبتة.</p>'};
+  '<div class="meta"><div>وقت الاحتساب: '+e(new Date(s.asOf).toLocaleString('en-GB',{timeZone:'Asia/Baghdad'}))+' · توقيت بغداد</div><div>نطاق التقرير: '+scope+'</div><div>عملة القيم الدفترية: الدينار العراقي · IQD</div><div>الأرصدة حتى وقت الاحتساب</div></div>'+
+  '<div class="reportSummary">'+metric('إجمالي الموجودات',s.assets)+metric('إجمالي المطلوبات',s.liabilities)+metric('الصافي · الموجودات − المطلوبات',s.net)+'</div>'+
+  '<h3 class="reportSectionTitle">تفاصيل الموجودات والمطلوبات</h3><table data-pdf-paginate><thead><tr><th>البند</th><th>القيمة الدفترية · د.ع</th></tr></thead><tbody>'+capitalLines(s).map(([label,value])=>'<tr><td>'+e(label)+'</td><td dir="ltr">'+money(value)+'</td></tr>').join('')+'</tbody></table>'+
+  '<p>جميع القيم في الملخص والجدول بالدينار العراقي. تدخل أرصدة الدولار في الموجودات والمطلوبات بقيمتها الدفترية المثبتة بالدينار.</p>'+
+  (s.cash.usd!=null?'<p>رصيد قاصة الدولار الأصلي: <b>'+money(s.cash.usd)+' USD</b> · قيمته الدفترية المدرجة أعلاه: <b>'+money(s.cash.usdBook)+' د.ع</b>.</p>':'')};
 }

@@ -1,0 +1,23 @@
+/* Shared report controls remain readable across every workspace and design. */
+body.premiumSolar .appContent .reportExport{min-width:0;margin:12px 0}
+body.premiumSolar .appContent .reportExport .reportExportButtons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+body.premiumSolar .appContent .reportExport .reportExportButtons.withPrint{grid-template-columns:repeat(4,minmax(0,1fr))}
+body.premiumSolar .appContent .reportExport .reportButton{display:flex;align-items:center;justify-content:center;gap:7px;min-width:0;min-height:44px;height:auto;padding:10px 8px;font-size:12px;font-weight:700;line-height:1.6;border:1px solid #c6d9df;border-radius:11px;background:#fff;color:#264e5b;white-space:normal}
+body.premiumSolar .appContent .reportExport .reportButton svg{width:18px;height:18px;flex-shrink:0}
+body.premiumSolar .appContent .reportExport .reportButton.download{background:#087f74;border-color:#087f74;color:#fff}
+body.premiumSolar .appContent .reportExport .reportButton.print{background:#eef4fc;color:#315a8a;border-color:#cfdded}
+body.premiumSolar .appContent .reportExport .reportButton:disabled{opacity:.5;cursor:not-allowed}
+body.premiumSolar .appContent .reportExport .reportButton:focus-visible,body.premiumSolar .appContent .reportExport .reportRetry:focus-visible{outline:3px solid #29a997;outline-offset:3px}
+body.premiumSolar .appContent .reportExport .reportExportStatus{font-size:12px;line-height:1.9;color:#49646f;min-height:24px;margin-top:7px;overflow-wrap:anywhere}
+body.premiumSolar .appContent .reportExport .reportExportStatus[data-state="error"]{color:#a33b36}
+body.premiumSolar .appContent .reportExport .reportRetry{margin-inline-start:8px;padding:4px 8px;min-height:36px;font:inherit;text-decoration:underline;text-underline-offset:3px}
+body.premiumSolar .appContent .reportScopeStrip{display:flex;align-items:center;flex-wrap:wrap;gap:7px 14px;margin:12px 0;padding:11px 13px;border:1px solid #cddfe4;border-radius:12px;background:#f3f8fa;color:#375564;font-size:12px;line-height:1.8;overflow-wrap:anywhere}
+body.premiumSolar .appContent .reportScopeStrip strong{color:#154956}
+body.premiumSolar .appContent .reportReadingHint{font-size:12px;line-height:1.8;color:#4d6572;margin:9px 0}
+body.premiumSolar .appContent .profitResultSummary b,body.premiumSolar .appContent .staffProfitMetrics b{font-variant-numeric:tabular-nums}
+body.premiumSolar .appContent .profitResultSummary>div{font-size:13px;line-height:1.8;gap:10px;flex-wrap:wrap;color:#31515f}
+body.premiumSolar .appContent .profitResultSummary>div>span{flex:1 1 145px}
+body.premiumSolar .appContent .profitResultSummary>div>b{font-size:14px;font-weight:700;line-height:1.8;color:#173f4d;overflow-wrap:anywhere;max-width:100%}
+body.premiumSolar .appContent .profitResultSummary>div>b.positive{font-size:14px;color:#08705e}
+body.premiumSolar .appContent .periodMaterialsTable:focus-visible{outline:3px solid #29a997;outline-offset:3px}
+@media(max-width:640px){body.premiumSolar .appContent .reportExport .reportExportButtons.withPrint{grid-template-columns:repeat(2,minmax(0,1fr))}body.premiumSolar .appContent .reportExport .reportButton{font-size:12px;padding:10px 7px}body.premiumSolar .appContent .reportScopeStrip{align-items:flex-start;gap:5px 10px}}

@@ -2,7 +2,7 @@ import {escapeHtml as e} from './document-format.mjs';
 import {quantity} from './warehouse-utils.mjs';
 
 export const periodKindLabel=kind=>kind==='sale'?'بيع جملة':kind==='system'?'بيع منظومات':'الجملة والمنظومات';
-const periodStatusLabel={none:'بدون تنصيب',pending:'بانتظار البدء',in_progress:'جاري التنصيب',completed:'مراجعة التقرير',closed:'ملف مغلق'};
+export const periodStatusLabel={none:'بدون تنصيب',pending:'بانتظار البدء',in_progress:'جاري التنصيب',completed:'مراجعة التقرير',closed:'ملف مغلق'};
 export const periodDate=value=>value?value.split('-').reverse().join('/'):'كل السجل';
 export function periodSalesDocument(data){
  const rows=data.rows||[],summary=data.summary||{},range=(data.from?periodDate(data.from):'البداية')+' — '+(data.to?periodDate(data.to):'آخر فاتورة');

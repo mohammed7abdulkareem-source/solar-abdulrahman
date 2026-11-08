@@ -87,7 +87,7 @@ body.premiumSolar .appContent :is(.miniPrimary,.miniSecondary){display:inline-fl
 body.premiumSolar .appContent .miniPrimary{background:#087e70!important;border-color:#087e70!important;color:#fff!important}
 body.premiumSolar .appContent .miniNewActions button{flex:1}
 body.premiumSolar .appContent .miniDetail{padding:16px 0 2px}
-body.premiumSolar .appContent .miniDetailHero{display:flex;align-items:start;gap:16px;justify-content:space-between;padding-bottom:15px}
+body.premiumSolar .appContent .miniDetailHero{display:flex;align-items:flex-start;gap:16px;justify-content:space-between;padding-bottom:15px}
 body.premiumSolar .appContent .miniDetailHero>div{display:grid;gap:7px;text-align:left}
 body.premiumSolar .appContent .miniDetailHero h2{font-size:15px;color:#264c61;margin:0;line-height:1.7}
 body.premiumSolar .appContent .miniDetailHero strong{font-size:23px;font-weight:650}
@@ -248,3 +248,15 @@ body.premiumSolar .appContent .partyOriginalDocuments summary{cursor:pointer;fon
  body.premiumSolar .appContent .partyInvoiceItem>span:not(:first-child)>small{display:block}
 }
 body.premiumSolar .appContent .partyStatementNote{display:block;white-space:normal;overflow-wrap:anywhere;color:#718c99;font-size:10px;max-width:220px}
+body.premiumSolar .appContent .miniAccountMeaning{font-size:11px;line-height:1.9;color:#56717f;margin:9px 0 14px;overflow-wrap:anywhere}
+body.premiumSolar .appContent .miniAccountMeaning b{color:#254b5a}
+body.premiumSolar .appContent .miniReportScope{border:1px solid #dbe7ed;border-radius:12px;background:#f7fafc;padding:12px;margin:12px 0;min-width:0}
+body.premiumSolar .appContent .miniReportScopeHead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:5px 12px;color:#234d60;font-size:12px;overflow-wrap:anywhere}
+body.premiumSolar .appContent .miniReportScopeHead span{font-size:11px;color:#536e7c}
+body.premiumSolar .appContent .miniReportScope p{margin:6px 0;font-size:11px;line-height:1.9;color:#526e7d;overflow-wrap:anywhere}
+body.premiumSolar .appContent .miniReportBalances{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin:10px 0}
+body.premiumSolar .appContent .miniReportBalances>div{display:grid;gap:4px;padding:10px;background:#fff;border:1px solid #e1eaef;border-radius:9px;min-width:0}
+body.premiumSolar .appContent .miniReportBalances span,body.premiumSolar .appContent .miniReportBalances small{font-size:10px;line-height:1.6;color:#5b7480}
+body.premiumSolar .appContent .miniReportBalances strong{font-size:17px;color:#194d5e;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+body.premiumSolar .appContent .miniReportScope>button{border:1px solid #bfd9d4;background:#eef8f4;color:#126a5b;border-radius:8px;padding:9px 12px;min-height:42px;font-size:11px;cursor:pointer}
+@media(max-width:380px){body.premiumSolar .appContent .miniReportBalances{grid-template-columns:1fr}}

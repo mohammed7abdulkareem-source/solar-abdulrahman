@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {customerAccount,supplierAccount,compactPeriod,compactStatementBody} from '../app/compact-party-utils.mjs';
+import {customerAccount,supplierAccount,compactPeriod,compactStatementBody,partyBalanceMeaning,partyReportScope} from '../app/compact-party-utils.mjs';
 import {invoiceLines,groupedInvoicesBody} from '../app/party-invoice-reports.mjs';
 
 test('statement preserves cash amount, filtered running balance and escaped notes',()=>{
@@ -44,4 +44,35 @@ test('supplier invoice prices stay in source currency and unknown dollar prices 
  const html=groupedInvoicesBody(a,period,'','');assert.match(html,/السعر \$/);assert.match(html,/السعر د\.ع/);
  assert.match(html,/سعر غير محفوظ/);assert.ok(!html.includes('4,500 $'));
  assert.match(html,/الرصيد بعدها: 33 \$/);
+});
+
+test('filtered statement labels distinguish full-period balances from displayed payment totals',()=>{
+ const account=customerAccount({id:1,name:'زبون',rows:[
+  {id:1,date:'2026-10-01T09:00Z',kind:'sale',total:500,cash:false,receiptNo:1},
+  {id:2,date:'2026-10-02T09:00Z',kind:'sale',total:200,cash:false,receiptNo:2},
+  {id:3,date:'2026-10-03T09:00Z',kind:'customer_payment',total:800,receiptNo:3,notes:'<بحث>'}
+ ]});
+ const period=compactPeriod(account.rows,'2026-10-02','2026-10-03','payments','<بحث>'),before=JSON.stringify(period);
+ const filters={category:'payments',query:'<بحث>'},scope=partyReportScope(account,period,'2026-10-02','2026-10-03',filters);
+ assert.equal(scope.countLabel,'1 حركة معروضة من أصل 2 حركة في الفترة');assert.equal(scope.filtered,true);
+ const html=compactStatementBody(account,period,'2026-10-02','2026-10-03',filters);
+ assert.match(html,/نطاق التقرير: التسديدات · البحث: &lt;بحث&gt;/);
+ assert.match(html,/رصيد أول المدة: <b>500 د\.ع/);assert.match(html,/رصيد الحساب بنهاية الفترة: -100 د\.ع/);
+ assert.match(html,/رصيد للعميل عندنا/);assert.match(html,/مجاميع الزيادة والتخفيض أعلاه تخص الصفوف المعروضة فقط/);
+ assert.ok(!html.includes('<بحث>'));assert.equal(JSON.stringify(period),before);
+ const empty=compactPeriod(account.rows,'2026-10-02','2026-10-03','payments','غير موجود');
+ assert.equal(partyReportScope(account,empty,'','',filters).countLabel,'0 حركة معروضة من أصل 2 حركة في الفترة');
+ assert.match(compactStatementBody(account,empty,'2026-10-02','2026-10-03',filters),/رصيد الحساب بنهاية الفترة: -100 د\.ع/);
+});
+
+test('supplier and customer reports explain opposite balance meanings without converting currencies',()=>{
+ assert.equal(partyBalanceMeaning('supplier',100),'مستحق للمورد');assert.equal(partyBalanceMeaning('supplier',-100),'رصيد لنا عند المورد');
+ assert.equal(partyBalanceMeaning('customer',100),'مستحق لنا على العميل');assert.equal(partyBalanceMeaning('customer',-100),'رصيد للعميل عندنا');
+ assert.equal(partyBalanceMeaning('supplier',0),'الحساب متعادل');
+ const account={type:'supplier',name:'المورد',currency:'USD'},row={id:1,date:'2026-10-02T09:00Z',effect:20,amount:20,balance:-30,receiptNo:1,category:'invoices',original:{sourceCurrency:'IQD',accountAmount:20,items:[{name:'لوح',qty:1,price:30000}]}};
+ const period={opening:-50,balance:-30,rows:[row],all:[row,{id:2}]};
+ const html=groupedInvoicesBody(account,period,'2026-10-02','2026-10-03',{}, {category:'invoices',query:'لوح'});
+ assert.match(html,/عملة الحساب: الدولار الأمريكي · USD/);assert.match(html,/عملة المواد: IQD/);
+ assert.match(html,/نطاق التقرير: المشتريات · البحث: لوح/);assert.match(html,/1 حركة معروضة من أصل 2 حركة في الفترة/);
+ assert.match(html,/رصيد الحساب بنهاية الفترة: -30 \$/);assert.match(html,/رصيد لنا عند المورد/);assert.match(html,/30,000/);
 });
