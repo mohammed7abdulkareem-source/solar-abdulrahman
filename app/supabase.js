@@ -4,10 +4,11 @@ import {refreshMaterialBrands} from './current-brand.mjs';
 import {createLatestLoader} from './data-refresh.mjs';
 import {changedRows} from './review-utils.mjs';
 import {createClient} from '@supabase/supabase-js';
+import {createSessionFetch} from './auth-session-fetch.mjs';
 
 const url='https://afxxaafsuscwyjzrnagc.supabase.co';
 const key='sb_publishable_NWfk9al_gjcSnI6NBQX6GA_CGiQ2-Jy';
-export const supabase=createClient(url,key);
+export const supabase=createClient(url,key,{global:{fetch:createSessionFetch()}});
 
 // Verify in an isolated, non-persistent session. The reset endpoint repeats this
 // check server-side when executing, after the user's final confirmation.
