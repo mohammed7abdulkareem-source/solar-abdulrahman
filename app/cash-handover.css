@@ -1,0 +1,6 @@
+.cashHandoverBalance{display:grid;gap:10px;padding:14px;border:1px solid #b9d8cf;border-radius:13px;background:#f0f8f5;min-width:0}
+.cashHandoverBalanceHeading,.cashHandoverBalanceActions{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cashHandoverBalanceHeading>div{display:grid;gap:4px;min-width:0}.cashHandoverBalanceHeading span{font-size:12px;color:#42675f}.cashHandoverBalanceHeading b{font-size:13px;overflow-wrap:anywhere}
+.cashHandoverBalanceAmount{font-size:25px;color:#087565;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.cashHandoverBalanceAmount.negative{color:#b33c43}
+.cashHandover .cashHandoverBalanceActions button{min-height:38px;padding:7px 11px;font-size:12px}.cashHandover .cashHandoverFill{background:#e0f1e9;border-color:#8ebfaf;font-weight:700}
+.cashHandoverBalance p{margin:0;font-size:12px;line-height:1.8;color:#42675f}.cashHandoverBalance .cashHandoverBalanceError{color:#a73c42}.cashHandoverBalance button:disabled{cursor:not-allowed}
