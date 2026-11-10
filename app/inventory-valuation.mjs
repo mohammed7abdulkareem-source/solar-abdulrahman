@@ -13,6 +13,6 @@ export function currentSaleItems(items,products,originalItems=[]){
 // An uncertain network save must replay its original valuation revision. The
 // server returns the committed receipt or rejects the stale, uncommitted quote.
 export function invoiceAttemptSignature(payload){
- const {valuationRevision,...businessInput}=payload;
+ const {valuationRevision,wholesalePricingRevision,...businessInput}=payload;
  return JSON.stringify(businessInput);
 }

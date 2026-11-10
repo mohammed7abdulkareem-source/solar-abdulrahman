@@ -1,6 +1,12 @@
 -- Isolated regression fixtures only. Run against a local database; never production.
 \set ON_ERROR_STOP on
 begin;
+-- Reuse the same financial assertions against both cancellation entrypoints.
+\if :{?direct_mode}
+select set_config('test.cancel.direct_mode',:'direct_mode',true);
+\else
+select set_config('test.cancel.direct_mode','false',true);
+\endif
 insert into profiles(id,display_name,is_admin,user_type,permissions,phone) values
 ('00000000-0000-0000-0000-000000003990','مدير إلغاء الشراء',true,'admin_staff','{}','07700003990'),
 ('00000000-0000-0000-0000-000000003991','صاحب شراء الاختبار',false,'admin_staff','{"purchase":true,"sale":true,"cash":true,"stock":true,"supplierPayment":true,"exchangeRateEdit":true}','07700003991'),
@@ -44,7 +50,20 @@ create function pg_temp.request_cancel(invoice_id bigint) returns uuid language 
  result:=public.solar_receipt_delete_requests('request',nonce,body);
  assert public.solar_receipt_delete_requests('request',nonce,body)=result,'Request retry differs';
  assert before_hash=pg_temp.finance_hash(),'Request changed financial records';return(result->>'id')::uuid;end$$;
-create function pg_temp.approve_cancel(request_id uuid) returns void language plpgsql as $$declare detail jsonb;result jsonb;before_hash text;begin
+create function pg_temp.approve_cancel(request_id uuid) returns void language plpgsql as $$declare detail jsonb;result jsonb;before_hash text;nonce uuid:=gen_random_uuid();body jsonb;target_id bigint;begin
+ if current_setting('test.cancel.direct_mode',true)='true' then
+  select invoice_id into target_id from solar_private.receipt_delete_requests where id=request_id;
+  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003991',true);
+  detail:=public.solar_receipt_delete_requests('context',null,jsonb_build_object('invoiceId',target_id));
+  assert(detail->>'directEligible')::boolean,'Safe purchase not directly cancellable';
+  body:=jsonb_build_object('invoiceId',target_id,'expectedToken',detail->>'token');
+  result:=public.solar_receipt_delete_requests('delete_direct',nonce,body);
+  assert result->>'status'='deleted';before_hash:=pg_temp.finance_hash();
+  assert public.solar_receipt_delete_requests('delete_direct',nonce,body)=result,'Direct cancellation retry differs';
+  assert pg_temp.finance_hash()=before_hash,'Repeated direct cancellation changed finances';
+  assert(select status from solar_private.receipt_delete_requests where id=request_id)='cancelled','Old request silently approved';
+  return;
+ end if;
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003990',true);
  detail:=public.solar_receipt_delete_requests('get',request_id);
  result:=public.solar_receipt_delete_requests('approve',request_id,jsonb_build_object('expectedToken',detail->>'reviewToken'));
@@ -97,15 +116,15 @@ do $$declare invoice_id bigint;sale_id bigint;sale_before jsonb;begin
 
 -- An actual stock shortage and a multi-product shortage roll back atomically.
 do $$declare invoice_id bigint;request_id uuid;result jsonb;begin
- invoice_id:=pg_temp.buy(-399004,2,1000);perform pg_temp.sell(-399004,1,2000);request_id:=pg_temp.request_cancel(invoice_id);perform pg_temp.blocked_cancel(request_id);
+ invoice_id:=pg_temp.buy(-399004,2,1000);request_id:=pg_temp.request_cancel(invoice_id);perform pg_temp.sell(-399004,1,2000);perform pg_temp.blocked_cancel(request_id);
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003991',true);
  result:=public.solar_invoice_save(gen_random_uuid(),'{"kind":"purchase","mode":"credit","partyId":-399001,"party":"مورد إلغاء دينار","warehouseId":1,"items":[{"id":-399005,"qty":2,"price":1000},{"id":-399006,"qty":2,"price":1000}]}');
- invoice_id:=(result->>'id')::bigint;perform pg_temp.sell(-399005,1,2000);perform pg_temp.blocked_cancel(pg_temp.request_cancel(invoice_id));
+ invoice_id:=(result->>'id')::bigint;request_id:=pg_temp.request_cancel(invoice_id);perform pg_temp.sell(-399005,1,2000);perform pg_temp.blocked_cancel(request_id);
  assert(select qty from products where id=-399006)=12,'Valid line changed before blocked line';end$$;
 
 -- Transfer history and destination stock are retained. Pending transfer stock
 -- is reserved, so it cannot be consumed by deleting its source purchase.
-do $$declare invoice_id bigint;target_id bigint;transfer_id uuid:=gen_random_uuid();transfer_before jsonb;payload jsonb;begin
+do $$declare invoice_id bigint;target_id bigint;transfer_id uuid:=gen_random_uuid();request_id uuid;transfer_before jsonb;payload jsonb;begin
  invoice_id:=pg_temp.buy(-399010,2,1000);
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003990',true);
  target_id:=(public.solar_inventory('warehouse_save',gen_random_uuid(),'{"name":"مخزن إلغاء معزول"}')->>'id')::bigint;
@@ -118,9 +137,9 @@ do $$declare invoice_id bigint;target_id bigint;transfer_id uuid:=gen_random_uui
  assert(select qty from solar_private.warehouse_stocks where warehouse_id=target_id and product_id=-399010)=3,'Destination stock overwritten';
  assert(select qty from solar_private.warehouse_stocks where warehouse_id=solar_private.primary_warehouse()and product_id=-399010)=7,'Wrong origin stock reversed';
  assert(select to_jsonb(t)from solar_private.stock_transfers t where id=transfer_id)=transfer_before,'Transfer history rewritten';
- invoice_id:=pg_temp.buy(-399007,5,1000);perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003990',true);
+ invoice_id:=pg_temp.buy(-399007,5,1000);request_id:=pg_temp.request_cancel(invoice_id);perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003990',true);
  perform public.solar_inventory('transfer',gen_random_uuid(),jsonb_build_object('fromId',solar_private.primary_warehouse(),'toId',target_id,'items',jsonb_build_array(jsonb_build_object('productId',-399007,'qty',1,'revision',(select revision from solar_private.warehouse_stocks where warehouse_id=solar_private.primary_warehouse()and product_id=-399007)))));
- perform pg_temp.blocked_cancel(pg_temp.request_cancel(invoice_id));end$$;
+ perform pg_temp.blocked_cancel(request_id);end$$;
 
 -- USD components follow the current market rate only for new quotes. Cancellation
 -- removes original procurement value, not today's replacement price.
@@ -156,11 +175,11 @@ do $$declare invoice_id bigint;before_cash numeric;before_wallet jsonb;wallet_id
  assert solar_private.usd_wallet('00000000-0000-0000-0000-000000003991')=before_wallet,'IQD payment changed USD wallet';end$$;
 
 -- Enough physical stock does not justify negative or orphaned remaining value.
-do $$declare invoice_id bigint;begin
- invoice_id:=pg_temp.buy(-399014,1,1000);perform pg_temp.buy(-399014,1,2000);perform pg_temp.sell(-399014,1,3000);
- perform pg_temp.blocked_cancel(pg_temp.request_cancel(invoice_id));
- invoice_id:=pg_temp.buy(-399015,1,10000);perform pg_temp.buy(-399015,2,100);perform pg_temp.sell(-399015,2,12000);
- perform pg_temp.blocked_cancel(pg_temp.request_cancel(invoice_id));end$$;
+do $$declare invoice_id bigint;request_id uuid;begin
+ invoice_id:=pg_temp.buy(-399014,1,1000);request_id:=pg_temp.request_cancel(invoice_id);perform pg_temp.buy(-399014,1,2000);perform pg_temp.sell(-399014,1,3000);
+ perform pg_temp.blocked_cancel(request_id);
+ invoice_id:=pg_temp.buy(-399015,1,10000);request_id:=pg_temp.request_cancel(invoice_id);perform pg_temp.buy(-399015,2,100);perform pg_temp.sell(-399015,2,12000);
+ perform pg_temp.blocked_cancel(request_id);end$$;
 
 -- Independent later supplier payments keep their exact invoice/posting. The
 -- canceled purchase subtracts its debt only, even when the supplier was paid.

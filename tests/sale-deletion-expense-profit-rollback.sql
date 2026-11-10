@@ -186,8 +186,8 @@ do $$declare r jsonb;c jsonb;request_id uuid:=gen_random_uuid();invoice_id bigin
  perform public.solar_profit_workspace('approve',gen_random_uuid(),jsonb_build_object('id',request_id,'expectedToken',r->>'token','share',380000,'collectionConfirmed',true,'settlementModel','owner_debit_supplier_charge'));
  c:=public.solar_receipt_delete_requests('context',null,jsonb_build_object('invoiceId',invoice_id));
  assert c->>'blockedReason' is not null,'Approved profit source lost its deletion guard';
- begin perform public.solar_sale_delete(invoice_id,public.solar_sale_delete_preview(invoice_id)->>'token');raise exception 'Settled invoice deleted';
- exception when raise_exception then if sqlerrm='Settled invoice deleted'then raise;end if;end;
+ begin perform public.solar_receipt_delete_requests('delete_direct',gen_random_uuid(),jsonb_build_object('invoiceId',invoice_id,'expectedToken',c->>'token'));raise exception 'Settled invoice deleted';
+ exception when sqlstate 'PT409'then null;end;
  assert exists(select 1 from transactions where id=invoice_id),'Blocked settlement deletion changed invoice';
 end$$;
 reset role;

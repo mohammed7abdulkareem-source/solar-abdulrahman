@@ -19,6 +19,7 @@ export function canOpenPage(profile, page) {
   if (isWarehouse(profile)) return ['warehouse','stock','stockMovement'].includes(page);
   if (isAdministrator(profile)) return true;
   if (['users','updates','operationControl'].includes(page)) return false;
+  if (page === 'wholesalePricing') return profile.permissions?.wholesalePricingManage === true;
   if (page === 'cash') return !!profile.permissions?.cash || ['cashDeposit','cashExpense','cashExchange','cashExternalProfit','cashAdminTools','cashTransferSend','financeReceive'].some(key=>profile.permissions?.[key]===true);
   if (page === 'profit') return !!(profile.permissions?.profit || profile.permissions?.profitSettlement);
   if (page === 'customerCreate') return !!(profile.permissions?.customerCreate || profile.permissions?.customers);
@@ -36,3 +37,5 @@ export const canSeeCash = profile => !isEngineer(profile) && canOpenPage(profile
 export const canManageQuotes = profile => canOpenPage(profile,'tahseel') && (isAdministrator(profile) || profile.permissions?.tahseelFull === true);
 
 export const canManageQuoteDefaults = profile => canManageQuotes(profile) && (isAdministrator(profile) || profile.permissions?.tahseelDefaults === true);
+
+export const canManageWholesalePricing = profile => canOpenPage(profile,'wholesalePricing');
