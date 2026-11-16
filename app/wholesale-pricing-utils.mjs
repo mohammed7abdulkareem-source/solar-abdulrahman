@@ -12,6 +12,12 @@ export function availableWholesalePriceProducts(products){
 export function wholesalePriceSaveNotice(action,payload,result){
  const changed=Number.isInteger(result?.changedCount)&&result.changedCount>=0?result.changedCount:null;
  const notified=Number.isInteger(result?.notifiedCount)&&result.notifiedCount>0;
+ if(action==='configure'||(['toggle','scope'].includes(action)&&typeof result?.enabled==='boolean')){
+  const enabled=typeof result?.enabled==='boolean'?result.enabled:payload.enabled;
+  const mode=['all','selected'].includes(result?.scopeMode)?result.scopeMode:payload.mode;
+  const status=enabled?'مفعّل'+(mode==='all'?' لجميع المستخدمين':mode==='selected'?' للمستخدمين المحددين':''):'متوقف للجميع مع الاحتفاظ بالاختيارات';
+  return 'تم تأكيد حفظ إعدادات الإلزام؛ الحالة الحالية: '+status+'.'+(changed>0&&notified?' تم إرسال إشعار بالتغيير المحفوظ.':'');
+ }
  if(changed===0)return action==='save'?'الأسعار مطابقة للمحفوظ؛ لا توجد تغييرات جديدة.':'حالة الأسعار الإلزامية مطابقة للمحفوظ.';
  if(action==='save')return changed===null?'تم حفظ أسعار بيع الجملة.':'تم تحديث أسعار '+changed+' مادة'+(notified?' وإرسال إشعار للمستخدمين.':'.');
  if(action==='scope')return 'تم حفظ المستخدمين المشمولين بالأسعار الإلزامية'+(changed!==null&&notified?' وإرسال إشعار للمستخدمين.':'.');
@@ -41,6 +47,28 @@ export function wholesaleScopePayload(draft,revision){
  return {mode:draft.mode,userIds:draft.mode==='all'?[]:uniqueSortedIds(draft.userIds),expectedRevision:revision};
 }
 
+export function wholesaleConfigurationDraft(state){
+ return {enabled:state?.enabled===true,...wholesaleScopeDraft(state)};
+}
+export function wholesaleConfigurationChanged(state,draft){
+ return !!draft&&(draft.enabled!==(state?.enabled===true)||wholesaleScopeChanged(state,draft));
+}
+export function wholesaleConfigurationValidation(draft,eligibleUsers){
+ if(typeof draft?.enabled!=='boolean')return 'حدد تشغيل الإلزام أو إيقافه.';
+ if(draft.mode==='selected'&&Array.isArray(draft.userIds)&&draft.userIds.length===0)return draft.enabled?'اختر مستخدماً واحداً على الأقل لتشغيل الإلزام.':'';
+ return wholesaleScopeValidation(draft,eligibleUsers);
+}
+export function wholesaleConfigurationPayload(draft,revision){
+ return {enabled:draft.enabled,...wholesaleScopePayload(draft,revision)};
+}
+export function wholesaleConfigurationUser(draft,id,checked,eligibleUsers){
+ const eligible=uniqueSortedIds((eligibleUsers||[]).map(user=>user.id));
+ if(!eligible.includes(id))return draft;
+ const selected=new Set(draft.mode==='all'?eligible:uniqueSortedIds(draft.userIds).filter(value=>eligible.includes(value)));
+ if(checked)selected.add(id);else selected.delete(id);
+ return {...draft,mode:eligible.every(value=>selected.has(value))?'all':'selected',userIds:eligible.every(value=>selected.has(value))?[]:[...selected].sort()};
+}
+
 export function wholesalePriceDraft(row){
  return {minPrice:row.minPrice==null?'':String(row.minPrice),enabled:row.enabled===true};
 }
@@ -67,11 +95,13 @@ const attemptStore=()=>{try{return globalThis.sessionStorage;}catch{return null;
 export function readWholesalePriceAttempt(userId){
  try{
   const attempt=JSON.parse(attemptStore()?.getItem(attemptKey(userId))||'null');
-  if(!attempt||typeof attempt.id!=='string'||!/^[a-f0-9-]{36}$/i.test(attempt.id)||!['save','toggle','scope'].includes(attempt.action)||!attempt.payload||typeof attempt.payload!=='object')return null;
+  if(!attempt||typeof attempt.id!=='string'||!/^[a-f0-9-]{36}$/i.test(attempt.id)||!['save','toggle','scope','configure'].includes(attempt.action)||!attempt.payload||typeof attempt.payload!=='object')return null;
   if(attempt.action==='toggle')return typeof attempt.payload.enabled==='boolean'&&Number.isInteger(attempt.payload.expectedRevision)&&attempt.payload.expectedRevision>=0?attempt:null;
-  if(attempt.action==='scope'){
+  if(attempt.action==='scope'||attempt.action==='configure'){
    const {mode,userIds,expectedRevision}=attempt.payload;
-   return ['all','selected'].includes(mode)&&Array.isArray(userIds)&&userIds.every(id=>typeof id==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id))&&new Set(userIds).size===userIds.length&&Number.isInteger(expectedRevision)&&expectedRevision>=0&&(mode==='all'?userIds.length===0:userIds.length>0)?attempt:null;
+   const configuration=attempt.action==='configure';
+   if(configuration&&typeof attempt.payload.enabled!=='boolean')return null;
+   return ['all','selected'].includes(mode)&&Array.isArray(userIds)&&userIds.every(id=>typeof id==='string'&&/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(id))&&new Set(userIds).size===userIds.length&&Number.isInteger(expectedRevision)&&expectedRevision>=0&&(mode==='all'?userIds.length===0:userIds.length>0||configuration&&attempt.payload.enabled===false)?attempt:null;
   }
   return Array.isArray(attempt.payload.items)&&attempt.payload.items.length>0&&attempt.payload.items.length<=WHOLESALE_PRICE_BATCH_LIMIT?attempt:null;
  }catch{return null;}

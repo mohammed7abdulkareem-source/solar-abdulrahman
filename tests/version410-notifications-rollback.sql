@@ -19,8 +19,8 @@ insert into solar_private.warehouse_access(user_id,warehouse_ids)values
 ('00000000-0000-0000-0000-000000411006','{-411001}'),
 ('00000000-0000-0000-0000-000000411005','{1}');
 insert into public.brands(id,name)values(-411001,'NOTICE BRAND');
-insert into public.products(id,name,code,brand_id,qty,cost)values
-(-411001,'Notice Material A','MODEL-A',-411001,0,0),(-411002,'Notice Material B','MODEL-B',-411001,0,0),(-411003,'Notice Zero Stock','MODEL-ZERO',-411001,0,0),(-411004,'Notice Legacy A','LEGACY-A',-411001,0,0),(-411005,'Notice Legacy B','LEGACY-B',-411001,0,0);
+insert into public.products(id,name,code,brand_id,qty,cost,category)values
+(-411001,'Notice Material A','MODEL-A',-411001,0,0,'ألواح'),(-411002,'Notice Material B','MODEL-B',-411001,0,0,'ألواح'),(-411003,'Notice Zero Stock','MODEL-ZERO',-411001,0,0,'ألواح'),(-411004,'Notice Legacy A','LEGACY-A',-411001,0,0,'ألواح'),(-411005,'Notice Legacy B','LEGACY-B',-411001,0,0,'ألواح');
 insert into public.suppliers(id,name)values(-411001,'PRIVATE SUPPLIER MUST NEVER LEAK');
 insert into public.solar_push_subscriptions(endpoint,user_id,p256dh,auth_key)
 select 'https://fcm.googleapis.com/fcm/send/notice-'||id,id,'local-key','local-auth'from public.profiles where id::text between '00000000-0000-0000-0000-000000411001'and'00000000-0000-0000-0000-000000411011';
@@ -61,6 +61,7 @@ reset role;
 do $$begin
  assert not exists(select 1 from public.solar_notifications where event='wholesale_prices_updated'and user_id::text between'00000000-0000-0000-0000-000000411001'and'00000000-0000-0000-0000-000000411011'and(details::text~'cost|supplier|98765|43210'or body~'150000|90000')),'Price notices expose procurement/lockscreen amounts';
  assert exists(select 1 from public.solar_notifications where user_id='00000000-0000-0000-0000-000000411002'and event='wholesale_prices_updated'and jsonb_array_length(details->'items')=1 and details->'items'->0->'minPrice'='null'::jsonb),'Cleared price details';
+ assert not exists(select 1 from public.solar_notifications n cross join lateral jsonb_array_elements(n.details->'items')item where n.event='wholesale_prices_updated'and n.user_id::text between'00000000-0000-0000-0000-000000411001'and'00000000-0000-0000-0000-000000411011'and(item?'model'or item?'code'or item->>'category'<>'ألواح')),'New price notice must contain category, never material code/model';
 end$$;
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000411002',true);
@@ -91,7 +92,7 @@ do $$declare n public.solar_notifications;begin
  assert pg_temp.nr_count('purchase_received')=7,'Deferred triggers duplicated canonical notice';
  select * into n from public.solar_notifications where event='purchase_received'and user_id='00000000-0000-0000-0000-000000411005';
  assert n.job_id is null and n.warehouse_id=1,'Purchase notice must not expose private invoice link';
- assert n.details=jsonb_build_object('type','purchase_received','items','[{"name":"Notice Material B","model":"MODEL-B","brand":"NOTICE BRAND","qty":2},{"name":"Notice Material A","model":"MODEL-A","brand":"NOTICE BRAND","qty":3}]'::jsonb),'Purchase detail whitelist/order';
+ assert n.details=jsonb_build_object('type','purchase_received','items','[{"name":"Notice Material B","category":"ألواح","brand":"NOTICE BRAND","qty":2},{"name":"Notice Material A","category":"ألواح","brand":"NOTICE BRAND","qty":3}]'::jsonb),'Purchase detail whitelist/order';
  assert not exists(select 1 from public.solar_notifications where event='purchase_received'and user_id::text between'00000000-0000-0000-0000-000000411001'and'00000000-0000-0000-0000-000000411011'and (details::text||title||body)~'PRIVATE|98765|43210|777|cost|price|supplier|total'),'Purchase financial metadata leaked';
  assert not exists(select 1 from public.solar_notifications where event='purchase_received'and user_id='00000000-0000-0000-0000-000000411006'),'Foreign warehouse disclosure';
 end$$;

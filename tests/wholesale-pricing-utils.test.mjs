@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {availableWholesalePriceProducts,wholesalePriceSaveNotice,wholesalePriceDraft,wholesalePriceChanged,wholesalePriceValidation,wholesalePriceItems,wholesaleScopeDraft,wholesaleScopeChanged,wholesaleScopeValidation,wholesaleScopePayload,readWholesalePriceAttempt,rememberWholesalePriceAttempt,clearWholesalePriceAttempt} from '../app/wholesale-pricing-utils.mjs';
+import {availableWholesalePriceProducts,wholesalePriceSaveNotice,wholesalePriceDraft,wholesalePriceChanged,wholesalePriceValidation,wholesalePriceItems,wholesaleScopeDraft,wholesaleScopeChanged,wholesaleScopeValidation,wholesaleScopePayload,wholesaleConfigurationDraft,wholesaleConfigurationChanged,wholesaleConfigurationValidation,wholesaleConfigurationPayload,wholesaleConfigurationUser,readWholesalePriceAttempt,rememberWholesalePriceAttempt,clearWholesalePriceAttempt} from '../app/wholesale-pricing-utils.mjs';
 import {canManageWholesalePricing,canOpenPage} from '../app/access-utils.mjs';
 import {sectionGroups,sections} from '../app/section-directory.mjs';
 
@@ -24,6 +24,28 @@ test('pricing save acknowledgements mention notifications only for confirmed eff
  assert.match(wholesalePriceSaveNotice('toggle',{enabled:false},{changedCount:1,notifiedCount:5}),/الاحتفاظ بالأسعار المحفوظة وإرسال إشعار/);
  assert.match(wholesalePriceSaveNotice('scope',{mode:'selected'},{changedCount:1,notifiedCount:5}),/تم حفظ المستخدمين.*إرسال إشعار/);
  assert.doesNotMatch(wholesalePriceSaveNotice('scope',{mode:'all'},{changedCount:1,notifiedCount:0}),/إرسال إشعار/);
+ assert.match(wholesalePriceSaveNotice('configure',{enabled:true,mode:'selected'},{changedCount:1,notifiedCount:5}),/مفعّل للمستخدمين المحددين.*إرسال إشعار/);
+ assert.match(wholesalePriceSaveNotice('configure',{enabled:false,mode:'all'},{changedCount:1,notifiedCount:0}),/متوقف للجميع مع الاحتفاظ بالاختيارات/);
+ assert.doesNotMatch(wholesalePriceSaveNotice('configure',{enabled:false,mode:'all'},{changedCount:1,notifiedCount:0}),/إرسال إشعار/);
+});
+
+test('configuration retry acknowledgement reports confirmed current state after another manager changed the policy',()=>{
+ const original={enabled:true,mode:'all',userIds:[],expectedRevision:4};
+ const currentOff=wholesalePriceSaveNotice('configure',original,{enabled:false,scopeMode:'selected',changedCount:1,notifiedCount:2});
+ assert.match(currentOff,/الحالة الحالية: متوقف للجميع/);assert.doesNotMatch(currentOff,/مفعّل|تشغيله/);
+ const currentSubset=wholesalePriceSaveNotice('configure',original,{enabled:true,scopeMode:'selected',changedCount:1,notifiedCount:0});
+ assert.match(currentSubset,/الحالة الحالية: مفعّل للمستخدمين المحددين/);assert.doesNotMatch(currentSubset,/مفعّل لجميع المستخدمين|إرسال إشعار/);
+ const noChange=wholesalePriceSaveNotice('configure',original,{enabled:false,scopeMode:'all',changedCount:0,notifiedCount:2});
+ assert.match(noChange,/متوقف للجميع/);assert.doesNotMatch(noChange,/إرسال إشعار/);
+});
+
+test('legacy toggle and scope retries report current policy without implying the old request was reapplied',()=>{
+ const oldToggle=wholesalePriceSaveNotice('toggle',{enabled:true,expectedRevision:4},{enabled:false,scopeMode:'selected',changedCount:1,notifiedCount:1});
+ assert.match(oldToggle,/الحالة الحالية: متوقف للجميع/);assert.doesNotMatch(oldToggle,/تم تشغيل|مفعّل/);
+ const oldScope=wholesalePriceSaveNotice('scope',{mode:'selected',userIds:['one'],expectedRevision:5},{enabled:true,scopeMode:'all',changedCount:1,notifiedCount:0});
+ assert.match(oldScope,/الحالة الحالية: مفعّل لجميع المستخدمين/);assert.doesNotMatch(oldScope,/للمستخدمين المحددين|إرسال إشعار/);
+ const noScopeMetadata=wholesalePriceSaveNotice('toggle',{enabled:true},{enabled:true,changedCount:0,notifiedCount:0});
+ assert.match(noScopeMetadata,/الحالة الحالية: مفعّل\./);assert.doesNotMatch(noScopeMetadata,/لجميع المستخدمين|للمستخدمين المحددين|إرسال إشعار/);
 });
 
 test('scope drafts require explicit first configuration and keep all-mode separate from global activation',()=>{
@@ -46,6 +68,29 @@ test('selected scope validates available sellers, normalizes order, and excludes
  assert.ok(wholesaleScopeValidation({mode:'selected',userIds:[]},state.eligibleUsers));
  assert.ok(wholesaleScopeValidation({mode:'selected',userIds:['gone']},state.eligibleUsers));
  assert.deepEqual(wholesaleScopePayload({mode:'selected',userIds:['two','one','two']},9),{mode:'selected',userIds:['one','two'],expectedRevision:9});
+});
+
+test('one configuration saves activation and selection atomically and disabling preserves users',()=>{
+ const state={enabled:true,scopeConfigured:true,scopeMode:'selected',selectedUserIds:['two'],eligibleUsers:[{id:'one'},{id:'two'}]};
+ const saved=wholesaleConfigurationDraft(state),off={...saved,enabled:false};
+ assert.deepEqual(saved,{enabled:true,mode:'selected',userIds:['two']});
+ assert.equal(wholesaleConfigurationChanged(state,null),false);assert.equal(wholesaleConfigurationChanged(state,saved),false);assert.equal(wholesaleConfigurationChanged(state,off),true);
+ assert.deepEqual(wholesaleConfigurationPayload(off,18),{enabled:false,mode:'selected',userIds:['two'],expectedRevision:18});
+ assert.equal(wholesaleConfigurationValidation({enabled:false,mode:'selected',userIds:[]},state.eligibleUsers),'');
+ assert.ok(wholesaleConfigurationValidation({enabled:true,mode:'selected',userIds:[]},state.eligibleUsers));
+ assert.ok(wholesaleConfigurationValidation({...off,userIds:['gone']},state.eligibleUsers));
+ assert.ok(wholesaleConfigurationValidation({...off,enabled:'false'},state.eligibleUsers));
+ assert.equal(wholesaleConfigurationChanged({...state,scopeConfigured:false},saved),true);
+});
+
+test('unified checklist removes one user from all and restores future-inclusive all when every user is checked',()=>{
+ const users=[{id:'one'},{id:'three'},{id:'two'}],all={enabled:false,mode:'all',userIds:[]};
+ const subset=wholesaleConfigurationUser(all,'two',false,users);
+ assert.deepEqual(subset,{enabled:false,mode:'selected',userIds:['one','three']});
+ const restored=wholesaleConfigurationUser(subset,'two',true,users);
+ assert.deepEqual(restored,all);assert.deepEqual(wholesaleConfigurationPayload(restored,12),{enabled:false,mode:'all',userIds:[],expectedRevision:12});
+ assert.equal(wholesaleConfigurationUser(all,'unknown',false,users),all);
+ assert.deepEqual(all,{enabled:false,mode:'all',userIds:[]});
 });
 
 test('unset wholesale floor stays blank and cannot be enabled until a positive price is entered',()=>{
@@ -93,6 +138,10 @@ test('an uncertain settings request survives same-tab reload and is scoped to us
   clearWholesalePriceAttempt('one',scopeAttempt.id);assert.equal(readWholesalePriceAttempt('one'),null);
   for(const payload of [{mode:'selected',userIds:[],expectedRevision:9},{mode:'selected',userIds:['bad-id'],expectedRevision:9},{mode:'all',userIds:scopeAttempt.payload.userIds,expectedRevision:9},{mode:'selected',userIds:[...scopeAttempt.payload.userIds,...scopeAttempt.payload.userIds],expectedRevision:9},{mode:'selected',userIds:scopeAttempt.payload.userIds,expectedRevision:-1}]){rememberWholesalePriceAttempt('one',{...scopeAttempt,payload});assert.equal(readWholesalePriceAttempt('one'),null);}
   const allAttempt={...scopeAttempt,payload:{mode:'all',userIds:[],expectedRevision:10}};rememberWholesalePriceAttempt('one',allAttempt);assert.deepEqual(readWholesalePriceAttempt('one'),allAttempt);
+  const configureAttempt={...scopeAttempt,action:'configure',payload:{enabled:false,mode:'selected',userIds:scopeAttempt.payload.userIds,expectedRevision:11}};rememberWholesalePriceAttempt('one',configureAttempt);assert.deepEqual(readWholesalePriceAttempt('one'),configureAttempt);
+  const emptyOff={...configureAttempt,payload:{...configureAttempt.payload,userIds:[]}};rememberWholesalePriceAttempt('one',emptyOff);assert.deepEqual(readWholesalePriceAttempt('one'),emptyOff);
+  for(const payload of [{...emptyOff.payload,enabled:true},{...emptyOff.payload,enabled:undefined},{...configureAttempt.payload,expectedRevision:-1}]){rememberWholesalePriceAttempt('one',{...configureAttempt,payload});assert.equal(readWholesalePriceAttempt('one'),null);}
+  rememberWholesalePriceAttempt('one',{...configureAttempt,payload:{enabled:true,mode:'all',userIds:[],expectedRevision:12}});assert.equal(readWholesalePriceAttempt('one').action,'configure');
   globalThis.sessionStorage={getItem:()=>null,setItem:()=>{throw new Error('Storage unavailable');}};
   assert.equal(rememberWholesalePriceAttempt('one',attempt),false);
  }finally{if(previous===undefined)delete globalThis.sessionStorage;else globalThis.sessionStorage=previous;}
