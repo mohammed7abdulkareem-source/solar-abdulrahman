@@ -7,6 +7,9 @@ import AdminAnnouncement from './admin-announcement';
 import {enablePush,disablePush,pushSupported,registeredOnThisDevice} from './push-client';
 import {notificationReadBoundary,applyConfirmedNotificationReads,mergeNotificationRows,markAllNotificationsRead,markNotificationIdsRead} from './notification-read-state.mjs';
 import './notification-read.css';
+import StructuredNotification from './structured-notification';
+import {structuredNotification,notificationPreview} from './notification-details.mjs';
+import './notification-details.css';
 
 function BellIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>}
 function PowerIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9M6.4 6.4a8 8 0 1 0 11.2 0"/></svg>}
@@ -29,7 +32,7 @@ export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse
   setLoading(true);
   try{
    const [list,count]=await Promise.all([
-    supabase.from('solar_notifications').select('id,job_id,transfer_id,stock_transfer_id,delete_request_id,event,title,body,created_at,read_at').eq('user_id',owner).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(30),
+    supabase.from('solar_notifications').select('id,job_id,transfer_id,stock_transfer_id,delete_request_id,event,title,body,details,created_at,read_at').eq('user_id',owner).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(30),
     supabase.from('solar_notifications').select('id',{count:'exact',head:true}).eq('user_id',owner).is('read_at',null)
    ]);
    if(!current(owner,epoch)||request!==latestLoad.current)return;
@@ -91,11 +94,12 @@ export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse
    const audio=unlockNotificationSound();await enablePush(userId);await audio;setSoundEnabled(userId,true);setSound(true);setEnabled(true);window.dispatchEvent(new CustomEvent('solar-push-setting',{detail:{userId,enabled:true}}));setMessage('تم تشغيل إشعارات هذا الجهاز.');
   });
  }
+ const toastText=notificationPreview(toast);
  const visibleNotices=noticeOwner===userId?notices:[],visibleUnreadTotal=noticeOwner===userId?unreadTotal:null,unread=noticeOwner===userId?(visibleUnreadTotal??visibleNotices.filter(n=>!n.read_at).length):0;
  return <div className="notificationDock" aria-label="الإشعارات">
   <button className="notificationBell" aria-label="فتح الإشعارات" title="الإشعارات" aria-expanded={open} onClick={()=>{setOpen(true);load()}}><BellIcon/>{unread>0&&<span>{unread>9?'9+':unread}</span>}</button>
   <button className={'pushToggle '+(enabled?'enabled':'disabled')} aria-label={enabled?'إيقاف إشعارات هذا الجهاز':'تشغيل إشعارات هذا الجهاز'} title={enabled?'إيقاف الإشعارات':'تشغيل الإشعارات'} disabled={busy} onClick={togglePush}><PowerIcon/></button>
-  {toast&&noticeOwner===userId&&createPortal(<button className="notificationToast" role="status" onClick={()=>{setOpen(true);setToast(null)}}><b>{toast.title}</b><span>{toast.body}</span></button>,document.body)}
+  {toast&&noticeOwner===userId&&createPortal(<button className="notificationToast" role="status" onClick={()=>{setOpen(true);setToast(null)}}><b>{toastText.title}</b><span>{toastText.body}</span></button>,document.body)}
   {open&&createPortal(<div className="notificationOverlay" role="presentation" onClick={()=>setOpen(false)}><section ref={panel} className="notificationPanel" role="dialog" aria-modal="true" aria-labelledby="notification-title" onClick={e=>e.stopPropagation()}>
    <header><div><h2 id="notification-title">الإشعارات</h2><small className={enabled?'on':'off'}>{enabled?'الإشعارات مفعّلة على هذا الجهاز':'الإشعارات متوقفة على هذا الجهاز'}</small></div><button className="notificationClose" aria-label="إغلاق" onClick={()=>setOpen(false)}>×</button></header>
    {!supported&&<p className="pushHint">افتح التطبيق بمتصفح يدعم الإشعارات. في iPhone أضفه للشاشة الرئيسية وافتحه من الأيقونة.</p>}
@@ -106,7 +110,7 @@ export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse
    {admin&&<AdminAnnouncement onSent={()=>load()}/>}
    <div className="notificationReadActions"><span data-testid="notification-unread-count" aria-live="polite">{visibleUnreadTotal===null?'عدد غير المقروء غير مؤكد':visibleUnreadTotal+' غير مقروء'}</span><button type="button" disabled={readBusy||loading||visibleUnreadTotal===null||visibleUnreadTotal===0||!visibleNotices.length} onClick={markAllRead}>{readBusy?'جاري تعليم الإشعارات…':'الكل مقروء'}</button></div>
    {readMessage&&noticeOwner===userId&&<p role={readError?'alert':'status'} className={'notificationReadMessage'+(readError?' error':'')}>{readMessage}</p>}
-   <div className="notificationList" aria-busy={loading||readBusy}>{loadError&&<p role="alert">{loadError}<button type="button" disabled={loading} onClick={()=>load()}>إعادة المحاولة</button></p>}{loading&&!visibleNotices.length&&<p role="status">جاري تحميل الإشعارات…</p>}{visibleNotices.length?visibleNotices.map(n=><button key={n.id} className={n.read_at?'read':''} onClick={async()=>{const owner=userId,epoch=sessionEpoch.current;await markOneRead(n);if(!current(owner,epoch))return;if(n.delete_request_id){setOpen(false);onDeleteRequest?.(n.delete_request_id);}else if(n.stock_transfer_id){setOpen(false);onStockTransfer?.(n.stock_transfer_id);}else if(n.event?.startsWith('profit_')){setOpen(false);onProfit?.();}else if(n.transfer_id){setOpen(false);onTransfer?.(n.transfer_id);}else if(n.job_id&&n.event?.startsWith('warehouse_')){setOpen(false);onWarehouse?.(String(n.job_id),n.event);}else if(n.job_id){setOpen(false);onOpen(String(n.job_id));}}}><b>{n.title}</b><span>{n.body}</span><small>{new Date(n.created_at).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad'})}</small></button>):!loading&&!loadError?<p>لا توجد إشعارات بعد.</p>:null}</div>
+   <div className="notificationList" aria-busy={loading||readBusy}>{loadError&&<p role="alert">{loadError}<button type="button" disabled={loading} onClick={()=>load()}>إعادة المحاولة</button></p>}{loading&&!visibleNotices.length&&<p role="status">جاري تحميل الإشعارات…</p>}{visibleNotices.length?visibleNotices.map(n=>{const details=structuredNotification(n);return details?<StructuredNotification key={n.id} notice={n} data={details} onRead={()=>void markOneRead(n)}/>:<button key={n.id} className={n.read_at?'read':''} onClick={async()=>{const owner=userId,epoch=sessionEpoch.current;await markOneRead(n);if(!current(owner,epoch))return;if(n.delete_request_id){setOpen(false);onDeleteRequest?.(n.delete_request_id);}else if(n.stock_transfer_id){setOpen(false);onStockTransfer?.(n.stock_transfer_id);}else if(n.event?.startsWith('profit_')){setOpen(false);onProfit?.();}else if(n.transfer_id){setOpen(false);onTransfer?.(n.transfer_id);}else if(n.job_id&&n.event?.startsWith('warehouse_')){setOpen(false);onWarehouse?.(String(n.job_id),n.event);}else if(n.job_id){setOpen(false);onOpen(String(n.job_id));}}}><b>{n.title}</b><span>{n.body}</span><small>{new Date(n.created_at).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad'})}</small></button>}):!loading&&!loadError?<p>لا توجد إشعارات بعد.</p>:null}</div>
   </section></div>,document.body)}
  </div>;
 }

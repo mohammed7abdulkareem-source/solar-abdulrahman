@@ -1,10 +1,57 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {wholesalePricingReady,wholesaleEconomicsChanged,wholesaleLinePricing,wholesalePriceDefault,wholesalePricingIssues} from '../app/wholesale-invoice-pricing.mjs';
+import {wholesalePricingReady,wholesaleEconomicsChanged,wholesaleLinePricing,wholesalePriceDefault,wholesalePricingIssues,wholesalePolicyEnforced} from '../app/wholesale-invoice-pricing.mjs';
 import {salesDocument} from '../app/sales-document.mjs';
 
 const state=(overrides={})=>({enabled:true,canManage:false,canOverride:false,currency:'IQD',revision:4,products:[{id:10,name:'لوح',enabled:true,minPrice:150000.25,revision:2},{id:11,name:'انفيرتر',enabled:false,minPrice:170000},{id:12,name:'بطارية',enabled:false,minPrice:null}],...overrides});
 const line=(overrides={})=>({id:10,name:'لوح',qty:2,price:'150000.25',cost:120000,...overrides});
+const scoped=(overrides={})=>state({scopeMode:'selected',scopeConfigured:true,appliesToCurrentUser:true,appliesToSubject:true,effectiveEnforced:true,legacyCanOverride:false,...overrides});
+
+test('explicit scope binds selected accounts despite former free pricing while an unselected account stays free',()=>{
+ for(const scopeMode of['all','selected'])for(const legacyCanOverride of[false,true]){
+  const selected=scoped({scopeMode,legacyCanOverride});
+  assert.equal(wholesalePricingReady(selected),true);
+  assert.equal(wholesalePolicyEnforced(selected),true);
+  assert.equal(wholesaleLinePricing(selected,10).reason,'required');
+  assert.equal(wholesalePricingIssues(selected,[line({price:1})]).length,1);
+  assert.equal(wholesalePriceDefault(selected,10),'150000.25');
+ }
+ const unselected=scoped({appliesToCurrentUser:false,appliesToSubject:false,effectiveEnforced:false});
+ assert.equal(wholesalePricingReady(unselected),true);
+ assert.equal(wholesaleLinePricing(unselected,10).reason,'outside_scope');
+ assert.deepEqual(wholesalePricingIssues(unselected,[line({price:1})]),[]);
+ assert.equal(wholesalePriceDefault(unselected,10),'');
+});
+
+test('archived edits use the invoice subject policy rather than the editing actor selection',()=>{
+ const adminEditingBoundOwner=scoped({appliesToCurrentUser:false,appliesToSubject:true,effectiveEnforced:true,legacyCanOverride:true});
+ assert.equal(wholesalePricingIssues(adminEditingBoundOwner,[line({price:1})]).length,1);
+ const boundActorEditingFreeOwner=scoped({appliesToCurrentUser:true,appliesToSubject:false,effectiveEnforced:false});
+ assert.deepEqual(wholesalePricingIssues(boundActorEditingFreeOwner,[line({price:1})]),[]);
+ assert.equal(wholesaleLinePricing(boundActorEditingFreeOwner,10).reason,'outside_scope');
+ const historical=[line({price:0})];
+ assert.deepEqual(wholesalePricingIssues(adminEditingBoundOwner,historical,historical),[]);
+ assert.equal(wholesalePricingIssues(adminEditingBoundOwner,[line({price:0,qty:3})],historical).length,1);
+});
+
+test('global disable and unmarked materials stay free; unconfigured scope preserves old exemptions',()=>{
+ const disabled=scoped({enabled:false,effectiveEnforced:false});
+ assert.equal(wholesalePricingReady(disabled),true);
+ assert.deepEqual(wholesalePricingIssues(disabled,[line({price:1})]),[]);
+ assert.equal(wholesaleLinePricing(disabled,10).reason,'disabled');
+ assert.deepEqual(wholesalePricingIssues(scoped(),[line({id:11,price:1})]),[]);
+ const legacy=scoped({scopeMode:'all',scopeConfigured:false,canOverride:true,legacyCanOverride:true,effectiveEnforced:false});
+ assert.equal(wholesalePricingReady(legacy),true);assert.equal(wholesaleLinePricing(legacy,10).reason,'override');
+ assert.deepEqual(wholesalePricingIssues(legacy,[line({price:1})]),[]);
+});
+
+test('incomplete scope response cannot silently choose unrestricted pricing',()=>{
+ for(const policy of[state({scopeMode:'selected'}),scoped({scopeMode:'wrong'}),scoped({scopeConfigured:undefined}),scoped({appliesToSubject:undefined}),scoped({appliesToCurrentUser:undefined}),scoped({effectiveEnforced:undefined}),scoped({effectiveEnforced:false}),scoped({scopeConfigured:false,canOverride:false,effectiveEnforced:false}),scoped({enabled:false,effectiveEnforced:true}),scoped({appliesToSubject:false,effectiveEnforced:true})]){
+  assert.equal(wholesalePricingReady(policy),false);
+  assert.ok(wholesalePricingIssues(policy,[line({price:1})])[0].message);
+ }
+ assert.equal(wholesalePricingReady(state()),true,'pre-scope server response remains compatible');
+});
 
 test('wholesale minimum needs the global switch, the material check and a restricted seller independently',()=>{
  for(const enabled of[false,true])for(const marked of[false,true])for(const canOverride of[false,true]){

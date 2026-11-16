@@ -1,8 +1,52 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {wholesalePriceDraft,wholesalePriceChanged,wholesalePriceValidation,wholesalePriceItems,readWholesalePriceAttempt,rememberWholesalePriceAttempt,clearWholesalePriceAttempt} from '../app/wholesale-pricing-utils.mjs';
+import {availableWholesalePriceProducts,wholesalePriceSaveNotice,wholesalePriceDraft,wholesalePriceChanged,wholesalePriceValidation,wholesalePriceItems,wholesaleScopeDraft,wholesaleScopeChanged,wholesaleScopeValidation,wholesaleScopePayload,readWholesalePriceAttempt,rememberWholesalePriceAttempt,clearWholesalePriceAttempt} from '../app/wholesale-pricing-utils.mjs';
 import {canManageWholesalePricing,canOpenPage} from '../app/access-utils.mjs';
 import {sectionGroups,sections} from '../app/section-directory.mjs';
+
+test('pricing management includes only finite positive scoped stock without changing stored policies',()=>{
+ const zero=Object.freeze({id:3,qty:0,companyQty:99,minPrice:55000,enabled:true,revision:4});
+ const rows=Object.freeze([Object.freeze({id:1,qty:2,minPrice:100,revision:2}),Object.freeze({id:2,qty:'0.001',minPrice:null,revision:0}),zero,...['0',-1,null,undefined,'',NaN,Infinity,'NaN',true].map((qty,index)=>Object.freeze({id:index+4,qty,companyQty:50,minPrice:500}))]);
+ const available=availableWholesalePriceProducts(rows);
+ assert.deepEqual(available.map(row=>row.id),[1,2]);assert.equal(available[0],rows[0]);
+ assert.equal(zero.minPrice,55000);assert.equal(zero.enabled,true);assert.equal(zero.revision,4);
+ assert.deepEqual(wholesalePriceDraft(availableWholesalePriceProducts([{...zero,qty:1}])[0]),{minPrice:'55000',enabled:true});
+ const drafts={1:{minPrice:'150',enabled:true},3:{minPrice:'',enabled:false}};
+ assert.deepEqual(wholesalePriceItems(available,drafts),[{productId:1,minPrice:150,enabled:true,expectedRevision:2}]);
+ assert.deepEqual(availableWholesalePriceProducts(null),[]);
+});
+
+test('pricing save acknowledgements mention notifications only for confirmed effective changes',()=>{
+ assert.match(wholesalePriceSaveNotice('save',{}, {changedCount:2,notifiedCount:4}),/إرسال إشعار/);
+ for(const response of [{changedCount:0,notifiedCount:4},{changedCount:2,notifiedCount:0},{},{changedCount:2}])assert.doesNotMatch(wholesalePriceSaveNotice('save',{},response),/إرسال إشعار/);
+ assert.match(wholesalePriceSaveNotice('save',{}, {changedCount:0,notifiedCount:0}),/لا توجد تغييرات/);
+ assert.doesNotMatch(wholesalePriceSaveNotice('toggle',{enabled:true},{changedCount:0,notifiedCount:5}),/إرسال إشعار/);
+ assert.match(wholesalePriceSaveNotice('toggle',{enabled:false},{changedCount:1,notifiedCount:5}),/الاحتفاظ بالأسعار المحفوظة وإرسال إشعار/);
+ assert.match(wholesalePriceSaveNotice('scope',{mode:'selected'},{changedCount:1,notifiedCount:5}),/تم حفظ المستخدمين.*إرسال إشعار/);
+ assert.doesNotMatch(wholesalePriceSaveNotice('scope',{mode:'all'},{changedCount:1,notifiedCount:0}),/إرسال إشعار/);
+});
+
+test('scope drafts require explicit first configuration and keep all-mode separate from global activation',()=>{
+ const state={scopeConfigured:false,scopeMode:'all',selectedUserIds:[],eligibleUsers:[{id:'one',isAdmin:true,legacyCanOverride:true},{id:'two'}],enabled:true};
+ const all=wholesaleScopeDraft(state);
+ assert.deepEqual(all,{mode:'all',userIds:[]});assert.equal(wholesaleScopeChanged(state,null),false);
+ assert.equal(wholesaleScopeChanged(state,all),true);
+ assert.equal(wholesaleScopeChanged({...state,scopeConfigured:true},all),false);
+ assert.deepEqual(wholesaleScopePayload({mode:'all',userIds:['one']},7),{mode:'all',userIds:[],expectedRevision:7});
+ assert.equal(wholesaleScopeValidation({mode:'selected',userIds:['one']},state.eligibleUsers),'');
+ assert.deepEqual(state.eligibleUsers[0],{id:'one',isAdmin:true,legacyCanOverride:true});
+});
+
+test('selected scope validates available sellers, normalizes order, and excludes stale unavailable IDs only in its draft',()=>{
+ const state={scopeConfigured:true,scopeMode:'selected',selectedUserIds:['two','gone','one'],eligibleUsers:[{id:'one'},{id:'two'}]};
+ const draft=wholesaleScopeDraft(state);
+ assert.deepEqual(draft,{mode:'selected',userIds:['one','two']});assert.deepEqual(state.selectedUserIds,['two','gone','one']);
+ assert.equal(wholesaleScopeChanged(state,{mode:'selected',userIds:['two','one']}),false);
+ assert.equal(wholesaleScopeChanged(state,{mode:'selected',userIds:['two']}),true);
+ assert.ok(wholesaleScopeValidation({mode:'selected',userIds:[]},state.eligibleUsers));
+ assert.ok(wholesaleScopeValidation({mode:'selected',userIds:['gone']},state.eligibleUsers));
+ assert.deepEqual(wholesaleScopePayload({mode:'selected',userIds:['two','one','two']},9),{mode:'selected',userIds:['one','two'],expectedRevision:9});
+});
 
 test('unset wholesale floor stays blank and cannot be enabled until a positive price is entered',()=>{
  const blank=wholesalePriceDraft({minPrice:null,enabled:false});
@@ -44,6 +88,11 @@ test('an uncertain settings request survives same-tab reload and is scoped to us
   clearWholesalePriceAttempt('one',attempt.id);assert.equal(readWholesalePriceAttempt('one'),null);
   rememberWholesalePriceAttempt('one',{...attempt,payload:{enabled:true,expectedRevision:-1}});assert.equal(readWholesalePriceAttempt('one'),null);
   rememberWholesalePriceAttempt('one',{...attempt,action:'save',payload:{items:[]}});assert.equal(readWholesalePriceAttempt('one'),null);
+  const scopeAttempt={...attempt,action:'scope',payload:{mode:'selected',userIds:['00000000-0000-4000-8000-000000000002'],expectedRevision:9}};
+  assert.equal(rememberWholesalePriceAttempt('one',scopeAttempt),true);assert.deepEqual(readWholesalePriceAttempt('one'),scopeAttempt);
+  clearWholesalePriceAttempt('one',scopeAttempt.id);assert.equal(readWholesalePriceAttempt('one'),null);
+  for(const payload of [{mode:'selected',userIds:[],expectedRevision:9},{mode:'selected',userIds:['bad-id'],expectedRevision:9},{mode:'all',userIds:scopeAttempt.payload.userIds,expectedRevision:9},{mode:'selected',userIds:[...scopeAttempt.payload.userIds,...scopeAttempt.payload.userIds],expectedRevision:9},{mode:'selected',userIds:scopeAttempt.payload.userIds,expectedRevision:-1}]){rememberWholesalePriceAttempt('one',{...scopeAttempt,payload});assert.equal(readWholesalePriceAttempt('one'),null);}
+  const allAttempt={...scopeAttempt,payload:{mode:'all',userIds:[],expectedRevision:10}};rememberWholesalePriceAttempt('one',allAttempt);assert.deepEqual(readWholesalePriceAttempt('one'),allAttempt);
   globalThis.sessionStorage={getItem:()=>null,setItem:()=>{throw new Error('Storage unavailable');}};
   assert.equal(rememberWholesalePriceAttempt('one',attempt),false);
  }finally{if(previous===undefined)delete globalThis.sessionStorage;else globalThis.sessionStorage=previous;}

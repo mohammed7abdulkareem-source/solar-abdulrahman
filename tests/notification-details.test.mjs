@@ -1,0 +1,41 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {structuredNotification,notificationPreview,notificationQuantity} from '../app/notification-details.mjs';
+
+test('purchase inbox and toast whitelist material identity and quantity without financial fields or raw body',()=>{
+ const notice={event:'purchase_received',title:'UNSAFE 667788',body:'supplier-secret cost 667788 total 998877',details:{type:'purchase_received',invoiceId:90,supplier:'supplier-secret',total:998877,items:[{name:'لوح 600W',model:'PANEL-600',brand:'FULLMAX',qty:31,cost:667788,price:998877,accountAmount:12345,invoiceId:90}]}};
+ const copy=JSON.stringify(notice),data=structuredNotification(notice);
+ assert.deepEqual(data.items,[{name:'لوح 600W',model:'PANEL-600',brand:'FULLMAX',qty:31}]);
+ assert.deepEqual(notificationPreview(notice),{title:'دخول مواد جديدة',body:'1 فقرة في المواد المستلمة'});
+ for(const hidden of['667788','998877','12345','supplier-secret','invoiceId','cost','price','accountAmount'])assert.ok(!JSON.stringify([data,notificationPreview(notice)]).includes(hidden),hidden);
+ assert.equal(JSON.stringify(notice),copy);
+});
+
+test('price notices retain each new selling minimum and checked/free status while discarding costs',()=>{
+ const notice={event:'wholesale_prices_updated',details:{type:'wholesale_prices_updated',currency:'IQD',cost:76321,items:[{name:'لوح',model:'600W',brand:'FULLMAX',minPrice:120000.25,enabled:true,cost:76321,qty:8},{name:'انفيرتر',model:'10KW',brand:'F',minPrice:2000000,enabled:false,purchasePrice:987654},{name:'بطارية',minPrice:null,enabled:false}]}},data=structuredNotification(notice);
+ assert.deepEqual(data.items,[{name:'لوح',model:'600W',brand:'FULLMAX',minPrice:120000.25,enabled:true},{name:'انفيرتر',model:'10KW',brand:'F',minPrice:2000000,enabled:false},{name:'بطارية',model:'',brand:'',minPrice:null,enabled:false}]);
+ assert.equal(data.currency,'IQD');
+ for(const hidden of['76321','987654','purchasePrice','cost','qty'])assert.ok(!JSON.stringify(data).includes(hidden),hidden);
+ assert.equal(notificationPreview(notice).body,'3 مادة في تحديث الأسعار');
+});
+
+test('unavailable/malformed new details never fall back to a potentially sensitive purchase body',()=>{
+ for(const details of[null,{},[],{type:'wrong',items:[]},{type:'purchase_received',items:null}]){
+  const notice={event:'purchase_received',body:'secret price 9000',details};
+  assert.equal(structuredNotification(notice).items,null);
+  assert.ok(!notificationPreview(notice).body.includes('9000'));
+ }
+ assert.equal(structuredNotification({event:'wholesale_prices_updated',details:{type:'wholesale_prices_updated',currency:'USD',items:[]}}).items,null);
+ const legacy={event:'warehouse_ready',title:'تم التجهيز',body:'وصل رقم 10'};
+ assert.equal(structuredNotification(legacy),null);assert.deepEqual(notificationPreview(legacy),{title:legacy.title,body:legacy.body});
+});
+
+test('all rows remain available and invalid quantities stay unknown instead of becoming invented zeros',()=>{
+ const items=Array.from({length:350},(_,index)=>({name:'مادة '+index,model:'CODE-'+index,brand:'براند',qty:index+0.125}));
+ const data=structuredNotification({event:'purchase_received',details:{type:'purchase_received',items}});
+ assert.equal(data.items.length,350);assert.equal(data.items[349].name,'مادة 349');assert.equal(data.items[349].qty,349.125);
+ assert.equal(notificationQuantity(349.125),'349.125');assert.equal(notificationQuantity(1000),'1,000');
+ const invalid=structuredNotification({event:'purchase_received',details:{type:'purchase_received',items:[null,[],{qty:false},{qty:-1},{qty:''},{qty:0},{name:'<img src=x onerror=alert(1)>',brand:'<script>x</script>',qty:'1.125'}]}});
+ assert.equal(invalid.items.length,7);assert.deepEqual(invalid.items.slice(0,5).map(row=>row.qty),[null,null,null,null,null]);assert.equal(invalid.items[5].qty,0);
+ assert.equal(invalid.items[6].name,'<img src=x onerror=alert(1)>');assert.equal(invalid.items[6].brand,'<script>x</script>');assert.equal(invalid.items[6].qty,1.125);
+});

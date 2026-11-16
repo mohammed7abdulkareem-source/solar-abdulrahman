@@ -1,8 +1,17 @@
 import {belowSystemMinimum} from './system-pricing-utils.mjs';
 
 export function wholesalePricingReady(state){
- return !!state&&typeof state.enabled==='boolean'&&typeof state.canOverride==='boolean'&&state.currency==='IQD'&&state.revision!=null&&state.revision!==''&&Number.isSafeInteger(Number(state.revision))&&Number(state.revision)>=0&&Array.isArray(state.products);
+ if(!state||typeof state.enabled!=='boolean'||typeof state.canOverride!=='boolean'||state.currency!=='IQD'||state.revision==null||state.revision===''||!Number.isSafeInteger(Number(state.revision))||Number(state.revision)<0||!Array.isArray(state.products))return false;
+ // A pre-scope response keeps the original all-user policy. A partial new
+ // response must never silently exempt an account from the server's policy.
+ const scoped=['scopeMode','scopeConfigured','appliesToCurrentUser','appliesToSubject','effectiveEnforced'].some(key=>Object.hasOwn(state,key));
+ return !scoped||['all','selected'].includes(state.scopeMode)&&typeof state.scopeConfigured==='boolean'&&typeof state.appliesToCurrentUser==='boolean'&&typeof state.appliesToSubject==='boolean'&&typeof state.effectiveEnforced==='boolean'&&state.effectiveEnforced===(state.enabled&&state.appliesToSubject&&(state.scopeConfigured||!state.canOverride));
 }
+
+export const wholesaleAppliesToSubject=state=>state?.appliesToSubject!==false;
+// The server resolves the invoice owner's scope, including an explicit choice
+// that binds a previously exempt user. Profile permissions cannot override it.
+export const wholesalePolicyEnforced=state=>typeof state?.effectiveEnforced==='boolean'?state.effectiveEnforced:state?.enabled===true&&state?.canOverride===false;
 
 function lineSignature(items){
  return JSON.stringify((items||[]).map(item=>[String(item.productId??item.product_id??item.id),Number(item.qty),Number(item.price)]).sort((a,b)=>a[0].localeCompare(b[0])||a[1]-b[1]||a[2]-b[2]));
@@ -22,9 +31,9 @@ export function wholesaleLinePricing(state,productId,{historical=false}={}){
  return {
   price,
   marked:product?.enabled===true,
-  required:state?.enabled===true&&product?.enabled===true&&state?.canOverride===false&&!historical,
+  required:wholesalePolicyEnforced(state)&&product?.enabled===true&&!historical,
   historical,
-  reason:state?.enabled!==true?'disabled':product?.enabled!==true?'unmarked':state?.canOverride===true?'override':historical?'historical':'required',
+  reason:state?.enabled!==true?'disabled':product?.enabled!==true?'unmarked':!wholesaleAppliesToSubject(state)?'outside_scope':!wholesalePolicyEnforced(state)?'override':historical?'historical':'required',
  };
 }
 
