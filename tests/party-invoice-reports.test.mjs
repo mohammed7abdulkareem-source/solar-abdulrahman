@@ -26,6 +26,19 @@ test('all customer invoices are grouped with own price snapshots, while unavaila
  assert.equal(invoiceLines(account,period.rows[0],docs).items[0].total,100);
  const system=invoiceLines(account,{id:200},{200:{kind:'system',items:[{product_name:'جهاز',qty:1}]}});assert.equal(system.items[0].price,null);
 });
+test('grouped customer invoices keep stored billed totals without adding internal expenses again',()=>{
+ const rows=[
+  {id:1,date:'2026-10-02T09:00Z',kind:'sale',total:1000,cash:false,receiptNo:1},
+  {id:2,date:'2026-10-03T09:00Z',kind:'sale',total:1100,cash:false,receiptNo:2}
+ ];
+ const account=customerAccount({id:1,name:'زبون',rows});
+ const documents={1:{id:1,kind:'sale',expenses:456789,expenses_on_customer:false,items:[{product_name:'لوح',qty:2,price:500}]},2:{id:2,kind:'sale',expenses:100,expenses_on_customer:true,items:[{product_name:'لوح',qty:2,price:500}]}};
+ const html=groupedInvoicesBody(account,compactPeriod(account.rows,'','','invoices'),'','',documents);
+ assert.match(html,/مبلغ الفاتورة بعملة الحساب: 1,000 د\.ع/);
+ assert.match(html,/مبلغ الفاتورة بعملة الحساب: 1,100 د\.ع/);
+ assert.match(html,/الرصيد بعدها: 2,100 د\.ع/);
+ assert.doesNotMatch(html,/456,789/);
+});
 
 test('supplier invoice prices stay in source currency and unknown dollar prices are not invented',()=>{
  const data={revision:0,currency:'USD',rows:[{id:1,revision:0,currency:'USD',created_at:'2026-10-01T09:00Z',delta:20,rate:1500,

@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from './supabase';
 import {saveRequest} from './save-request.mjs';
 import {formatMoney as money} from './money-format.mjs';
+import {saleExpensesOnCustomer} from './currency-utils.mjs';
 import MoneyInput from './money-input';
 import AppIcon from './app-icons';
 
@@ -24,7 +25,7 @@ export default function WarehousePricing({profile,onChanged}){
  }
  if(!canPrice)return null;
  if(!rows.length&&!detail&&!error&&!message)return null;
- const total=detail?Number(detail.expenses||0)+detail.items.reduce((n,i)=>n+Number(i.qty)*Number(i.lineId==null?prices[i.productId]||0:i.price),0):0;
+ const total=detail?(saleExpensesOnCustomer(detail)?Number(detail.expenses||0):0)+detail.items.reduce((n,i)=>n+Number(i.qty)*Number(i.lineId==null?prices[i.productId]||0:i.price),0):0;
  return <section className="warehousePricing" aria-label="تسعير إضافات المخزن"><header><h3><AppIcon name="receipt" size={18}/>مواد بانتظار تسعير الإدارة <small>{rows.length}</small></h3><button type="button" disabled={busy} onClick={load}>تحديث</button></header>
   {message&&<p className="workflowSuccess" role="status">{message}</p>}{error&&<p className="workflowError" role="alert">{error}</p>}
   {!detail?<div className="warehousePricingList">{rows.map(r=><button type="button" key={r.id} disabled={busy} onClick={()=>open(r.id)}><span><b>{r.party||'زبون نقدي'} · #{r.receiptNo}</b><small>{r.warehouseName} · {r.count} فقرة بعد التعديل</small></span><AppIcon name="chevron" size={15}/></button>)}</div>:<div className="warehousePricingForm"><h4>تسعير وصل #{detail.receiptNo} · {detail.party}</h4>{detail.stale&&<p className="workflowError">تغيّرت الفاتورة بعد طلب المواد. ألغِ الطلب ليُنشئ المخزن تعديلًا مطابقًا لآخر نسخة.</p>}<fieldset disabled={busy||detail.stale}>{detail.items.map((i,n)=><article key={i.lineId??'new-'+i.productId}><div><small>{n+1} · {i.lineId==null?'مادة جديدة':'فقرة مسجّلة'}</small><b dir="auto">{i.name}</b><span>العدد: {money(i.qty)}</span></div><label>سعر بيع الوحدة د.ع{i.lineId==null?<MoneyInput aria-label={'سعر المادة الجديدة '+i.name} value={prices[i.productId]??''} onChange={v=>setPrices(p=>({...p,[i.productId]:v}))}/>:<bdi>{money(i.price)} د.ع</bdi>}</label></article>)}</fieldset><div className="warehousePricingTotal"><span>مبلغ الفاتورة بعد اعتماد الأسعار</span><bdi>{money(total)} د.ع</bdi></div><div className="warehouseActions"><button type="button" disabled={busy||detail.stale} onClick={()=>submit('approve')}>{busy?'جاري التأكيد…':'اعتماد الأسعار وتحديث الوصل'}</button><button type="button" disabled={busy} onClick={()=>submit('cancel')}>إلغاء تعديل المواد</button><button type="button" disabled={busy} onClick={()=>{setDetail(null);setError('');}}>رجوع</button></div></div>}

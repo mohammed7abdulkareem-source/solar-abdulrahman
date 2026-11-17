@@ -1,0 +1,5 @@
+.saleWorkspace .saleExpenseChoice{margin-top:2px;padding:9px 10px;border:1px solid #cbded9;border-radius:9px;background:#f0f8f5;color:#205c51;min-width:0}
+.saleWorkspace .saleExpenseChoice>label{display:flex;align-items:center;gap:8px;min-height:30px;cursor:pointer;font-size:12px;font-weight:700;line-height:1.7}
+.saleWorkspace .saleExpenseChoice input[type=checkbox]{width:18px;height:18px;min-height:18px;flex:0 0 18px;margin:0;padding:0;accent-color:#087a68;cursor:pointer}
+.saleWorkspace .saleExpenseChoice p{margin:5px 0 0;padding:0;font-size:11px;line-height:1.8;overflow-wrap:anywhere;color:#526e68}
+.saleWorkspace .saleExpenseChoice.internal{background:#fff8ed;border-color:#ead8b6;color:#80591c}.saleWorkspace .saleExpenseChoice.internal p{color:#77654c}

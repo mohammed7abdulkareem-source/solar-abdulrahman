@@ -12,6 +12,14 @@ test('a statement invoice uses the exact original customer formatter with warran
  for(const s of ['انفيرتر &lt;أصلي&gt;','150,000','350,000','آخر تسديد سابق','20,000','invoiceQr','07700000000','07800000000'])assert.ok(d.body.includes(s),s);
  assert.equal(customerMovementDocument({type:'invoice',invoice:{...invoice,kind:'system'}},account).body.includes('سعر الوحدة'),false);
 });
+test('original customer document exports preserve saved account and do not print company-paid expenses',()=>{
+ const internal={...invoice,expenses:456789,expenses_on_customer:false};
+ const html=movementHtml({type:'invoice',invoice:internal},account,a4);
+ assert.doesNotMatch(html,/المصاريف الإضافية|456,789/);
+ for(const s of ['300,000','350,000','آخر تسديد سابق','invoiceQr'])assert.ok(html.includes(s),s);
+ const charged=movementHtml({type:'invoice',invoice:{...internal,expenses_on_customer:true}},account,a4);
+ assert.match(charged,/المصاريف الإضافية على الزبون/);assert.match(charged,/456,789/);
+});
 test('customer payment documents retain original balances and linked system material details',()=>{
  const receipt={id:2,receiptNo:8,party:account.name,ledgerType:'wholesale',date:'2026-10-21T09:00:00Z',total:100000,mode:'payment',oldBalance:350000,remaining:250000,notes:'بيد <صاحب الوصل>',creatorPhone:'07700000000'};
  assert.deepEqual(customerMovementDocument({type:'payment',receipt},account),systemPaymentDocument(receipt));

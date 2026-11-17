@@ -1,6 +1,21 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {profitMaterialDocument} from '../app/profit-material-document.mjs';
+import {profitInvoiceExpense,profitMaterialDocument} from '../app/profit-material-document.mjs';
 const b={receiptNo:4,kind:'sale',party:'<img>',creatorName:'A & B',warehouseName:'صيادة',date:'2026-10-28',sales:1000,total:1000,materialsCost:400,grossProfit:600,netProfit:550,profitAdjustment:-50,invoiceExpenses:50,installationExpenses:0,items:[{name:'بطارية',brand:'M',category:'بطاريات',code:'0001',qty:2,unitPrice:500,unitCost:200,lineSales:1000,lineCost:400,lineProfit:600}]};
 test('profit export includes materials, saved costs and line profits and reconciles the approved movement',()=>{const d=profitMaterialDocument(b,{settled:0,available:550});for(const s of ['بطارية','كود 0001','ربح الفقرة','كلفة الفقرة','600','550','-50','&lt;img&gt;','A &amp; B'])assert.ok(d.body.includes(s),s);assert.equal(d.total,'550 د.ع');});
 test('system profit export uses the agreed system price and material costs without inventing item prices',()=>{const d=profitMaterialDocument({...b,kind:'system',items:b.items.map(i=>({...i,unitPrice:null,lineSales:null,lineProfit:null}))},{settled:0,available:550});assert.ok(d.body.includes('سعر المنظومة إجمالي'));assert.ok(d.body.includes('بطارية'));assert.ok(!d.body.includes('<th>ربح الفقرة'));assert.ok(!d.body.includes('<th>سعر البيع'));assert.equal(d.total,'550 د.ع');});
+test('profit document distinguishes company expenses without deducting them a second time',()=>{
+ const company={...b,invoiceExpensesOnCustomer:false,customerInvoiceExpenses:0,companyInvoiceExpenses:50};
+ const before=JSON.stringify(company),document=profitMaterialDocument(company,{settled:100,available:450});
+ assert.deepEqual(profitInvoiceExpense(company),{label:'مصاريف الفاتورة على الشركة',amount:50});
+ assert.match(document.body,/مصاريف الفاتورة على الشركة: 50 د\.ع/);
+ assert.match(document.body,/تعديلات ربح الفاتورة المحفوظة: -50 د\.ع/);
+ assert.match(document.body,/ربح الحركة المعتمد: 550 د\.ع/);
+ assert.match(document.body,/غير المسوّى: 450 د\.ع/);assert.equal(document.total,'550 د.ع');
+ assert.equal(JSON.stringify(company),before);
+ const customer={...b,invoiceExpensesOnCustomer:true,customerInvoiceExpenses:50,companyInvoiceExpenses:0,profitAdjustment:0,netProfit:600};
+ const charged=profitMaterialDocument(customer,{settled:0,available:600});
+ assert.match(charged.body,/مصاريف الفاتورة على الزبون: 50 د\.ع/);assert.equal(charged.total,'600 د.ع');
+ assert.equal(profitInvoiceExpense(b).label,'مصاريف الفاتورة');
+ assert.equal(profitInvoiceExpense({...company,kind:'system'}).label,'مصاريف الفاتورة');
+});

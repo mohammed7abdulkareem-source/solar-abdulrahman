@@ -13,6 +13,31 @@ test('warehouse print uses independent safe QR and keeps all financial data priv
  const doc=salesDocument(row,false);assert.equal(doc.total,'');assert.match(doc.body,/آخر يوم مشمول/);assert.match(doc.body,/<svg/);for(const s of ['invoiceAccount','آخر تسديد','2,000,000','13,720,000','1,715,000','300,000','الحساب النهائي'])assert.ok(!doc.body.includes(s),s);
  const warehouse=warehouseDocument({kind:'sale',date:row.created_at,receiptNo:4,party:'زبون',items:[{productId:1,name:'10KW/MAGIC',qty:8}],warranty:row.warranty,warehouseQrToken:row.warehouse_qr_token});assert.match(warehouse,/<svg/);assert.match(warehouse,/18\/10\/2028/);
 });
+test('customer copy bills only customer-paid wholesale expenses and retains saved receipt totals',()=>{
+ const base={...row,expenses:456789,total:1200000,invoice_account:{...row.invoice_account,invoiceTotal:1200000,balanceAfter:3200000}};
+ const before=JSON.stringify(base);
+ for(const flag of [{expensesOnCustomer:false},{expenses_on_customer:false}]){
+  const doc=salesDocument({...base,...flag});
+  assert.doesNotMatch(doc.body,/المصاريف الإضافية|456,789/);
+  assert.equal(doc.total,'1,200,000 د.ع');
+  assert.match(doc.body,/1,200,000/);assert.match(doc.body,/3,200,000/);
+  assert.match(doc.body,/آخر تسديد سابق/);
+ }
+ for(const flag of [{expensesOnCustomer:true},{expenses_on_customer:true},{},{expenses_on_customer:null}]){
+  const doc=salesDocument({...base,...flag});
+  assert.match(doc.body,/المصاريف الإضافية على الزبون/);assert.match(doc.body,/456,789/);
+  assert.equal(doc.total,'1,200,000 د.ع');
+ }
+ assert.equal(JSON.stringify(base),before);
+});
+test('expense payer never exposes financial data on warehouse copies or changes system customer copies',()=>{
+ for(const flag of [true,false]){
+  const warehouse=salesDocument({...row,expenses:456789,expensesOnCustomer:flag},false);
+  assert.equal(warehouse.total,'');assert.doesNotMatch(warehouse.body,/المصاريف|456,789|invoiceAccount/);
+ }
+ const system={...row,kind:'system',expenses:456789};
+ assert.deepEqual(salesDocument({...system,expensesOnCustomer:false}),salesDocument(system));
+});
 test('warranty printed dates match Postgres month/year clamping and inclusive last covered day',()=>{
  assert.equal(warrantyLastDay('2024-01-31',{duration:1,unit:'months'}),'28/02/2024');assert.equal(warrantyLastDay('2024-02-29',{duration:1,unit:'years'}),'27/02/2025');assert.equal(warrantyLastDay('2026-10-19',{duration:1,unit:'days'}),'19/10/2026');assert.equal(warrantyLastDay('2026-10-19',{duration:0,unit:'days'}),null);assert.equal(invoiceDate('2026-10-18T22:00:00Z'),'19/10/2026');
 });

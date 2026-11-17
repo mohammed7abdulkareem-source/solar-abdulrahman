@@ -1,4 +1,7 @@
 import {money,dateKey,escapeHtml as e} from './supplier-utils.mjs';
+import {saleExpensesOnCustomer} from './currency-utils.mjs';
+
+export const companySaleExpenses=rows=>rows.reduce((sum,row)=>sum+(row.kind==='sale'&&!saleExpensesOnCustomer(row)?Number(row.expenses||0):0),0);
 
 export function profitBalanceReport({balance,ownerName,from,to,rows,expenses,fx,externalProfit,type='all'}){
  if(!balance)return '';
@@ -14,6 +17,7 @@ export function profitBalanceReport({balance,ownerName,from,to,rows,expenses,fx,
    ['ربح الفترة قبل التسويات',balance.period.earned],['المسوّى من أرباح الفترة',balance.period.settled],['غير المسوّى من أرباح الفترة',balance.period.available]
   ].map(([label,value])=>'<div class="reportMetric"><span>'+label+'</span><strong>'+amount(value)+' د.ع</strong></div>').join('')+'</div>'+
   '<h3 class="reportSectionTitle">تفاصيل المبيعات · '+rows.length+' فاتورة</h3><table data-pdf-paginate><colgroup><col style="width:12%"><col style="width:23%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"><col style="width:13%"></colgroup><thead><tr><th>التاريخ</th><th>العملية / العميل / الوصل</th><th>المبيعات د.ع</th><th>الكلفة د.ع</th><th>الربح قبل التسوية</th><th>المسوّى</th><th>غير المسوّى</th></tr></thead><tbody>'+(rows.length?rows.map(t=>'<tr><td>'+e(dateKey(t.date))+'</td><td>'+e(t.kind==='system'?'منظومة':'جملة')+'<br>'+e(t.party||'نقدي')+(t.receiptNo!=null?'<br><small>وصل #'+e(t.receiptNo)+'</small>':'')+'</td><td>'+amount(t.sales)+'</td><td>'+amount(t.cost)+'</td><td>'+amount(t.earned)+'</td><td>'+amount(t.settled)+'</td><td>'+amount(t.available)+'</td></tr>').join(''):'<tr><td colspan="7" class="reportEmpty">لا توجد مبيعات ضمن الفترة والاختيارات.</td></tr>')+'</tbody></table>'+
+  (companySaleExpenses(rows)>0?'<p class="notes">مصاريف وصولات الجملة على الشركة: '+amount(companySaleExpenses(rows))+' د.ع. مخصومة ضمن ربح المبيعات المعروض، ولا تُطرح مرة أخرى.</p>':'')+
   '<h3 class="reportSectionTitle">بنود أخرى ضمن الفترة · د.ع</h3><div class="reportSummary">'+[
    ['المصاريف التشغيلية للفترة',expenses],['فرق الصرف المحقق',fx],['الأرباح الخارجية',externalProfit]
   ].map(([label,value])=>'<div class="reportMetric"><span>'+label+'</span><strong>'+amount(value)+' د.ع</strong></div>').join('')+'</div><p class="notes">تبقى أرباح المبيعات التاريخية وكلفتها المثبتة محفوظة. المصاريف التشغيلية تستثني حصص تسوية الأرباح حتى لا تُطرح مرتين. الرمز — يعني أن القيمة غير متاحة في بيانات التقرير.</p>';

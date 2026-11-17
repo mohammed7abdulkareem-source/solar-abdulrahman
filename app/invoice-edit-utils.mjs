@@ -1,10 +1,11 @@
+import {saleExpensesOnCustomer} from './currency-utils.mjs';
 import {canOpenPage,isAdministrator,isEngineer,isWarehouse} from './access-utils.mjs';
 export function canEditArchivedInvoice(profile,row){
  if(!profile?.active||isEngineer(profile)||isWarehouse(profile)||!['sale','system'].includes(row?.kind))return false;
  return isAdministrator(profile)||((row.created_by||row.createdBy)===profile.id&&canOpenPage(profile,row.kind));
 }
 export function archiveInvoiceDraft(row){
- return {...row,createdBy:row.created_by||row.createdBy,party:row.party_name||row.party||'',partyId:row.party_id??row.partyId,receiptNo:row.receipt_no??row.receiptNo,date:row.created_at||row.date,
+ return {...row,...(row.kind==='sale'?{expensesOnCustomer:saleExpensesOnCustomer(row)}:{}),createdBy:row.created_by||row.createdBy,party:row.party_name||row.party||'',partyId:row.party_id??row.partyId,receiptNo:row.receipt_no??row.receiptNo,date:row.created_at||row.date,
   sourceCurrency:row.source_currency||row.sourceCurrency||'IQD',exchangeRate:Number(row.exchange_rate??row.exchangeRate??1),marketRate:Number(row.market_rate??row.marketRate??1),cashCurrency:row.cash_currency||row.cashCurrency||'IQD',cashboxUserId:row.cashbox_user_id||row.cashboxUserId,
   pricingRevision:Number(row.pricing_revision??row.pricingRevision??0),warrantyRevision:Number(row.warranty_revision??row.warrantyRevision??0),warehouseId:row.warehouse_id??row.warehouseId,warehouseName:row.warehouse_name||row.warehouseName,
   systemMarkupPercent:row.system_min_profit_percent??row.systemMarkupPercent??null,systemPricingRevision:row.system_pricing_revision??row.systemPricingRevision??null,

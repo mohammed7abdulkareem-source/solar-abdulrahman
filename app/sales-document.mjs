@@ -2,6 +2,7 @@ import {phoneContactDocument} from './phone-contact-utils.mjs';
 import {warrantyDocument,warrantyQrSvg} from './warranty-utils.mjs';
 import {receiptNumber} from './supplier-utils.mjs';
 import {escapeHtml as escape,invoiceDate} from './document-format.mjs';
+import {saleExpensesOnCustomer} from './currency-utils.mjs';
 export const formatMoney=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
 export const statusLabel={pending:'بانتظار التنصيب',in_progress:'جاري التنصيب',completed:'بانتظار الغلق',closed:'ملف مغلق'};
 const money=value=>'<span class="documentNumber" dir="ltr">'+formatMoney(value)+'</span> <small>د.ع</small>';
@@ -34,7 +35,7 @@ export function salesDocument(row,customer=true){
  const cols=prices?[6,40,10,22,22]:[7,76,17];
  const metaRows=meta.map(([k,v])=>'<div><b>'+k+':</b> '+escape(v)+'</div>');
  const body='<section class="salesDocument"><div class="invoiceIntro"><div class="meta">'+metaRows.slice(0,2).join('')+contacts+metaRows.slice(2).join('')+'</div>'+(qr?'<div class="invoiceQr">'+qr+'<b>فحص الفاتورة والضمان</b><small>رقم '+escape(receiptNumber(row))+'</small></div>':'')+'</div><table class="invoiceItems" data-pdf-paginate><colgroup>'+cols.map(n=>'<col style="width:'+n+'%">').join('')+'</colgroup><thead><tr><th>ت</th><th>تفاصيل المادة / البراند</th><th>العدد</th>'+(prices?'<th>سعر الوحدة د.ع</th><th>المجموع د.ع</th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table><div class="documentCounts"><span>عدد الفقرات: <b>'+items.length+'</b></span><span>مجموع الكميات: <b class="documentNumber">'+formatMoney(items.reduce((sum,i)=>sum+Number(i.qty||0),0))+'</b></span></div>'+
- (customer&&!system&&Number(row.expenses)>0?'<div class="notes">المصاريف الإضافية: '+money(row.expenses)+'</div>':'')+
+ (customer&&!system&&saleExpensesOnCustomer(row)&&Number(row.expenses)>0?'<div class="notes">المصاريف الإضافية على الزبون: '+money(row.expenses)+'</div>':'')+
  (customer?invoiceAccountDocument(row):'')+warrantyDocument(row,{hasQr:!!qr})+
  (!customer&&row.preparedBy?'<div class="notes"><b>مسؤول التجهيز:</b> '+escape(row.preparedBy)+'</div>':'')+
  (!customer&&row.note?'<div class="notes" data-pdf-end><b>ملاحظات التجهيز:</b> '+escape(row.note)+'</div>':'')+
