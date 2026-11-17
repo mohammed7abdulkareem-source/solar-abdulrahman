@@ -34,12 +34,12 @@ async function open(who,section){
  const page=await ctx.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto('http://127.0.0.1:3073/?section='+section);return {page,ctx,token};
 }
 const fingerprint=()=>sql("select md5(jsonb_build_object('tx',(select jsonb_agg(to_jsonb(t)order by id)from transactions t),'items',(select jsonb_agg(to_jsonb(t)order by id)from transaction_items t),'stock',(select jsonb_agg(to_jsonb(t)order by warehouse_id,product_id)from solar_private.warehouse_stocks t),'transfers',(select jsonb_agg(to_jsonb(t)order by id)from solar_private.stock_transfers t),'cash',(select jsonb_agg(to_jsonb(t)order by to_jsonb(t)::text)from cash_ledger t))::text)");
-async function selectMaterial(p){const box=p.getByRole('combobox',{name:'اختيار مادة للحركة',exact:true});await box.fill('39201');await p.getByRole('option',{name:/39201.*لوح كشف الحركة/}).click();}
+async function selectMaterial(p){const box=p.getByRole('combobox',{name:'البحث عن مادة للحركة',exact:true});await box.fill('39201');await p.getByRole('option',{name:/لوح كشف الحركة.*39201/}).click();}
 let page;
 try{
  sql("update solar_private.stock_adjustments set created_at=now()-interval'2 days'where product_id=-392001");
  const before=fingerprint(),admin=await open('admin','stockMovement');page=admin.page;const p=page;
- await p.getByRole('heading',{name:'اختر المادة لعرض كشفها',exact:true}).waitFor();
+ await p.getByRole('heading',{name:'اختر نتيجة البحث لعرض كشفها',exact:true}).waitFor();
  await selectMaterial(p);await p.getByTestId('material-current-qty').filter({hasText:/^12$/}).waitFor();
  const full=await admin.ctx.request.post('http://127.0.0.1:3079/rpc/solar_inventory',{headers:{authorization:'Bearer '+admin.token},data:{action:'material_report',payload:{productId:-392001}}});assert.equal(full.status(),200);const fullData=await full.json();
  assert.equal(await p.locator('.mlMovement').count(),fullData.rows.length);
@@ -62,7 +62,7 @@ try{
  const report=p.locator('.mlWorkspace>.reportExport');
  await p.waitForFunction(()=>document.querySelector('.mlWorkspace>.reportExport .reportButton.download')?.disabled===false);
  const [download]=await Promise.all([p.waitForEvent('download'),report.getByRole('button',{name:'حفظ PDF',exact:true}).click()]);await download.saveAs(dir+'/priced-material.pdf');const bytes=await readFile(dir+'/priced-material.pdf');assert.equal(bytes.subarray(0,5).toString(),'%PDF-');
- const documents=await p.evaluate(()=>window.__documentHtmls);assert.ok(documents.some(x=>x.includes('كشف حركة مادة')&&x.includes('3,000 د.ع')&&x.includes('المجهّز: مجهز كشف المواد')&&x.includes('الرصيد بعد الحركة')));
+ const documents=await p.evaluate(()=>window.__documentHtmls);assert.ok(documents.some(x=>x.includes('كشف حركة مادة')&&x.includes('3,000 د.ع')&&x.includes('مسؤول تجهيز المخزن: مجهز كشف المواد')&&x.includes('الرصيد بعد الحركة')));
  await report.getByRole('button',{name:'مشاركة',exact:true}).click();await report.getByText('تمت مشاركة ملف PDF.',{exact:true}).waitFor();const shared=await p.evaluate(()=>window.__sharedPdfs);assert.ok(shared[0].active);assert.equal(shared[0].hash,createHash('sha256').update(bytes).digest('hex'));
  const [preview]=await Promise.all([admin.ctx.waitForEvent('page'),report.getByRole('button',{name:'معاينة',exact:true}).click()]);await preview.getByRole('button',{name:'طباعة',exact:true}).waitFor();await preview.screenshot({path:dir+'/material-pdf-preview.png'});await preview.close();
  await p.getByRole('group',{name:'اتجاه حركة المادة',exact:true}).getByRole('button',{name:'خروج',exact:true}).click();
@@ -75,7 +75,7 @@ try{
  await p.getByLabel('مخزن كشف المادة',{exact:true}).selectOption('2');await p.getByRole('button',{name:'عرض حركة المادة',exact:true}).click();await p.getByTestId('material-current-qty').filter({hasText:/^2$/}).waitFor();
  assert.ok((await p.locator('.mlWarehouseGrid').innerText()).includes('مخزن صيادة'));
  await p.getByRole('tab',{name:'جميع الحركات',exact:true}).click();await p.locator('.movementEntry').first().waitFor();
- await p.getByRole('tab',{name:'حركة المادة وعميل',exact:true}).click();await p.getByLabel('اسم العميل في الحركة',{exact:true}).waitFor();
+ await p.getByRole('tab',{name:'مادة وعميل',exact:true}).click();await p.getByLabel('اسم العميل في الحركة',{exact:true}).waitFor();
  const warehouse=await open('warehouse','stockMovement');page=warehouse.page;await selectMaterial(page);await page.getByTestId('material-current-qty').filter({hasText:/^10$/}).waitFor();
  assert.equal(await page.getByLabel('عرض الأسعار المثبتة بالمستند',{exact:true}).count(),0);assert.ok((await page.locator('.mlMovementParty>small').allTextContents()).every(x=>x!=='مخزن صيادة'));assert.equal(await page.locator('.mlPrice').count(),0);
  const denied=await warehouse.ctx.request.post('http://127.0.0.1:3079/rpc/solar_inventory',{headers:{authorization:'Bearer '+warehouse.token},data:{action:'material_report',payload:{productId:-392001,withPrices:true}}});assert.equal(denied.status(),403);
