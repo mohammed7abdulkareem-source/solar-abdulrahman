@@ -34,12 +34,12 @@ do $$declare a jsonb;p jsonb;r jsonb;r2 jsonb;req uuid:=gen_random_uuid();tid bi
  r:=public.solar_system_payment_save(gen_random_uuid(),p);
  if(r->>'remaining')::numeric<>16750000 or(r->>'cashAfter')::numeric<>1500000 or(r->>'cash')::boolean then raise exception 'FAIL noncash charge';end if;
  a:=public.solar_system_payment_context(-341002);
- if jsonb_array_length(a->'systems')<>2 then raise exception 'FAIL another creator or renamed customer invoice hidden';end if;
+ if jsonb_array_length(a->'systems')<>1 or(a->>'restrictedSystemCount')::integer<>1 or a->'systems'->0->>'id'<>'-341003' then raise exception 'FAIL foreign creator invoice was offered as allocation choice';end if;
  p:=jsonb_build_object('customerId',-341002,'invoiceId',-341002,'amount',1000000,'mode','payment','notes','','expectedToken',a->>'token');
  r:=public.solar_system_payment_save(gen_random_uuid(),p);
- if(r->>'invoiceBefore')::numeric<>3000000 or(r->>'invoiceAfter')::numeric<>2000000 or(r->>'remaining')::numeric<>4000000 then raise exception 'FAIL invoice allocation';end if;
+ if r->'invoice'<>'null'::jsonb or r->'invoiceBefore'<>'null'::jsonb or r->'invoiceAfter'<>'null'::jsonb or r->'systemInvoiceId'<>'null'::jsonb or(r->>'remaining')::numeric<>4000000 then raise exception 'FAIL foreign allocation privacy/account balance';end if;
  a:=public.solar_system_payment_context(-341002);
- if not exists(select 1 from jsonb_array_elements(a->'systems') x where x->>'id'='-341002' and(x->>'paid')::numeric=1000000 and(x->>'remaining')::numeric=2000000) then raise exception 'FAIL persistent allocation after reload';end if;
+ if exists(select 1 from jsonb_array_elements(a->'systems') x where x->>'id'='-341002') or(a->>'balance')::numeric<>4000000 then raise exception 'FAIL foreign allocation leaked after reload or balance changed';end if;
  begin perform public.solar_system_payment_save(gen_random_uuid(),p||jsonb_build_object('amount',2500000,'expectedToken',a->>'token'));raise exception 'FAIL invoice overpayment';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  begin perform public.solar_system_payment_save(gen_random_uuid(),p||jsonb_build_object('invoiceId',-341004,'expectedToken',a->>'token'));raise exception 'FAIL foreign invoice';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
  begin perform public.solar_system_payment_save(gen_random_uuid(),p||jsonb_build_object('amount',0.001,'expectedToken',a->>'token'));raise exception 'FAIL fractional amount';exception when raise_exception then if sqlerrm like 'FAIL%' then raise;end if;end;
@@ -59,9 +59,11 @@ do $$declare l jsonb;begin
  if not exists(select 1 from jsonb_array_elements(l) x where x->>'systemInvoiceId'='-341002' and x->>'systemReceiptNo' is not null) then raise exception 'FAIL statement allocation label';end if;
  if has_function_privilege('anon','public.solar_system_payment_save(uuid,jsonb)','execute') or has_table_privilege('authenticated','solar_private.system_payment_requests','insert') then raise exception 'FAIL RPC grants';end if;
 end $$;
--- The existing reset deletes transactions in one statement; optional self-FKs
--- must allow that statement while rejecting deletion of just a paid invoice.
-delete from public.transactions;
-do $$begin if exists(select 1 from public.transactions) then raise exception 'FAIL clearing allocated receipts with invoices';end if;end $$;
+-- V4 receipt authorization also protects allocated invoices from raw deletion.
+-- Fixture cleanup uses ROLLBACK rather than bypassing that accounting guard.
+do $$begin
+ begin delete from public.transactions where id in(-341002,-341003);raise exception 'FAIL raw allocated invoice deletion';exception when insufficient_privilege then null;end;
+ if not exists(select 1 from public.transactions where id=-341002)then raise exception 'FAIL deletion guard changed invoice';end if;
+end$$;
 select 'PASS opening-only payments, invoice allocation/reload, cash, charges, exact retry, stale/overpayment and permissions' result;
 rollback;

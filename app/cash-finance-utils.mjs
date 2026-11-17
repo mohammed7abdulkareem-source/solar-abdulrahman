@@ -5,11 +5,15 @@ export const cashGroups={expenses:['expense','cash_expense','installation_payout
 export const cashTypes=['cash_income','expense','external_profit','capital_deposit','capital_withdraw','cash_reconcile','admin_transfer_out','admin_transfer_in','transfer_out','transfer_in','transfer_refund','buy_usd','sell_usd','sale','system','purchase','purchase_cancelled','purchase_refund','customer_payment','system_payment','supplier_payment','installation_payout','installation_refund','handover_expense','profit_distribution'];
 export const cashTypeOptions=cashTypes.map(k=>[k,cashKind(k)]);
 export const matchesCashType=(row,type='all')=>type==='all'||(cashGroups[type]?cashGroups[type].includes(row.kind):row.kind===type||(type==='expense'&&row.kind==='cash_expense'));
+export function cashVisibleMovement(row){
+ if(!row.receiptRestricted)return row;
+ return {id:row.id,receiptRestricted:true,kind:row.kind,currency:row.currency,delta:row.delta,balance:row.balance,created_at:row.created_at,ownerName:'قاصتك',party:'',note:'أثر حسابي',receipt_no:null};
+}
 export function cashPage(data,type='all',offset=0,limit=50){
- if(type==='all')return data;
+ if(type==='all')return {...data,rows:data.rows.map(cashVisibleMovement)};
  if(data.count>5000)throw new Error('الحركات كثيرة؛ حدد فترة أقصر لتصفية نوع الحركة كاملة.');
  const rows=data.rows.filter(r=>matchesCashType(r,type));
- return {...data,count:rows.length,rows:rows.slice(offset,offset+limit),offset,limit};
+ return {...data,count:rows.length,rows:rows.slice(offset,offset+limit).map(cashVisibleMovement),offset,limit};
 }
 export function statementByType(data,type='all'){
  if(type==='all')return data;

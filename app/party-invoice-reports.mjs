@@ -6,6 +6,7 @@ const numeric=value=>value!==null&&value!==undefined&&value!==''&&Number.isFinit
 
 // Prices belong to the original invoice currency, not necessarily the account currency.
 export function invoiceLines(account,row,documents={}){
+ if(row.receiptRestricted)return {available:false,items:[],currency:account.currency||'IQD'};
  const supplier=account.type==='supplier';
  const document=supplier?row.original:documents[String(row.id)];
  if(!document)return {available:false,items:[],currency:supplier?(row.original?.sourceCurrency||'IQD'):'IQD'};
@@ -19,6 +20,7 @@ export function invoiceLines(account,row,documents={}){
 }
 
 export function groupedInvoicesBody(account,period,from,to,documents={},filters={category:'invoices'}){
+ period={...period,rows:period.rows.filter(row=>!row.receiptRestricted)};
  const supplier=account.type==='supplier',accountCurrency=account.currency;
  const header='<style>.invoiceReport table{border:1px solid #7b90a0!important;margin:12px 0;table-layout:fixed}.invoiceReport th,.invoiceReport td{border:1px solid #9cabb6!important;padding:5px 6px;font-size:11px;line-height:1.6}.invoiceReport th{background:#e0ebf7!important;color:#143e5a!important;font-weight:700!important}.invoiceReport thead .invoiceHeading{background:#c5d9ef!important;font-size:12px;text-align:right}.invoiceReport td{color:#172f3d!important}.invoiceReport .material{text-align:right;overflow-wrap:anywhere}.invoiceReport .number{direction:ltr;unicode-bidi:isolate;overflow-wrap:anywhere}.invoiceReport tfoot th{text-align:right;background:#f3f7fb!important}.invoiceReport p{font-size:11px;line-height:1.8}.invoiceReport .partyReportSummary{border:1px solid #9cabb6;background:#f1f7fa;padding:9px;line-height:1.9}</style><section class="invoiceReport">'+partyReportOverviewBody(account,period,from,to,filters)+'<h3>تفاصيل '+(supplier?'فواتير الشراء':'فواتير البيع')+' · '+period.rows.length+' فاتورة معروضة</h3>';
  const tables=period.rows.map(row=>{

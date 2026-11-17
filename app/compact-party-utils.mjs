@@ -23,12 +23,20 @@ export function partyReportOverviewBody(account,period,from,to,filters={}){
 }
 export function customerAccount(record){
  return {...record,type:'customer',currency:'IQD',customerType:record.customerType||record.customer_type,ownerName:record.ownerName||record.owner_name,
-  rows:(record.rows||[]).map(r=>({...r,date:r.date,effect:accountEffect(r),amount:Math.abs(Number(r.total)),label:accountLabel(r),
+  rows:(record.rows||[]).map(r=>r.receiptRestricted?restrictedAccountEffect(r):({...r,date:r.date,effect:accountEffect(r),amount:Math.abs(Number(r.total)),label:accountLabel(r),
    category:r.mode==='opening_balance'?'opening':r.mode==='account_reconciliation'?'adjustment':['sale','system'].includes(r.kind)?'invoices':Number(r.total)>0?'payments':'charges',original:r}))};
+}
+// A protected receipt contributes to the account balance, but is not a document
+// the caller may open. Keep only the approved accounting projection in the UI.
+export function restrictedAccountEffect(row){
+ const effect=Number(row.effect??row.delta??0);
+ const opening=row.mode==='opening_balance'||String(row.entry_type||'').includes('opening');
+ return {id:row.id,date:row.date??row.created_at,effect,amount:Math.abs(effect),label:opening?'رصيد افتتاحي':'أثر حسابي',category:opening?'opening':'adjustment',kind:'account_effect',receiptRestricted:true,receiptNo:null,notes:'',original:null};
 }
 export function supplierAccount(data,name,transactions=[],revision=data.revision){
  const entries=(data.rows||[]).filter(r=>r.revision===revision),currency=entries[0]?.currency||data.currency;
  const rows=entries.map(r=>{
+  if(r.receiptRestricted)return {...restrictedAccountEffect(r),revision};
   const t=r.transaction,original=t?{...transactions.find(x=>String(x.id)===String(t.id)),id:t.id,kind:t.kind,voided:!!t.supplier_payment_voided_at,party:t.party_name,receiptNo:t.receipt_no,notes:t.notes,cash:t.cash,total:Number(t.total),mode:t.payment_mode,sourceCurrency:t.source_currency,sourceSubtotal:t.source_subtotal,marketRate:t.market_rate,exchangeRate:Number(t.exchange_rate),accountCurrency:r.currency,accountAmount:t.account_amount,cashCurrency:t.cash_currency,cashAmount:t.cash_amount,date:t.created_at,expenses:Number(t.expenses),fxPricing:t.fx_pricing,pricingRevision:t.pricing_revision,items:(r.items||[]).map(i=>({id:i.product_id,name:i.product_name,qty:Number(i.qty),price:Number(i.price),sourcePrice:i.source_price,cost:Number(i.cost),brand:i.brand_name,category:i.category}))}:null;
   const category=r.correction_for?'adjustment':!original?((String(r.entry_type).includes('opening')||String(r.note||'').startsWith('تحويل رصيد باتفاق جديد'))?'opening':'adjustment'):original.kind==='purchase'?'invoices':supplierIsCharge(original)?'charges':'payments';
   return {id:r.id,date:r.created_at,effect:Number(r.delta),amount:original?Math.abs(Number(original.accountAmount)):Math.abs(Number(r.delta)),receiptNo:original?receiptNumber(original):r.archivedPurchase?.receiptNo??null,

@@ -9,12 +9,13 @@ import {money,dateKey,escapeHtml as e} from './supplier-utils.mjs';
 
 export default function ProfitMovement({row,ownerId,a4,meta}){
  const [open,setOpen]=useState(false),[data,setData]=useState(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[retry,setRetry]=useState(0),id=useId();
- useEffect(()=>{if(!open)return;let live=true;setLoading(true);setError('');setData(null);
+ useEffect(()=>{if(!open||row.receiptRestricted)return;let live=true;setLoading(true);setError('');setData(null);
   supabase.rpc('solar_profit_detail',{source_key:row.key,owner_id:ownerId}).then(({data,error})=>{if(!live)return;if(error){setError(error.message||'تعذر فتح تفاصيل الوصل.');return;}setData(data);}).catch(()=>{if(live)setError('تعذر الاتصال. أعد المحاولة.');}).finally(()=>{if(live)setLoading(false);});
   return()=>{live=false;};
- },[open,row.key,ownerId,retry]);
+ },[open,row.key,row.receiptRestricted,ownerId,retry]);
  const invoice=data?.invoice,breakdown=data?.breakdown,isSale=!!breakdown,system=breakdown?.kind==='system',document=breakdown?profitMaterialDocument(breakdown,row):null;
  const detailDoc=data&&!isSale?a4('تفاصيل حركة أرباح','<div class="meta"><div>الحركة: '+e(row.label)+'</div><div>التاريخ: '+e(dateKey(row.date))+'</div></div><p>الربح / الأثر: '+money(row.value)+' د.ع</p><p>المسوّى سابقاً: '+money(row.settled)+' د.ع</p><p>غير المسوّى: '+money(row.available)+' د.ع</p>'+(invoice?.notes?'<p class="notes">'+e(invoice.notes)+'</p>':'')):'';
+ if(row.receiptRestricted||data?.receiptRestricted)return <article className="profitMovement profitMovementRestricted"><div className="profitMovementRestrictedHead"><span className="profitMovementIdentity"><b>أثر حسابي على أرباحك</b><small>{dateKey(row.date)}</small><small>المسوّى: {money(row.settled)} د.ع</small></span><strong className={Number(row.available)<0?'negative':''}>{money(row.available)} <small>د.ع</small></strong></div></article>;
  return <details className="profitMovement" open={open} onToggle={ev=>setOpen(ev.currentTarget.open)}><summary aria-controls={id} aria-label={'تفاصيل الوصل '+(row.receiptNo||row.label)}><span className="profitMovementIdentity"><b>{row.label}{row.deleted?' · حركة ملغاة':''}</b><small>{dateKey(row.date)}{row.receiptNo?' · #'+row.receiptNo:''}</small>{meta&&<small>{meta}</small>}</span><strong className={Number(row.available)<0?'negative':''}>{money(row.available)} <small>د.ع</small></strong><span className="profitMovementArrow"><AppIcon name="chevron" size={18}/></span></summary>
   <div id={id} className="profitMovementDetail">{loading&&<p role="status">جاري تحميل تفاصيل الوصل…</p>}{error&&<div role="alert"><p>{error}</p><button type="button" className="uiButton" onClick={()=>setRetry(n=>n+1)}>إعادة المحاولة</button></div>}{data&&<>
    <h3>{isSale?(system?'فاتورة بيع منظومة':'فاتورة بيع جملة'):'تفاصيل الحركة'}{row.receiptNo?' #'+row.receiptNo:''}</h3>

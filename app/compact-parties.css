@@ -260,3 +260,5 @@ body.premiumSolar .appContent .miniReportBalances span,body.premiumSolar .appCon
 body.premiumSolar .appContent .miniReportBalances strong{font-size:17px;color:#194d5e;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 body.premiumSolar .appContent .miniReportScope>button{border:1px solid #bfd9d4;background:#eef8f4;color:#126a5b;border-radius:8px;padding:9px 12px;min-height:42px;font-size:11px;cursor:pointer}
 @media(max-width:380px){body.premiumSolar .appContent .miniReportBalances{grid-template-columns:1fr}}
+
+.miniMovementRow:disabled,.miniStatementOpen:disabled{opacity:1;cursor:default}.miniMovementRow:disabled:hover,.miniStatementOpen:disabled:hover{transform:none}

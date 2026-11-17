@@ -5,7 +5,7 @@ import {invoiceLines} from './party-invoice-reports.mjs';
 import {formatMoney as money,currencyUnit as unit} from './money-format.mjs';
 
 export function useCustomerInvoiceLines(account,rows,active){
- const ids=JSON.stringify(rows.filter(row=>row.category==='invoices').map(row=>row.id));
+ const ids=JSON.stringify(rows.filter(row=>row.category==='invoices'&&!row.receiptRestricted).map(row=>row.id));
  const key=JSON.stringify([account.id,account.token,account.name,ids]);
  const [state,setState]=useState({key:'',documents:{},loading:false,error:''}),[retry,setRetry]=useState(0);
  useEffect(()=>{

@@ -4,15 +4,18 @@ import {supabase} from './supabase';
 import {quantity} from './warehouse-utils.mjs';
 import {periodKindLabel,periodSalesDocument,periodDate,periodStatusLabel} from './period-sales-report.mjs';
 import ReportActions from './report-actions';
+import {salesAuthorizationKey,salesReadAllowed,salesReadOwner,verifySalesResponse} from './sales-read-scope.mjs';
 
-export default function PeriodSales({search,kind,from,to,status,refresh,a4,ownerId='',onUsers}){
+export default function PeriodSales({search,kind,from,to,status,refresh,a4,profile,ownerId='',onUsers}){
  const [loaded,setLoaded]=useState(null),[error,setError]=useState(''),[retry,setRetry]=useState(0);
- const key=JSON.stringify([search,kind,from,to,status,refresh,retry,ownerId]),invalid=!!from&&!!to&&from>to;
+ const authorizationKey=salesAuthorizationKey(profile),effectiveOwnerId=salesReadOwner(profile,ownerId);
+ const key=JSON.stringify([authorizationKey,search,kind,from,to,status,refresh,retry,effectiveOwnerId]),invalid=!!from&&!!to&&from>to;
  useEffect(()=>{let live=true;const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);setLoaded(null);setError('');
   if(invalid){clearTimeout(timer);return()=>{live=false;};}
-  supabase.rpc('solar_sales_period_by_user',{owner_id:ownerId||null,search_text:search,sale_kind:kind,date_from:from||null,date_to:to||null,job_status:status}).abortSignal(controller.signal).then(({data,error})=>{if(error)throw error;if(live){setLoaded({key,data});onUsers?.(data.users||[]);}}).catch(e=>{if(live)setError(e.code?e.message:'تعذر تحميل مبيعات الفترة. أعد المحاولة.');}).finally(()=>clearTimeout(timer));
+  if(!salesReadAllowed(profile)){clearTimeout(timer);setError('مبيعات الفترة غير متاحة لهذا الحساب.');return()=>{live=false;};}
+  supabase.rpc('solar_sales_period_by_user',{owner_id:effectiveOwnerId,search_text:search,sale_kind:kind,date_from:from||null,date_to:to||null,job_status:status}).abortSignal(controller.signal).then(({data,error})=>{if(error)throw error;if(live){const scoped=verifySalesResponse(data,profile,effectiveOwnerId,{period:true});setLoaded({key,data:scoped});onUsers?.(scoped.users||[]);}}).catch(e=>{if(live){setLoaded(null);onUsers?.([]);setError(e.code?e.message:'تعذر تحميل مبيعات الفترة. أعد المحاولة.');}}).finally(()=>clearTimeout(timer));
   return()=>{live=false;clearTimeout(timer);controller.abort();};
- },[key,search,kind,from,to,status,invalid,ownerId,onUsers]);
+ },[key,search,kind,from,to,status,invalid,effectiveOwnerId,authorizationKey,onUsers]);
  if(invalid)return <p role="alert" className="workflowError">تاريخ البداية يجب أن يسبق تاريخ النهاية.</p>;
  if(error)return <p role="alert" className="workflowError">{error}<button type="button" onClick={()=>setRetry(n=>n+1)}>إعادة تحميل التقرير</button></p>;
  if(loaded?.key!==key)return <p className="empty" role="status">جاري جمع مواد مبيعات الفترة…</p>;
