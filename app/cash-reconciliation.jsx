@@ -2,30 +2,38 @@
 import {useEffect,useRef,useState} from 'react';
 import {supabase} from './supabase';
 import MoneyInput from './money-input';
+import {canReconcileCash} from './cash-permissions.mjs';
+import {salesAuthorizationKey} from './sales-read-scope.mjs';
 import {formatMoney as money,currencyUnit as unit} from './money-format.mjs';
 
-export default function CashReconciliation({initialOwner,initialRate,onClose,onSaved,selfOnly=false}){
- const [owner,setOwner]=useState(initialOwner||''),[mode,setMode]=useState(initialOwner?'set':'zero'),[currency,setCurrency]=useState(initialOwner?'IQD':'both'),[amount,setAmount]=useState(''),[rate,setRate]=useState(initialRate||''),[note,setNote]=useState('مطابقة رصيد القاصة'),[data,setData]=useState(null),[directory,setDirectory]=useState([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[confirming,setConfirming]=useState(false),[refresh,setRefresh]=useState(0);
- const attempt=useRef(null),actions=useRef(null);
+export default function CashReconciliation({profile,...props}){
+ if(!canReconcileCash(profile))return <section className="cashReconciliation accountWorkspace"><p role="alert" className="accountAlert error">تعديل أرصدة القاصات وتصفيرها متاح للأدمن فقط.</p><button type="button" className="uiButton secondary" onClick={props.onClose}>الرجوع للصندوق</button></section>;
+ return <AdminCashReconciliation key={salesAuthorizationKey(profile)} profile={profile} {...props}/>;
+}
+function AdminCashReconciliation({profile,initialOwner,initialRate,onClose,onSaved}){
+ const [owner,setOwner]=useState(initialOwner||''),[mode,setMode]=useState(initialOwner?'set':'zero'),[currency,setCurrency]=useState(initialOwner?'IQD':'both'),[amount,setAmount]=useState(''),[rate,setRate]=useState(initialRate||''),[note,setNote]=useState('مطابقة رصيد القاصة'),[loaded,setLoaded]=useState(null),[directory,setDirectory]=useState([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[confirming,setConfirming]=useState(false),[refresh,setRefresh]=useState(0);
+ const attempt=useRef(null),actions=useRef(null),mounted=useRef(true),submitting=useRef(false);
+ const contextKey=JSON.stringify([salesAuthorizationKey(profile),owner,refresh]),data=loaded?.key===contextKey?loaded.data:null;
+ useEffect(()=>{mounted.current=true;return()=>{mounted.current=false;};},[]);
  useEffect(()=>{if(confirming)actions.current?.scrollIntoView({block:'center',behavior:'smooth'});},[confirming]);
- useEffect(()=>{let live=true;setLoading(true);setData(null);setError('');supabase.rpc('solar_cash_reconcile',{action:'context',payload:{ownerId:owner||null}}).then(r=>{if(r.error)throw r.error;if(live){setData(r.data);setDirectory(r.data.owners);}}).catch(e=>live&&setError(e.message||'تعذر تحميل القاصات')).finally(()=>live&&setLoading(false));return()=>{live=false;};},[owner,refresh]);
+ useEffect(()=>{let live=true;setLoading(true);setLoaded(null);setError('');if(!canReconcileCash(profile)){setLoading(false);return()=>{live=false;};}supabase.rpc('solar_cash_reconcile',{action:'context',payload:{ownerId:owner||null}}).then(r=>{if(r.error)throw r.error;if(live){setLoaded({key:contextKey,data:r.data});setDirectory(r.data.owners);}}).catch(e=>live&&setError(e.message||'تعذر تحميل القاصات')).finally(()=>live&&setLoading(false));return()=>{live=false;};},[contextKey,owner,refresh,profile]);
  const target=mode==='zero'?0:Number(amount),rows=(data?.rows||[]).map(r=>({...r,afterIQD:['IQD','both'].includes(currency)?target:Number(r.IQD),afterUSD:['USD','both'].includes(currency)?target:Number(r.USD)}));
  const changed=rows.filter(r=>r.afterIQD!==Number(r.IQD)||r.afterUSD!==Number(r.USD)||(['USD','both'].includes(currency)&&r.afterUSD===0&&Number(r.usdBook)!==0));
  const needsRate=changed.some(r=>r.afterUSD>Number(r.USD));
  const validation=data?.pendingCount?'احسم عمليات تسليم القاصة المعلّقة أولاً.':mode==='set'&&(amount===''||!Number.isFinite(target)||target<0||target>1e12)?'اكتب الرصيد الصحيح المطلوب، أو اختر تصفير الرصيد.':!changed.length?'الرصيد المطلوب مطابق للرصيد الحالي؛ لا توجد مبالغ تحتاج تسوية.':note.trim().length<3?'اكتب سبب التسوية بثلاثة أحرف على الأقل.':needsRate&&!(Number(rate)>0&&Number(rate)<=1e6)?'أدخل سعر صرف صحيح للدولار المضاف.':'';
  const locked=busy||!!attempt.current;
- async function save(e){e.preventDefault();if(busy||loading||!data)return;if(validation){setError(validation);return;}setError('');if(!confirming){setConfirming(true);return;}
+ async function save(e){e.preventDefault();if(!mounted.current||!canReconcileCash(profile)||submitting.current||busy||loading||!data)return;if(validation){setError(validation);return;}setError('');if(!confirming){setConfirming(true);return;}
   const payload={ownerId:owner||null,mode,currency,target,rate:needsRate?Number(rate):null,note:note.trim(),expectedToken:data.token},signature=JSON.stringify(payload);
   if(attempt.current&&attempt.current.signature!==signature){setError('أعد تأكيد نفس العملية السابقة.');return;}
-  if(!attempt.current)attempt.current={id:crypto.randomUUID(),signature};setBusy(true);setError('');
-  try{const r=await supabase.rpc('solar_cash_reconcile',{action:'apply',request_id:attempt.current.id,payload});if(r.error)throw r.error;attempt.current=null;await onSaved(r.data);}
-  catch(e){if(e.code){attempt.current=null;setConfirming(false);}setError(e.code?e.message:'لم يتأكد الرد؛ اضغط إعادة تأكيد التسوية بنفس البيانات ولن تتكرر.');}finally{setBusy(false);}
+  if(!attempt.current)attempt.current={id:crypto.randomUUID(),signature};submitting.current=true;setBusy(true);setError('');
+  try{const r=await supabase.rpc('solar_cash_reconcile',{action:'apply',request_id:attempt.current.id,payload});if(r.error)throw r.error;if(!mounted.current||!canReconcileCash(profile))return;attempt.current=null;await onSaved(r.data);}
+  catch(e){if(!mounted.current)return;if(e.code){attempt.current=null;setConfirming(false);}setError(e.code?e.message:'لم يتأكد الرد؛ اضغط إعادة تأكيد التسوية بنفس البيانات ولن تتكرر.');}finally{submitting.current=false;if(mounted.current)setBusy(false);}
  }
- return <section className="cashReconciliation accountWorkspace"><header className="workspaceHead"><div><span className="sectionKicker">{selfOnly?'قاصتك فقط':'إدارة القاصات'}</span><h1>{selfOnly?'تعديل وتصفير قاصتي':'تعديل وتصفير القاصات'}</h1><p>طابق رصيد البرنامج مع النقد الموجود فعليًا.</p></div><button className="uiButton secondary" disabled={locked} onClick={onClose}>الرجوع للصندوق</button></header>
+ return <section className="cashReconciliation accountWorkspace"><header className="workspaceHead"><div><span className="sectionKicker">إدارة القاصات</span><h1>تعديل وتصفير القاصات</h1><p>طابق رصيد البرنامج مع النقد الموجود فعليًا.</p></div><button className="uiButton secondary" disabled={locked} onClick={onClose}>الرجوع للصندوق</button></header>
  <div className="reconcileInfo">التسوية تخص النقد فقط. لا تلغي تسديد مورد أو زبون، ولا تغيّر المبيعات أو الأرباح. الحركات السابقة تبقى محفوظة.</div>
  {error&&<p className="accountAlert error" role="alert">{error}</p>}
  <form className="uiPanel" onSubmit={save} noValidate><fieldset disabled={locked||confirming}>
- <div className="formGrid"><label>القاصة المطلوب تعديلها<select aria-label="قاصة التسوية" value={owner} onChange={e=>{setOwner(e.target.value);setAmount('');if(!e.target.value){setMode('zero');setCurrency('both');}}}>{!selfOnly&&<option value="">جميع القاصات — تصفير فقط</option>}{directory.map(r=><option key={r.id} value={r.id}>{r.name}{r.active?'':' · حساب غير نشط'}</option>)}</select></label>
+ <div className="formGrid"><label>القاصة المطلوب تعديلها<select aria-label="قاصة التسوية" value={owner} onChange={e=>{setOwner(e.target.value);setAmount('');if(!e.target.value){setMode('zero');setCurrency('both');}}}><option value="">جميع القاصات — تصفير فقط</option>{directory.map(r=><option key={r.id} value={r.id}>{r.name}{r.active?'':' · حساب غير نشط'}</option>)}</select></label>
  <label>نوع التسوية<select aria-label="نوع تسوية القاصة" value={mode} onChange={e=>{setMode(e.target.value);if(e.target.value==='set'&&currency==='both')setCurrency('IQD');}}><option value="set" disabled={!owner}>تحديد الرصيد الصحيح</option><option value="zero">تصفير الرصيد</option></select></label>
  <label>العملة<select aria-label="عملة تسوية القاصة" value={currency} disabled={!owner} onChange={e=>setCurrency(e.target.value)}><option value="IQD">الدينار العراقي · IQD</option><option value="USD">الدولار الأمريكي · USD</option>{mode==='zero'&&<option value="both">الدينار والدولار معًا</option>}</select></label>
  {mode==='set'&&<label>الرصيد الصحيح بعد التعديل · {unit(currency)}<MoneyInput aria-label="الرصيد الصحيح للقاصة" value={amount} onChange={setAmount} currency={currency} required/></label>}

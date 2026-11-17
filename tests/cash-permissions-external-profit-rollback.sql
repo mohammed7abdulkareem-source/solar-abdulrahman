@@ -53,12 +53,11 @@ do $$begin if solar_private.retained_profit('00000000-0000-0000-0000-00000000360
 set local role authenticated;
 do $$declare c jsonb;r jsonb;begin
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003603',true);
- perform public.solar_cash_save(gen_random_uuid(),jsonb_build_object('ownerId',auth.uid(),'mode','capital_deposit','currency','IQD','amount',5000,'note','رأس مال قاصتي'));
+ begin perform public.solar_cash_save(gen_random_uuid(),jsonb_build_object('ownerId',auth.uid(),'mode','capital_deposit','currency','IQD','amount',5000,'note','رأس مال قاصتي'));raise exception 'legacy cash tools granted staff capital management';exception when insufficient_privilege then null;end;
  begin perform public.solar_cash_reconcile('context',null,'{}');raise exception 'staff tools exposed all boxes';exception when insufficient_privilege then null;end;
  begin perform public.solar_cash_reconcile('context',null,'{"ownerId":"00000000-0000-0000-0000-000000003601"}');raise exception 'staff tools exposed another box';exception when insufficient_privilege then null;end;
- c:=public.solar_cash_reconcile('context',null,jsonb_build_object('ownerId',auth.uid()));if jsonb_array_length(c->'owners')<>1 then raise exception 'other cashbox names leaked';end if;
- r:=public.solar_cash_reconcile('apply',gen_random_uuid(),jsonb_build_object('ownerId',auth.uid(),'mode','set','currency','IQD','target',7000,'note','مطابقة قاصتي','expectedToken',c->>'token'));
- if(r->'rows'->0->>'afterIQD')::numeric<>7000 then raise exception 'own reconciliation failed';end if;
+ begin perform public.solar_cash_reconcile('context',null,jsonb_build_object('ownerId',auth.uid()));raise exception 'legacy cash tools allowed own reconciliation context';exception when insufficient_privilege then null;end;
+ begin perform public.solar_cash_reconcile('apply',gen_random_uuid(),jsonb_build_object('ownerId',auth.uid(),'mode','set','currency','IQD','target',7000,'note','مطابقة قاصتي','expectedToken','legacy-staff-token'));raise exception 'legacy cash tools allowed own reconciliation';exception when insufficient_privilege then null;end;
  perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003604',true);
  begin perform public.solar_cash_reconcile('context',null,jsonb_build_object('ownerId',auth.uid()));raise exception 'warehouse stale admin gained cash tools';exception when insufficient_privilege then null;end;
 end$$;
@@ -77,6 +76,6 @@ do $$begin
  if solar_private.retained_profit('00000000-0000-0000-0000-000000003602')<>0 then raise exception 'cash receipt treated as external profit';end if;
  if(select count(*) from transactions where cash_purpose='external_profit')<>2 then raise exception 'duplicate external transaction';end if;
  if has_function_privilege('anon','solar_private.cash_allowed(text)','execute') then raise exception 'private cash authorization exposed';end if;
- raise notice 'PASS granular cash actions and legacy exchange, own cash administration, independent transfer expenses, external IQD/USD profit exactly once and fixed-rate periods, revocation, ownership and role isolation';
+ raise notice 'PASS granular cash actions and legacy exchange, admin-only capital and reconciliation, independent transfer expenses, external IQD/USD profit exactly once and fixed-rate periods, revocation, ownership and role isolation';
 end$$;
 rollback;
