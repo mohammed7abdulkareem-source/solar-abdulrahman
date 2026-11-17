@@ -15,8 +15,10 @@ export function structuredNotification(notice){
   const identity={name:text(item.name)||'مادة غير مسماة',category:text(item.category),brand:text(item.brand)};
   return purchase?{...identity,qty:amount(item.qty)}:{...identity,minPrice:amount(item.minPrice),enabled:typeof item.enabled==='boolean'?item.enabled:null};
  }):null;
- return {type:notice.event,purchase,title:purchase?'دخول مواد جديدة':'تحديث أسعار بيع الجملة',currency:purchase?null:'IQD',items,
-  summary:items?items.length+' '+(purchase?'فقرة في المواد المستلمة':'مادة في تحديث الأسعار'):'افتح الإشعار للاطلاع على التفاصيل'};
+ const warehouseName=purchase&&valid?text(details.warehouseName).trim():'';
+ const itemSummary=items?items.length+' '+(purchase?'فقرة في المواد المستلمة':'مادة في تحديث الأسعار'):'افتح الإشعار للاطلاع على التفاصيل';
+ return {type:notice.event,purchase,title:purchase?'دخول مواد جديدة':'تحديث أسعار بيع الجملة',currency:purchase?null:'IQD',items,warehouseName,itemSummary,
+  summary:warehouseName?'المخزن: '+warehouseName+' · '+itemSummary:itemSummary};
 }
 
 export function notificationPreview(notice){

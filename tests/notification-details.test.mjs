@@ -56,3 +56,32 @@ test('legacy codes are never displayed as a type; additive category preserves al
   assert.equal(JSON.stringify(details),source);
  }
 });
+
+test('purchase warehouse snapshot appears in compact previews without exposing raw receipt metadata',()=>{
+ const notice={event:'purchase_received',warehouse_name:'WRONG-WAREHOUSE',body:'SECRET invoice90 cost998877',details:{type:'purchase_received',warehouseName:'  مخزن أربيل الرئيسي  ',warehouseId:99,invoiceId:90,total:998877,items:[{name:'لوح600W',category:'ألواح',brand:'FULLMAX',qty:12.5,cost:998877}]}};
+ const source=JSON.stringify(notice),data=structuredNotification(notice);
+ assert.equal(data.warehouseName,'مخزن أربيل الرئيسي');assert.equal(data.itemSummary,'1 فقرة في المواد المستلمة');
+ assert.deepEqual(notificationPreview(notice),{title:'دخول مواد جديدة',body:'المخزن: مخزن أربيل الرئيسي · 1 فقرة في المواد المستلمة'});
+ assert.deepEqual(data.items,[{name:'لوح600W',category:'ألواح',brand:'FULLMAX',qty:12.5}]);
+ for(const secret of ['SECRET','WRONG-WAREHOUSE','998877','invoiceId','warehouseId'])assert.ok(!JSON.stringify(data).includes(secret),secret);
+ assert.equal(JSON.stringify(notice),source);
+});
+
+test('missing or malformed warehouse names keep legacy preview without inventing a warehouse',()=>{
+ for(const warehouseName of [undefined,null,'','   ',false,99,[],{name:'مخزن غير موثوق'}]){
+  const notice={event:'purchase_received',body:'المخزن: SECRET',warehouseName:'SECRET',details:{type:'purchase_received',warehouseName,items:[]}};
+  assert.equal(structuredNotification(notice).warehouseName,'');
+  assert.deepEqual(notificationPreview(notice),{title:'دخول مواد جديدة',body:'0 فقرة في المواد المستلمة'});
+ }
+ const invalid={event:'purchase_received',details:{type:'wrong',warehouseName:'SECRET',items:[]}};
+ assert.equal(structuredNotification(invalid).warehouseName,'');assert.ok(!notificationPreview(invalid).body.includes('SECRET'));
+ const pricing={event:'wholesale_prices_updated',details:{type:'wholesale_prices_updated',currency:'IQD',warehouseName:'SECRET',items:[]}};
+ assert.equal(structuredNotification(pricing).warehouseName,'');assert.equal(notificationPreview(pricing).body,'0 مادة في تحديث الأسعار');
+});
+
+test('warehouse names remain literal text, including markup and long multilingual names',()=>{
+ const warehouseName='مخزن <img src=x onerror=alert(1)> Erbil & أربيل '+ 'أ '.repeat(150);
+ const data=structuredNotification({event:'purchase_received',details:{type:'purchase_received',warehouseName,items:[]}});
+ assert.equal(data.warehouseName,warehouseName.trim());assert.equal(data.summary,'المخزن: '+warehouseName.trim()+' · 0 فقرة في المواد المستلمة');
+ assert.equal(data.items.length,0);
+});

@@ -92,7 +92,7 @@ do $$declare n public.solar_notifications;begin
  assert pg_temp.nr_count('purchase_received')=7,'Deferred triggers duplicated canonical notice';
  select * into n from public.solar_notifications where event='purchase_received'and user_id='00000000-0000-0000-0000-000000411005';
  assert n.job_id is null and n.warehouse_id=1,'Purchase notice must not expose private invoice link';
- assert n.details=jsonb_build_object('type','purchase_received','items','[{"name":"Notice Material B","category":"ألواح","brand":"NOTICE BRAND","qty":2},{"name":"Notice Material A","category":"ألواح","brand":"NOTICE BRAND","qty":3}]'::jsonb),'Purchase detail whitelist/order';
+ assert n.details=jsonb_build_object('type','purchase_received','warehouseName',(select warehouse_name from public.transactions where id=current_setting('test.nr.purchase')::bigint),'items','[{"name":"Notice Material B","category":"ألواح","brand":"NOTICE BRAND","qty":2},{"name":"Notice Material A","category":"ألواح","brand":"NOTICE BRAND","qty":3}]'::jsonb),'Purchase detail whitelist/order';
  assert not exists(select 1 from public.solar_notifications where event='purchase_received'and user_id::text between'00000000-0000-0000-0000-000000411001'and'00000000-0000-0000-0000-000000411011'and (details::text||title||body)~'PRIVATE|98765|43210|777|cost|price|supplier|total'),'Purchase financial metadata leaked';
  assert not exists(select 1 from public.solar_notifications where event='purchase_received'and user_id='00000000-0000-0000-0000-000000411006'),'Foreign warehouse disclosure';
 end$$;
