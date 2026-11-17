@@ -1,5 +1,5 @@
 export const WORKSPACE_HISTORY='solarWorkspace';
-const routeKeys=['section','job','transfer','deleteRequest','profitTab','cashView','cashOwner','cashTab','cashMode','cashType','cashMovement','stockTransfer','updated','install'];
+const routeKeys=['section','job','transfer','deleteRequest','profitTab','cashView','cashOwner','cashTab','cashMode','cashType','cashMovement','cashTransfer','stockTransfer','updated','install'];
 export function workspaceURL(section,href){
  const url=new URL(href);for(const key of routeKeys)url.searchParams.delete(key);
  if(section!=='home')url.searchParams.set('section',section);url.hash='';
