@@ -41,7 +41,7 @@ async function session(uid,width=1366){
   try{
    if(req.method()==='OPTIONS')return route.fulfill({status:204,headers});
    if(url.pathname==='/auth/v1/user')body={id:uid,email:'fixture@local.test',aud:'authenticated'};
-   else if(url.pathname.includes('/functions/v1/solar-admin-users')){assert.equal(req.postDataJSON().action,'list');body={users:await jsonSql('select jsonb_agg(to_jsonb(p)) from public.profiles p')};}
+   else if(url.pathname.includes('/functions/v1/solar-admin-users')){assert.ok(['list','directory'].includes(req.postDataJSON().action));body={ok:true,users:await jsonSql('select jsonb_agg(to_jsonb(p)) from public.profiles p'),warehouses:[]};}
    else if(url.pathname.includes('/functions/v1/solar-login'))body={access_token:token};
    else if(url.pathname.includes('/rpc/')){
     const name=url.pathname.split('/').at(-1),data=req.postDataJSON()||{};
@@ -207,7 +207,11 @@ try{
  await creator.getByRole('button',{name:'إغلاق نموذج الحركة',exact:true}).click();await creator.getByRole('button',{name:'إيداع نقدي',exact:true}).click();await creator.getByLabel('مبلغ حركة الصندوق').fill('10000');await creator.getByLabel('بيان حركة الصندوق').fill('إيداع قاصة الموظف الجديدة');await creator.getByRole('button',{name:'حفظ الحركة',exact:true}).click();await creator.locator('.cashReceipt').waitFor();await creator.getByTestId('cash-iqd').filter({hasText:'10,000'}).waitFor();assert.equal(Number(await sql(`select solar_private.cash_balance('${creatorId}')`)),10000);
  await creator.getByRole('button',{name:'إغلاق وصل الصندوق',exact:true}).click();await creator.getByRole('button',{name:'تسجيل مصروف',exact:true}).click();await creator.getByLabel('مبلغ حركة الصندوق').fill('1000');await creator.getByLabel('بيان حركة الصندوق').fill('نقل مواد الاختبار');await creator.locator('.cashEntryPreview').filter({hasText:'بعد: 9,000'}).waitFor();await creator.getByRole('button',{name:'حفظ الحركة',exact:true}).click();await creator.locator('.cashReceipt').waitFor();await creator.getByTestId('cash-iqd').filter({hasText:'9,000'}).waitFor();assert.equal(Number(await sql(`select solar_private.cash_balance('${creatorId}')`)),9000);
  for(const width of [360,430,1366]){await creator.setViewportSize({width,height:900});await noOverflow(creator);await creator.screenshot({path:artifacts+'/cash-refreshed-'+width+'.png',fullPage:true});}
- await navigate(page,'users');await page.locator('.userPermissionCard').filter({hasText:'موظف إضافة الزبائن'}).getByRole('button',{name:'تعديل',exact:true}).click();await page.getByLabel('إضافة زبون جملة أو مفرد · لزبائنه فقط',{exact:true}).waitFor();
+ await navigate(page,'users');await page.locator('[data-user-id="'+creatorId+'"]').getByRole('button',{name:'تعديل',exact:true}).click();
+ await page.getByRole('button',{name:'حفظ البيانات والمتابعة',exact:true}).click();
+ const customerGrant=page.locator('.userAdminWizard[data-step="2"] [data-permission="customerCreate"]');
+ await customerGrant.locator('xpath=ancestor::details').locator('summary').click();
+ await page.getByLabel('إضافة زبون جملة أو مفرد · لزبائنه فقط',{exact:true}).waitFor();
  console.log('PASS create-only customers own scope, separate management, wholesale/retail pickers, cash validation/deposit/expense and responsive contrast');
  await page.setViewportSize({width:1366,height:900});
  await page.keyboard.press('Control+k');await page.getByLabel('بحث سريع في أقسام البرنامج').fill('سعر الصرف');await page.getByLabel('بحث سريع في أقسام البرنامج').press('Enter');await page.locator('.exchangeRatePage').waitFor();assert.deepEqual(errors,[]);console.log('PASS premium design and navigation; keyboard decimals, source purchase currency, cash retry/receipt/PDF/share, exchange, owner scope, supplier creation/statement, opening settlements, client search, debt filters and responsive navigation');

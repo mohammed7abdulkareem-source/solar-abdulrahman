@@ -1,49 +1,127 @@
+// Uses the loopback Auth/Edge gateway, the historical honorary-title warranty fixture,
+// and a real office administrator's local Auth session.
 process.env.PW_TEST_SCREENSHOT_NO_FONTS_READY='1';
 import assert from 'node:assert/strict';
-import {createHmac,createHash,randomUUID} from 'node:crypto';
+import {randomUUID} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {mkdir,writeFile,readFile} from 'node:fs/promises';
 const {chromium}=await import(process.env.SOLAR_PLAYWRIGHT_MODULE||'playwright-core');
-const base='http://127.0.0.1:3073',api='http://127.0.0.1:3079',db='solar_v379_final',dir='/workspace/solar-review/v379/browser';await mkdir(dir,{recursive:true});
-const sql=q=>execFileSync('python',['/workspace/solar-review/v359/db.py',db],{input:q,encoding:'utf8'}).trim();
-const ids={admin:'00000000-0000-0000-0000-000000003790',owner:'00000000-0000-0000-0000-000000003791',other:'00000000-0000-0000-0000-000000003792',history:'00000000-0000-0000-0000-000000003754'};
-const errors=[],calls=[],contexts=[],encode=x=>Buffer.from(JSON.stringify(x)).toString('base64url');
+const base=process.env.SOLAR_APP_URL||'http://127.0.0.1:3101';
+const gateway=process.env.SOLAR_WIZARD_GATEWAY||'http://127.0.0.1:3200';
+const db=process.env.SOLAR_FIXTURE_DB||'solar_v4114_wizard_browser';
+const dir=process.env.SOLAR_ARTIFACT_DIR||'/workspace/solar-review/v4114/honorific-browser';
+for(const url of [base,gateway])assert.equal(new URL(url).hostname,'127.0.0.1');
+assert.match(db,/^solar_[a-z0-9_]+_browser$/);
+await mkdir(dir,{recursive:true});
+const sql=query=>execFileSync('python',['/workspace/solar-review/v359/db.py',db],{input:query,encoding:'utf8'}).trim();
+const admin=JSON.parse(await readFile(process.env.SOLAR_ADMIN_SESSION_FILE||'/workspace/solar-review/v4114/wizard-edge/admin-session.json','utf8'));
+const ownerId='00000000-0000-0000-0000-000000003791';
+const originalTitle=sql("select honorific from public.profiles where id='"+ownerId+"'");
+const editedTitle=originalTitle==='الحاج'?'الإداري':'الحاج';
+const invoice=JSON.parse(sql("select jsonb_build_object('id',id,'number',receipt_no,'token',warranty_token) from public.transactions where party_id=-379001 and warranty_token is not null"));
+const hash=()=>sql("select md5(jsonb_build_array((select jsonb_agg(to_jsonb(t) order by id) from public.transactions t),(select jsonb_agg(to_jsonb(t) order by id) from public.transaction_items t),(select jsonb_agg(to_jsonb(e) order by id) from public.solar_cash_entries e))::text)");
+const username='title_'+randomUUID().replaceAll('-','').slice(0,12),password=randomUUID();
 const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
-async function open(who,section){
- const uid=ids[who],raw=encode({alg:'HS256',typ:'JWT'})+'.'+encode({role:'authenticated',sub:uid,exp:Math.floor(Date.now()/1000)+3600}),token=raw+'.'+createHmac('sha256','solar-local-test-only-signing-secret-347').update(raw).digest('base64url');
- const ctx=await browser.newContext({viewport:{width:390,height:920},hasTouch:true});contexts.push(ctx);ctx.setDefaultTimeout(20000);
- await ctx.addInitScript(({uid,token})=>{localStorage.setItem('sb-afxxaafsuscwyjzrnagc-auth-token',JSON.stringify({access_token:token,refresh_token:'local-fixture',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,token_type:'bearer',user:{id:uid,email:'fixture@local.test',aud:'authenticated'}}));window.__documentHtmls=[];window.__sharedPdfs=[];Object.defineProperty(navigator,'canShare',{configurable:true,value:()=>true});Object.defineProperty(navigator,'share',{configurable:true,value:async data=>{const f=data.files[0],active=navigator.userActivation.isActive,hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',await f.arrayBuffer()))).map(x=>x.toString(16).padStart(2,'0')).join('');window.__sharedPdfs.push({name:f.name,type:f.type,size:f.size,hash,active});}});const descriptor=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,'srcdoc');Object.defineProperty(HTMLIFrameElement.prototype,'srcdoc',{...descriptor,set(html){window.__documentHtmls.push(html);return descriptor.set.call(this,html);}});},{uid,token});
- await ctx.routeWebSocket(/supabase/,socket=>socket.close());
- await ctx.route('https://afxxaafsuscwyjzrnagc.supabase.co/**',async route=>{const req=route.request(),u=new URL(req.url());if(req.method()==='OPTIONS')return route.fulfill({status:204,headers:{'access-control-allow-origin':'*'}});if(u.pathname==='/auth/v1/user')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:uid,email:'fixture@local.test',aud:'authenticated'})});if(u.pathname==='/functions/v1/solar-admin-users'){const r=await ctx.request.fetch('http://127.0.0.1:3080',{method:req.method(),headers:{authorization:'Bearer '+token,'content-type':'application/json'},data:req.postDataBuffer()});return route.fulfill({response:r});}if(!u.pathname.startsWith('/rest/v1/'))return route.abort();
-  const headers={...req.headers(),authorization:'Bearer '+token};delete headers.apikey;delete headers.host;delete headers.origin;
-  const r=await ctx.request.fetch(api+u.pathname.replace('/rest/v1','')+u.search,{method:req.method(),headers,data:req.postDataBuffer()||undefined}),body=await r.text();if(u.pathname.includes('/rpc/'))calls.push({who,path:u.pathname,payload:req.postData()?JSON.parse(req.postData()):null,status:r.status(),...(u.pathname.endsWith('solar_sales_period')?{result:JSON.parse(body)}:{})});if(r.status()>=400)errors.push({who,path:u.pathname,status:r.status(),body});return route.fulfill({response:r,body});});
- await ctx.route('**/*',route=>{const u=new URL(route.request().url());if(u.hostname==='127.0.0.1'||u.protocol==='data:')return route.continue();if(u.hostname==='afxxaafsuscwyjzrnagc.supabase.co')return route.fallback();return route.abort();});
- const page=await ctx.newPage();page.on('pageerror',e=>errors.push(e.message));await page.goto(base+'/?section='+section);return {page,ctx,token};
+const contexts=[],errors=[],actions=[];
+async function open(path,session){
+ const ctx=await browser.newContext({viewport:{width:390,height:920},hasTouch:true});
+ contexts.push(ctx);ctx.setDefaultTimeout(20000);
+ await ctx.addInitScript(session=>{
+  if(session)localStorage.setItem('sb-afxxaafsuscwyjzrnagc-auth-token',JSON.stringify(session));
+  window.__documentHtmls=[];
+  const descriptor=Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype,'srcdoc');
+  Object.defineProperty(HTMLIFrameElement.prototype,'srcdoc',{...descriptor,set(html){window.__documentHtmls.push(html);return descriptor.set.call(this,html);}});
+ },session||null);
+ await ctx.routeWebSocket(/supabase/,s=>s.close());
+ await ctx.route('**/*',async route=>{
+  const req=route.request(),url=new URL(req.url());
+  if(url.hostname==='127.0.0.1'||['data:','blob:'].includes(url.protocol))return route.continue();
+  if(url.hostname!=='afxxaafsuscwyjzrnagc.supabase.co')return route.abort();
+  if(req.method()==='OPTIONS')return route.fulfill({status:204,headers:{'access-control-allow-origin':'*'}});
+  const headers={...req.headers()};delete headers.host;delete headers.origin;delete headers.apikey;
+  if(!session)delete headers.authorization;
+  const response=await ctx.request.fetch(gateway+url.pathname+url.search,{headers,method:req.method(),data:req.postDataBuffer()||undefined});
+  if(url.pathname==='/functions/v1/solar-admin-users')actions.push({action:req.postDataJSON()?.action,status:response.status()});
+  if(response.status()>=400)errors.push({path:url.pathname,status:response.status()});
+  return route.fulfill({response});
+ });
+ const page=await ctx.newPage();
+ page.on('pageerror',error=>errors.push(error.message));page.on('dialog',dialog=>dialog.accept());
+ await page.goto(base+path);return page;
 }
-
-import {createServer} from 'node:http';
-import vm from 'node:vm';
-import {createRequire} from 'node:module';
-import {normalizeHonorific,validHonorific} from '../app/user-name-utils.mjs';
-import {normalizeUserPhone,validUserPhone} from '../app/user-phone-utils.mjs';
-const require=createRequire(import.meta.url),{transform}=require('next/dist/build/swc');
-const source=(await readFile(new URL('../supabase/functions/solar-admin-users/index.ts',import.meta.url),'utf8')).replace(/^import[^;]+;/gm,'').replace(/import\{createClient\}from"[^"]+";/,'');
-const {code}=await transform(source,{jsc:{parser:{syntax:'typescript'},target:'es2022'}});
-const literal=v=>"'"+String(v).replaceAll("'","''")+"'",edgeCalls=[],query=q=>JSON.parse(sql(q)||'null');
-const profileRows=(where='true')=>query("select coalesce(jsonb_agg(to_jsonb(p)order by created_at),'[]')from profiles p where "+where);
-const service={from:table=>{assert.equal(table,'profiles');return {select:()=>({eq:(_k,id)=>({single:async()=>({data:profileRows('id='+literal(id)+'::uuid')[0]})}),order:async()=>({data:profileRows()})}),update:patch=>({eq:async(_k,id)=>{const types={display_name:'text',honorific:'text',username:'text',phone:'text',user_type:'text',is_admin:'boolean',permissions:'jsonb',active:'boolean',updated_at:'timestamptz'};const setters=Object.entries(patch).filter(([,v])=>v!==undefined).map(([k,v])=>{assert.ok(types[k],k);return '"'+k+'"='+literal(typeof v==='object'?JSON.stringify(v):v)+'::'+types[k]});sql('update profiles set '+setters.join(',')+' where id='+literal(id)+'::uuid');edgeCalls.push({update:id,patch});return {};}})};},auth:{admin:{createUser:async v=>{const id=randomUUID();sql('insert into profiles(id,display_name)values('+literal(id)+'::uuid,'+literal(v.user_metadata.display_name)+')');edgeCalls.push({create:id});return {data:{user:{id}}};},updateUserById:async()=>({})}}};
-let handler;
-vm.runInNewContext(code,{normalizeHonorific,validHonorific,normalizeUserPhone,validUserPhone,createClient:(_url,key,opts)=>key==='local-service'?service:{auth:{getUser:async()=>{const [a,b,c]=opts.global.headers.Authorization.replace(/^Bearer /,'').split('.');assert.equal(createHmac('sha256','solar-local-test-only-signing-secret-347').update(a+'.'+b).digest('base64url'),c);return {data:{user:{id:JSON.parse(Buffer.from(b,'base64url')).sub}}};}}},Deno:{env:{get:n=>n==='SUPABASE_SERVICE_ROLE_KEY'?'local-service':'local-public'},serve:fn=>handler=fn},Response,Date,Object,Error,String});
-const edgeServer=createServer(async(req,res)=>{try{let body='';for await(const c of req)body+=c;const r=await handler(new Request('http://127.0.0.1:3080',{method:'POST',headers:{authorization:req.headers.authorization,'content-type':'application/json'},body}));res.writeHead(r.status,{'content-type':'application/json'});res.end(await r.text());}catch(e){res.writeHead(500);res.end(JSON.stringify({error:e.message}));}});await new Promise(r=>edgeServer.listen(3080,'127.0.0.1',r));
-const ledgerHash=()=>sql("select md5(jsonb_build_object('tx',(select jsonb_agg(to_jsonb(t)order by id)from transactions t),'items',(select jsonb_agg(to_jsonb(i)order by id)from transaction_items i),'cash',(select jsonb_agg(to_jsonb(e)order by id)from solar_cash_entries e))::text)");
+async function finishWizard(page){
+ for(const label of ['حفظ البيانات والمتابعة','مراجعة المخازن','مراجعة الحساب','حفظ إعدادات المستخدم'])
+  await page.getByRole('button',{name:label,exact:true}).click();
+ await page.getByRole('searchbox',{name:'بحث المستخدمين'}).waitFor();
+}
+async function userRow(page,handle){
+ await page.getByRole('searchbox',{name:'بحث المستخدمين'}).fill(handle);
+ const row=page.locator('[data-user-id]').filter({hasText:'@'+handle});await row.waitFor();return row;
+}
+async function receiptHtml(page,download=false){
+ await page.goto(base+'/?section=salesHistory');
+ const card=page.getByRole('article',{name:'بيع منظومة رقم '+invoice.number,exact:true});
+ // Filtering by receipt number also works when newer records fill the first page.
+ const input=page.locator('.salesArchive form input').first();
+ await input.fill(String(invoice.number));await input.press('Enter');
+ const [pdf]=await Promise.all([page.waitForEvent('popup'),card.getByRole('button',{name:'معاينة وصل الزبون',exact:true}).click()]);
+ await pdf.locator('.pdfPage img').first().waitFor({timeout:45000});
+ if(download){
+  await pdf.screenshot({path:dir+'/warranty-pdf-preview.png'});
+  const [file]=await Promise.all([pdf.waitForEvent('download'),pdf.locator('#pdfDownload').click()]);
+  await file.saveAs(dir+'/warranty-with-brand.pdf');
+  assert.equal((await readFile(dir+'/warranty-with-brand.pdf')).subarray(0,5).toString(),'%PDF-');
+ }
+ const html=await page.evaluate(()=>window.__documentHtmls.at(-1));await pdf.close();return html;
+}
 try{
- const before=ledgerHash(),admin=await open('admin','users'),p=admin.page;p.on('dialog',d=>d.accept());const form=p.locator('.adminUsers>form');
- await form.getByPlaceholder('اسم المستخدم',{exact:true}).fill('title_new');await form.getByPlaceholder('الاسم الظاهر',{exact:true}).fill('وليد');await form.getByLabel('كنية المستخدم').fill('المهندس');await form.getByLabel('رقم هاتف المستخدم',{exact:true}).fill('07701234567');await form.getByPlaceholder('الباسورد',{exact:true}).fill('fixture-only');await form.getByRole('button',{name:'حفظ المستخدم',exact:true}).click();const card=p.locator('.userPermissionCard').filter({hasText:'@title_new'});await card.getByText('المهندس وليد',{exact:true}).waitFor();const created=profileRows("username='title_new'")[0];assert.equal(created.honorific,'المهندس');assert.equal(created.display_name,'وليد');assert.equal(created.is_admin,false);ids.created=created.id;
- await card.getByRole('button',{name:'تعديل',exact:true}).click();assert.equal(await form.getByLabel('كنية المستخدم').inputValue(),'المهندس');await form.getByLabel('كنية المستخدم').fill('الإداري');await form.getByRole('button',{name:'حفظ التعديلات',exact:true}).click();await card.getByText('الإداري وليد',{exact:true}).waitFor();await card.screenshot({path:dir+'/user-title-saved.png'});
- const self=await open('created','home');await self.page.locator('.premiumMobileBrand small').getByText('الإداري وليد',{exact:true}).waitFor();const denied=await self.ctx.request.post('http://127.0.0.1:3080',{headers:{authorization:'Bearer '+self.token},data:{action:'update',user_id:ids.owner,honorific:'المهندس',role:'admin'}});assert.equal(denied.status(),400);
- await p.goto(base+'/?section=salesHistory');const invoiceCard=p.locator('.saleHistoryCard');await invoiceCard.waitFor();const pop=p.waitForEvent('popup');await invoiceCard.getByRole('button',{name:'معاينة وصل الزبون',exact:true}).click();const pdf=await pop;await pdf.locator('.pdfPage img').first().waitFor();await pdf.screenshot({path:dir+'/warranty-pdf-preview.png'});const save=pdf.waitForEvent('download');await pdf.locator('#pdfDownload').click();await(await save).saveAs(dir+'/warranty-with-brand.pdf');await pdf.close();
- const html=await p.evaluate(()=>window.__documentHtmls.at(-1)),w=html.match(/<section class="invoiceWarranty">([\s\S]*?)<\/section>/)?.[1];assert.ok(w);for(const s of ['FULLMAX','DEYE','بطارية','انفيرتر'])assert.ok(w.includes(s),s);assert.ok(!w.includes('ضمان الصيانة'));assert.ok(!w.includes('بدون ضمان'));assert.ok(html.includes('الإداري سفيان'));assert.ok(html.includes('المهندس صفاء'));
- const inv=query("select jsonb_build_object('id',id,'token',warranty_token)from transactions where party_id=-379001");const pub=await browser.newContext({viewport:{width:390,height:920}});contexts.push(pub);await pub.routeWebSocket(/supabase/,s=>s.close());await pub.route('https://afxxaafsuscwyjzrnagc.supabase.co/**',async route=>{if(!route.request().url().endsWith('/rpc/solar_warranty_verify'))return route.abort();const r=await pub.request.post(api+'/rpc/solar_warranty_verify',{data:route.request().postDataBuffer(),headers:{'content-type':'application/json'}});assert.equal(r.status(),200);await route.fulfill({response:r});});const cert=await pub.newPage();await cert.goto(base+'/warranty/'+inv.token);await cert.getByRole('heading',{name:'شهادة ضمان الفاتورة',exact:true}).waitFor();assert.equal(await cert.locator('.certificateMaintenance').count(),0);assert.match(await cert.innerText('body'),/FULLMAX/);assert.ok(!(await cert.innerText('body')).includes('بدون ضمان'));await cert.screenshot({path:dir+'/certificate-no-maintenance.png',fullPage:true});
- await p.goto(base+'/?section=users');const ownerCard=p.locator('.userPermissionCard').filter({hasText:'@title_staff'});await ownerCard.getByRole('button',{name:'تعديل',exact:true}).click();await form.getByLabel('كنية المستخدم').fill('الحاج');await form.getByRole('button',{name:'حفظ التعديلات',exact:true}).click();await ownerCard.getByText('الحاج سفيان',{exact:true}).waitFor();await p.goto(base+'/?section=salesHistory');await invoiceCard.waitFor();const nextPop=p.waitForEvent('popup');await invoiceCard.getByRole('button',{name:'معاينة وصل الزبون',exact:true}).click();const pdf2=await nextPop;await pdf2.locator('.pdfPage img').first().waitFor();assert.ok((await p.evaluate(()=>window.__documentHtmls.at(-1))).includes('الحاج سفيان'));await pdf2.close();assert.equal(ledgerHash(),before);assert.deepEqual(errors,[]);
- await writeFile(dir+'/results.json',JSON.stringify({pass:true,errors,calls,edgeCalls,createAndUpdateTitlesPersisted:true,currentTitleOnOldInvoice:true,nonAdminDenied:true,warrantyBrandCategory:true,maintenanceOmitted:true,financialRecordsUnchanged:true},null,2));console.log('PASS real UI→Edge handler→Postgres: title create/edit/header/old invoice; non-admin denied; warranty PDF/anonymous QR brands and no empty maintenance; financial rows unchanged');
-}catch(e){for(const[i,c]of contexts.entries()){const p=c.pages()[0];if(p&&!p.isClosed())await p.screenshot({path:dir+'/failure-'+i+'.png',fullPage:true});}await writeFile(dir+'/failure.json',JSON.stringify({message:e.message,errors,calls,edgeCalls},null,2));throw e;}finally{await Promise.allSettled(contexts.map(async c=>{await c.unrouteAll({behavior:'ignoreErrors'});await c.close();}));await browser.close();edgeServer.close();}
+ const before=hash(),page=await open('/?section=users',admin);
+ await page.getByRole('button',{name:'إضافة مستخدم',exact:true}).click();
+ await page.getByLabel('اسم المستخدم',{exact:true}).fill(username);
+ await page.getByLabel('الاسم الظاهر',{exact:true}).fill('وليد');
+ await page.getByLabel('كنية المستخدم',{exact:true}).fill('المهندس');
+ await page.getByLabel('رقم هاتف المستخدم',{exact:true}).fill('07701234567');
+ await page.getByLabel('كلمة المرور',{exact:true}).fill(password);
+ await finishWizard(page);
+ const row=await userRow(page,username);
+ await row.getByRole('heading',{name:'المهندس وليد',exact:true}).waitFor();
+ const created=JSON.parse(sql("select jsonb_build_object('id',id,'honorific',honorific,'name',display_name,'admin',is_admin) from profiles where username='"+username+"'"));
+ assert.deepEqual([created.honorific,created.name,created.admin],['المهندس','وليد',false]);
+ await row.getByRole('button',{name:'تعديل',exact:true}).click();
+ assert.equal(await page.getByLabel('كنية المستخدم',{exact:true}).inputValue(),'المهندس');
+ await page.getByLabel('كنية المستخدم',{exact:true}).fill('الإداري');
+ await finishWizard(page);
+ const saved=await userRow(page,username);
+ await saved.getByRole('heading',{name:'الإداري وليد',exact:true}).waitFor();
+ await saved.screenshot({path:dir+'/user-title-saved.png'});
+ const email=sql("select email from auth.users where id='"+created.id+"'");
+ const signed=await fetch(gateway+'/auth/v1/token?grant_type=password',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email,password})});
+ assert.equal(signed.status,200);const session=await signed.json();
+ const self=await open('/?section=home',session);
+ await self.locator('.premiumMobileBrand').getByText('الإداري وليد',{exact:true}).waitFor();
+ const denied=await fetch(gateway+'/functions/v1/solar-admin-users',{method:'POST',headers:{authorization:'Bearer '+session.access_token,'content-type':'application/json'},body:JSON.stringify({action:'directory'})});
+ assert.ok([400,403].includes(denied.status));
+ const html=await receiptHtml(page,true),warranty=html.match(/<section class="invoiceWarranty">([\s\S]*?)<\/section>/)?.[1];
+ assert.ok(warranty);
+ for(const label of ['FULLMAX','DEYE','بطارية','انفيرتر'])assert.ok(warranty.includes(label),label);
+ assert.ok(!warranty.includes('ضمان الصيانة')&&!warranty.includes('بدون ضمان'));
+ assert.ok(html.includes(originalTitle+' سفيان'));assert.ok(html.includes('المهندس صفاء'));
+ const cert=await open('/warranty/'+invoice.token);
+ await cert.getByRole('heading',{name:'شهادة ضمان الفاتورة',exact:true}).waitFor();
+ assert.equal(await cert.locator('.certificateMaintenance').count(),0);
+ assert.match(await cert.innerText('body'),/FULLMAX/);assert.ok(!(await cert.innerText('body')).includes('بدون ضمان'));
+ await cert.screenshot({path:dir+'/certificate-no-maintenance.png',fullPage:true});
+ await page.goto(base+'/?section=users');
+ const owner=await userRow(page,'title_staff');
+ await owner.getByRole('button',{name:'تعديل',exact:true}).click();
+ await page.getByLabel('كنية المستخدم',{exact:true}).fill(editedTitle);
+ await finishWizard(page);
+ await (await userRow(page,'title_staff')).getByRole('heading',{name:editedTitle+' سفيان',exact:true}).waitFor();
+ assert.ok((await receiptHtml(page)).includes(editedTitle+' سفيان'));
+ assert.equal(hash(),before);assert.deepEqual(errors,[]);
+ await writeFile(dir+'/results.json',JSON.stringify({pass:true,actions,errors,createAndUpdateTitlesPersisted:true,currentTitleOnOldInvoice:true,nonAdminDenied:true,warrantyBrandCategory:true,maintenanceOmitted:true,financialRecordsUnchanged:true},null,2));
+ console.log('PASS wizard title create/edit, real staff login and role check, historical invoice and public warranty QR, unchanged financial records.');
+}catch(error){
+ for(const [i,ctx] of contexts.entries())await ctx.pages()[0]?.screenshot({path:dir+'/failure-'+i+'.png'}).catch(()=>{});
+ await writeFile(dir+'/failure.json',JSON.stringify({error:error.message,actions,errors},null,2));throw error;
+}finally{await browser.close();}

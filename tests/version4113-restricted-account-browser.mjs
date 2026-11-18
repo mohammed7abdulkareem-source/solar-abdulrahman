@@ -6,7 +6,7 @@ process.env.SOLAR_FIXTURE_API ||= 'http://127.0.0.1:3185';
 process.env.SOLAR_APP_URL ||= 'http://127.0.0.1:3100';
 process.env.SOLAR_ARTIFACT_DIR ||= '/workspace/solar-review/v4113/restricted-account-browser';
 const {db,base,ids,sql,createHarness,rpc,fingerprint}=await import('./version4-browser-support.mjs');
-assert.equal(db,'solar_v4113_restricted_browser');
+assert.match(db,/^solar_v411[34]_restricted_browser$/);
 
 const owner=randomUUID(), limited=randomUUID(), certificate=randomUUID(), invoice=Date.now();
 const party='زبون شهادة الاختبار',marker='تنبيه خاص بالمالية',announcement='رسالة عامة للاختبار';

@@ -1,0 +1,63 @@
+.userAdminWorkspace{
+ --ua-ink:#163c4b;--ua-muted:#516875;--ua-line:#d7e2e7;--ua-green:#09685e;--ua-pale:#e7f5f1;
+ color:var(--ua-ink);width:min(100%,68rem);min-width:0;margin-inline:auto;padding:0 0 1rem;
+}
+.userAdminWorkspace *,.uaConfirm *{box-sizing:border-box}
+.userAdminWorkspace h1,.userAdminWorkspace h2,.userAdminWorkspace h3,.uaConfirm h2{color:var(--ua-ink);margin:0;line-height:1.45}
+.userAdminWorkspace button,.uaConfirm button{font:inherit;min-height:42px;width:auto;display:inline-flex;align-items:center;justify-content:center;gap:.45rem;border:1px solid var(--ua-line,#d7e2e7);border-radius:.75rem;background:#fff;color:var(--ua-ink,#163c4b);padding:.5rem .85rem;box-shadow:none;cursor:pointer}
+.userAdminWorkspace button:disabled,.uaConfirm button:disabled{opacity:.58;cursor:default}
+.userAdminWorkspace :is(input,select,button,summary):focus-visible,.uaConfirm button:focus-visible{outline:3px solid #32a89a;outline-offset:2px}
+.userAdminWorkspace .uaPrimary{background:var(--ua-green);color:white;border-color:var(--ua-green);font-weight:700}
+.uaTitle{display:flex;gap:1rem;align-items:center;justify-content:space-between;padding:clamp(1rem,2.4vw,1.8rem);border-radius:1.2rem;background:#103d50;color:#fff;margin-bottom:.9rem}
+.userAdminWorkspace .uaTitle h1{font-size:clamp(1.2rem,2.4vw,1.75rem);color:#fff}
+.uaTitle p,.uaTitle>div>span{color:#c8e0e7;margin:.22rem 0 0;font-size:.88rem}
+.userAdminWorkspace .uaTitle .uaPrimary{border-color:#b3e0d5;background:#d6f2e9;color:#113e38}
+.uaPanel,.uaSteps{background:#fff;border:1px solid var(--ua-line);border-radius:1rem;padding:clamp(.9rem,2vw,1.5rem)}
+.uaPanel h2{font-size:1.2rem}.uaDirectory>header{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+.uaFilters{display:flex;align-items:flex-end;gap:.7rem;margin-block:1rem .4rem}
+.uaSearch{display:flex;flex:1;min-width:0;align-items:center;gap:.45rem;padding-inline:.8rem;border:1px solid var(--ua-line);border-radius:.75rem;background:#f7fafb}
+.userAdminWorkspace .uaSearch input{width:100%;min-width:0;border:0;padding:.7rem 0;background:transparent;box-shadow:none}
+.uaFilter{display:flex;gap:.45rem;align-items:center;font-size:.85rem}
+.userAdminWorkspace select,.uaDetailsGrid input{max-width:100%;min-height:44px;width:100%;border:1px solid var(--ua-line);box-shadow:none;border-radius:.65rem;background:#f7fafb;padding:.55rem .7rem;color:var(--ua-ink);font:inherit}
+.uaCount,.uaHint,.uaUserIdentity small,.uaReview dt,.uaDetailsGrid small{color:var(--ua-muted);font-size:.84rem}
+.uaCount{margin:.8rem 0 .3rem}.uaUserList{margin:0;padding:0;list-style:none}
+.uaUserList>li{display:flex;gap:.65rem;flex-wrap:wrap;align-items:center;padding:.85rem 0;border-bottom:1px solid var(--ua-line)}
+.uaUserList>li:last-child{border:0}.uaUserIdentity{display:flex;align-items:center;gap:.6rem;flex:1 1 12rem;min-width:0}
+.uaUserIdentity h3{font-size:1rem;overflow-wrap:anywhere}.uaUserIdentity small{display:block;margin-top:.12rem;overflow-wrap:anywhere}
+.uaAvatar,.uaRoleIcon{display:grid;place-content:center;background:#dcecf6;color:#1e5777;border-radius:.8rem;width:42px;height:42px;flex:none}
+.uaAvatar.ua-admin{background:#e8e3fa;color:#594486}.uaAvatar.ua-warehouse{background:#f7ebce;color:#79571a}.uaAvatar.ua-installer{background:#d9f0e8;color:#19614c}
+.uaStatus{border-radius:2rem;padding:.15rem .65rem;font-size:.8rem;white-space:nowrap}.uaActive{background:#def4e9;color:#195e47}.uaInactive{background:#f0ece5;color:#6e5535}
+.uaRowActions,.uaActions{display:flex;align-items:center;gap:.5rem}.uaRowActions{margin-inline-start:auto}
+.userAdminWorkspace .uaQuietDanger{background:#fff;border-color:#eccbc9;color:#963535}
+.uaSteps{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;list-style:none;margin:.65rem 0;padding:.7rem}
+.uaSteps li{display:flex;align-items:center;justify-content:center;gap:.4rem;min-width:0;text-align:center;color:#506573;font-size:.88rem;border-radius:.6rem;padding:.45rem .2rem}
+.uaSteps li span{width:1.45rem;height:1.45rem;border-radius:50%;display:grid;place-items:center;flex:none;background:#edf1f3}
+.uaSteps li[aria-current=step]{color:#07594f;background:var(--ua-pale);font-weight:700}.uaSteps li[aria-current=step] span{color:#fff;background:var(--ua-green)}.uaSteps li[data-done=true] span{color:var(--ua-green);background:var(--ua-pale)}
+.uaDetailsGrid,.uaWarehouseList{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}
+.uaDetailsGrid{border:0;margin:.9rem 0;padding:0}.uaDetailsGrid>label{display:block;font-weight:650;text-align:start;font-size:.9rem}.uaDetailsGrid :is(input,select){display:block;margin-top:.35rem}.uaDetailsGrid small{font-weight:400}
+.uaPanel h2:focus{outline:none;scroll-margin-top:6rem}.uaActions{border-top:1px solid var(--ua-line);margin-top:1rem;padding-top:.85rem;justify-content:flex-end}
+.uaPermissionBar,.uaPermissionGroup summary,.uaInfo{display:flex;align-items:center;gap:.6rem}.uaPermissionBar{justify-content:space-between;margin:.7rem 0}
+.uaPermissionGroups{display:grid;gap:.55rem}.uaPermissionGroup{border:1px solid var(--ua-line);border-radius:.75rem;overflow:hidden}
+.uaPermissionGroup summary,.uaReviewPermissions summary{cursor:pointer;list-style:none;padding:.72rem .85rem;font-size:.94rem;min-height:44px;background:#f5f8fa}
+.uaPermissionGroup summary::-webkit-details-marker,.uaReviewPermissions summary::-webkit-details-marker{display:none}
+.uaPermissionGroup summary small{margin-inline-start:auto;color:var(--ua-muted);font-variant-numeric:tabular-nums}
+.uaPermissionGroup[open] summary{background:#eaf5f1}.uaPermissionGroup[open] summary svg:last-child{transform:rotate(90deg)}
+.uaPermissionGroup>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.3rem;padding:.55rem}
+.uaCheck,.uaWarehouseScope label,.uaAccountStatus label{display:flex;align-items:center;gap:.55rem;min-height:42px;padding:.35rem .5rem;line-height:1.6;cursor:pointer}
+.userAdminWorkspace input:is([type=checkbox],[type=radio]){width:19px;height:19px;min-height:19px;margin:0;flex:none;accent-color:var(--ua-green)}
+.uaRolePermissions,.uaWarehouses,.uaReview{margin-top:.8rem}.uaRolePermissions ul,.uaReviewPermissions ul{padding-inline-start:1.45rem;line-height:1.9}
+.uaWarehouses fieldset,.uaAccountStatus{border:1px solid var(--ua-line);border-radius:.75rem;padding:.55rem .8rem;margin:0 0 .8rem;min-width:0}
+.uaWarehouses legend,.uaAccountStatus legend{font-weight:700;padding:0 .3rem}.uaAccountStatus label{display:inline-flex;margin-inline-end:.85rem}
+.uaReview{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55rem}.uaReview div,.uaInfo{padding:.7rem .8rem;background:#f1f6f8;border-radius:.65rem}
+.uaReview dd{margin:.25rem 0 0;font-weight:650;overflow-wrap:anywhere}.uaReviewPermissions{margin-block:.6rem .8rem}
+.uaNotice,.uaError,.uaEmpty{padding:.65rem .8rem;border-radius:.65rem;margin:.6rem 0}.uaNotice{display:flex;gap:.5rem;align-items:center;background:var(--ua-pale);color:#185c4b}.uaError{background:#fff0ed;color:#8b3028}.uaEmpty{background:#f3f7f9}
+.uaConfirm{direction:rtl;color:#163c4b;font:inherit;border:1px solid #cadadf;border-radius:1rem;padding:1.25rem;width:min(27rem,calc(100% - 2rem));max-height:80dvh;box-shadow:0 1rem 3rem #0f283c33}
+.uaConfirm::backdrop{background:#16333e80}.uaConfirm h2{font-size:1.1rem;color:#163c4b}.uaConfirm p{line-height:1.8}.uaConfirm .uaDanger{color:#fff;background:#963834;border-color:#963834}
+@media(max-width:600px){
+ .uaSteps{gap:.15rem;padding:.45rem .25rem}.uaSteps li{flex-direction:column;font-size:.72rem;line-height:1.4}.uaTitle{gap:.5rem}.uaTitle>button{font-size:.83rem;flex:none;padding-inline:.55rem}
+ .uaFilters{align-items:stretch;flex-wrap:wrap}.uaSearch{flex-basis:100%}.uaFilter{width:100%;justify-content:space-between}.uaFilter select{width:auto;max-width:70%}
+ .uaUserIdentity{flex-basis:calc(100% - 6rem)}.uaUserList>li .phoneContacts{flex:1}.uaRowActions button{font-size:.8rem}
+ .uaDetailsGrid,.uaPermissionGroup>div,.uaWarehouseList{grid-template-columns:minmax(0,1fr)}.uaReview{grid-template-columns:1fr}
+ .uaCheck{padding:.4rem .2rem}.uaActions>button{flex:1}.uaPermissionBar{font-size:.83rem}
+}
+.uaRoleSelect{max-width:26rem;margin:.8rem 0}.uaRoleSelect label{display:grid;gap:.35rem;font-weight:650}

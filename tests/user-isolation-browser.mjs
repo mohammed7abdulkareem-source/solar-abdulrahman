@@ -20,7 +20,7 @@ async function open(name,width){
   if(req.method()==='OPTIONS')return route.fulfill({status:204,headers:{'access-control-allow-origin':'*'}});
   if(url.pathname==='/auth/v1/user')return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({id:uid,email:'fixture@local.test',aud:'authenticated'})});
   if(url.pathname==='/functions/v1/solar-admin-users'){
-   assert.equal(uid,ids.admin);assert.equal(req.postDataJSON().action,'list');const response=await ctx.request.get(api+'/profiles',{headers:{authorization}});return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({users:await response.json()})});
+   assert.equal(uid,ids.admin);assert.ok(['list','directory'].includes(req.postDataJSON().action));const response=await ctx.request.get(api+'/profiles',{headers:{authorization}});return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({ok:true,users:await response.json(),warehouses:[]})});
   }
   if(url.pathname.startsWith('/rest/v1/')){
    if(delayProfile===uid&&url.pathname.endsWith('/profiles'))await new Promise(resolve=>setTimeout(resolve,900));
@@ -46,8 +46,15 @@ try{
  }
  const b=await open('b',1366);await archive(b.page,3,'PRIVATE_A');await b.page.screenshot({path:dir+'/staff-b-archive-desktop.png',fullPage:true});
  const admin=await open('admin',1366);await archive(admin.page,5);assert.ok((await admin.page.locator('body').innerText()).includes('PRIVATE_A'));assert.ok((await admin.page.locator('body').innerText()).includes('PRIVATE_B'));
- await section(admin.page,'users');await admin.page.locator('.userPermissionCard').first().waitFor();await admin.page.locator('.userPermissionCard').filter({hasText:'Seller A'}).getByRole('button',{name:'تعديل',exact:true}).click();
- assert.equal(await admin.page.locator('.scopeBox input:checked:disabled').count(),4);for(const select of await admin.page.locator('.closingScope select').all())assert.equal(await select.locator('option[value="all"]').count(),0);
+ await section(admin.page,'users');const sellerRow=admin.page.locator('[data-user-id="'+ids.a+'"]');
+ await sellerRow.getByRole('button',{name:'تعديل',exact:true}).click();
+ await admin.page.getByRole('button',{name:'حفظ البيانات والمتابعة',exact:true}).click();
+ const permissions=admin.page.locator('.userAdminWizard[data-step="2"]');
+ await permissions.getByText('صلاحيات المبيعات والعملاء والتسديدات والأرباح تخص سجلات المستخدم.',{exact:true}).waitFor();
+ const ownClose=permissions.locator('[data-permission="installations"]');
+ await ownClose.locator('xpath=ancestor::details').locator('summary').click();
+ await permissions.getByRole('checkbox',{name:'غلق منظوماته فقط',exact:true}).waitFor();
+ assert.equal(await permissions.locator('[data-permission="installationsAll"], [data-permission="salesDeleteAll"]').count(),0);
  await archive(admin.page,5);delayProfile=ids.a;
  await admin.page.evaluate(({key,auth})=>{localStorage.setItem(key,JSON.stringify(auth));const channel=new BroadcastChannel(key);channel.postMessage({event:'SIGNED_IN',session:auth});setTimeout(()=>channel.close(),200);},{key,auth:session(ids.a)});
  await admin.page.locator('.loginPage').waitFor();assert.ok(!(await admin.page.locator('body').innerText()).includes('PRIVATE_B'));assert.equal(await admin.page.locator('.archiveInvoice').count(),0);
