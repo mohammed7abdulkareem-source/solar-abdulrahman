@@ -1,0 +1,51 @@
+body.premiumSolar .customerAccountHero {
+ display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+ overflow: hidden; margin-block: 14px 10px; border: 1px solid #cadfdd;
+ border-radius: 16px; background: #f7fbfa; color: #133e48;
+}
+.customerAccountIdentity,.customerBalanceAmount { min-width: 0; padding: 16px 18px; }
+.customerAccountIdentity { display: grid; align-content: center; gap: 8px; }
+.customerIdentityName { display: flex; align-items: center; gap: 10px; }
+.customerIdentityName>div { min-width: 0; }
+.customerIdentityName h2 { margin: 0; font-size: 1.15rem; color: #18434a; line-height: 1.55; overflow-wrap: anywhere; }
+.customerIdentityName small { color: #536e73; }
+.customerIdentityAvatar {
+ display: grid; place-items: center; flex: 0 0 40px; height: 40px;
+ border-radius: 12px; color: #0b655b; background: #dfefea; font-weight: 700;
+}
+.customerBalanceAmount { display: grid; gap: 4px; align-content: center; background: #123e49; color: white; }
+.customerBalanceLabel { display: flex; align-items: center; gap: 7px; color: #c7e9e7; font-weight: 600; }
+.customerBalanceAmount>strong { color: white; line-height: 1.25; font-size: clamp(1.65rem, 3.5vw, 2.35rem); overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+.customerBalanceAmount>strong small { color: #e1f2f1; font-size: .87rem; font-weight: 500; }
+.customerBalanceDirection { width: fit-content; color: #d9ede7; font-size: .86rem; }
+.customerAccountHero[data-balance-state="debt"] .customerBalanceDirection { color: #ffdaaa; }
+.customerAccountHero[data-balance-state="credit"] .customerBalanceDirection { color: #a3f1d6; }
+.customerAccountSections { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; margin-block: 0 8px; }
+body.premiumSolar .appContent .customerAccountSections button {
+ display: flex; align-items: center; justify-content: center; min-width: 0; gap: 7px;
+ min-height: 44px; padding: 6px; border: 1px solid #cbdedc; border-radius: 10px;
+ color: #215d60; background: #fff; font: inherit; font-weight: 600; box-shadow: none;
+}
+body.premiumSolar .appContent .customerAccountSections button[aria-pressed="true"] { background: #dff2eb; border-color: #65a79b; color: #115d4c; }
+body.premiumSolar .appContent .customerAccountSections button:focus-visible { outline: 2px solid #196b72; outline-offset: 2px; }
+@media(max-width: 540px) {
+ body.premiumSolar .customerAccountHero { grid-template-columns: minmax(0,1fr); }
+ .customerAccountIdentity,.customerBalanceAmount { padding: 12px 14px; }
+ .customerBalanceAmount { grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px; }
+ .customerBalanceAmount>strong { grid-column: 1/-1; grid-row: 2; }
+ .customerBalanceAmount>[role="alert"],.customerBalanceAmount>[role="status"] { grid-column: 1/-1; }
+ .customerBalanceDirection { text-align: end; }
+}
+body.premiumSolar .appContent .customerOverviewPeriod {
+ display: flex; align-items: center; gap: 7px; width: 100%; min-height: 44px; margin-block: 3px 8px;
+ padding: 8px 11px; border: 1px solid #d9e5e6; border-radius: 10px; box-shadow: none;
+ background: #f7fafb; color: #254f5b; font: inherit; text-align: start;
+}
+.customerOverviewPeriod small { margin-inline-start: auto; color: #4c6973; }
+.customerOverviewPeriod[aria-expanded="true"] svg:last-child { transform: rotate(90deg); }
+.customerAccountFilters,.customerAccountFilterBody { min-width: 0; }
+.customerAccountFilterBody { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; padding-block-end: 12px; }
+.customerOverviewPeriod small { overflow-wrap: anywhere; }
+
+body.premiumSolar .appContent .miniAccountStats.customerOverviewTotals { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.customerOriginalBalance { display:flex; gap:.65rem; align-items:baseline; color:#425e65; }

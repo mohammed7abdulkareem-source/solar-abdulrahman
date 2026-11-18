@@ -11,11 +11,11 @@ import dynamic from 'next/dynamic';
 import {canOpenPage} from './access-utils.mjs';
 const DebtorAccount=dynamic(()=>import('./debtor-account'));
 
-export default function PartyBalances({mode='customers',a4,profile,onPayment,onSale}){
+export default function PartyBalances({mode='customers',a4,profile,onPayment,onSale,initialAccountId}){
  const customer=mode==='customers',title=customer?'مدينون العملاء':'أرصدة الموردين';
  const [asOf,setAsOf]=useState(baghdadToday),[query,setQuery]=useState(''),[category,setCategory]=useState('all'),[ownerId,setOwnerId]=useState('all'),[dueOnly,setDueOnly]=useState(true),[showPhone,setShowPhone]=useState(true),[showType,setShowType]=useState(true),[groupByOwner,setGroupByOwner]=useState(true);
  const [data,setData]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[refresh,setRefresh]=useState(0);
- const [selected,setSelected]=useState(null);
+ const [selected,setSelected]=useState(()=>customer&&initialAccountId?{id:initialAccountId,scroll:0}:null);
  const canOpenAccount=canOpenPage(profile,'customers')||canOpenPage(profile,'customerCreate')||canOpenPage(profile,'customerStatement');
  function openAccount(row){setSelected({id:row.id,scroll:window.scrollY});window.scrollTo({top:0,behavior:'instant'});}
  function closeAccount(){const top=selected?.scroll||0;setSelected(null);requestAnimationFrame(()=>window.scrollTo({top,behavior:'instant'}));}

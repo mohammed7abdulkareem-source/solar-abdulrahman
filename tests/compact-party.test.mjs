@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {customerAccount,supplierAccount,compactPeriod,compactStatementBody} from '../app/compact-party-utils.mjs';
+import {customerAccount,supplierAccount,compactPeriod,compactStatementBody,partyBalanceMeaning} from '../app/compact-party-utils.mjs';
 test('customer summary separates opening, paid sales, debts and actual receipts',()=>{
  const a=customerAccount({id:1,name:'عميل',customerType:'wholesale',rows:[
   {id:1,date:'2026-10-01T09:00Z',mode:'opening_balance',kind:'customer_payment',total:-1000},
@@ -31,4 +31,30 @@ test('supplier keeps revisions/currencies separate and cancellations preserve ru
 test('period uses Baghdad dates and keeps balances when text search hides rows',()=>{
  const rows=[{id:1,date:'2026-10-01T22:00:00Z',effect:100,amount:100,category:'invoices',label:'فاتورة',receiptNo:1},{id:2,date:'2026-10-02T00:00:00Z',effect:-10.25,amount:10.25,category:'payments',label:'تسديد',receiptNo:2}];
  const p=compactPeriod(rows,'2026-10-02','2026-10-02','all','2');assert.equal(p.rows.length,1);assert.equal(p.rows[0].balance,89.75);assert.equal(p.balance,89.75);
+});
+
+test('the full customer balance keeps its sign when a date or a search hides part of the account', () => {
+ const dates = ['2026-11-01', '2026-11-02', '2026-11-03', '2026-11-04'].map(day => day + 'T09:00:00Z');
+ const rows = [
+  {id:'restricted:opening', date:dates[0], mode:'opening_balance', effect:200, receiptRestricted:true},
+  {id:1, date:dates[1], kind:'sale', total:300, cash:false, receiptNo:821},
+  {id:'restricted:foreign', date:dates[2], effect:100, receiptRestricted:true}
+ ];
+ for (const [payment, balance, meaning] of [
+  [100, 500, 'مستحق لنا على العميل'],
+  [650, -50, 'رصيد للعميل عندنا'],
+  [600, 0, 'الحساب متعادل']
+ ]) {
+  const account = customerAccount({id:7, balance, rows:[
+   ...rows, {id:2, date:dates[3], kind:'customer_payment', total:payment, receiptNo:822}
+  ]});
+  const filtered = compactPeriod(account.rows, '2026-11-02', '2026-11-03', 'invoices', '821');
+  assert.equal(filtered.opening, 200);
+  assert.equal(filtered.balance, 600, 'Period closing includes the private movement, even when hidden by the filter');
+  assert.deepEqual(filtered.rows.map(row => row.receiptNo), [821]);
+  assert.equal(compactPeriod(account.rows).balance, balance);
+  assert.equal(account.currency, 'IQD');
+  assert.equal(account.balance, balance, 'Use the current balance returned by the authorized customer API');
+  assert.equal(partyBalanceMeaning(account.type, account.balance), meaning);
+ }
 });

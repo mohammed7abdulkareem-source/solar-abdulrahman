@@ -11,51 +11,122 @@ import {formatMoney as money,currencyUnit as unit} from './money-format.mjs';
 import {baghdadToday,balanceDate} from './party-balances-utils.mjs';
 import {compactPeriod,compactStatementBody,compactMovementBody,partyInitials,partyReportScope,partyBalanceMeaning,partyBalanceLegend} from './compact-party-utils.mjs';
 import {supplierDocument,escapeHtml} from './supplier-utils.mjs';
+import './customer-account-detail.css';
+import PartyStatementTable from './party-statement-table';
 
-export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,onPayment,onSale,onSettings,onMovementEdit,canEditMovement,renderMatch,initialView='overview',extraControls,backLabel}){
+function CustomerAccountHeader({account, status, showStatementBalance}) {
+ const raw = account.balance;
+ const hasAmount = (typeof raw === 'number' || typeof raw === 'string' && raw.trim() !== '') && Number.isFinite(Number(raw));
+ const available = status === 'ready' && hasAmount;
+ const amount = available ? Number(raw) : null;
+ const direction = !available ? 'unavailable' : amount > 0 ? 'debt' : amount < 0 ? 'credit' : 'settled';
+ const customerType = account.customerType === 'wholesale' ? 'عميل جملة' : 'عميل منظومات';
+ return <section className="customerAccountHero" aria-label="رصيد العميل الحالي" data-balance-state={direction}>
+  <div className="customerAccountIdentity">
+   <div className="customerIdentityName">
+    <span className="customerIdentityAvatar" aria-hidden="true">{partyInitials(account.name)}</span>
+    <div><h2>{account.name}</h2><small>{customerType}{account.ownerName && ' · ' + account.ownerName}</small></div>
+   </div>
+   {account.phone && <PhoneActions phone={account.phone} label={account.name}/>}
+  </div>
+  <div className="customerBalanceAmount" aria-live="polite" aria-busy={status === 'loading'}>
+   <div className="customerBalanceLabel"><AppIcon name="wallet" size={18}/><span>الرصيد الحالي</span></div>
+   {available
+    ? <><strong data-testid="customer-current-balance" data-balance={amount}><bdi data-testid={showStatementBalance ? 'statement-balance' : undefined}>{money(Math.abs(amount), account.currency)}</bdi> <small>{unit(account.currency)}</small></strong>
+     <span className="customerBalanceDirection">{partyBalanceMeaning('customer', amount)}</span></>
+    : <span role={status === 'loading' ? 'status' : 'alert'}>{status === 'loading' ? 'جاري تحديث الرصيد…' : 'تعذّر عرض الرصيد الحالي'}</span>}
+  </div>
+ </section>;
+}
+
+
+export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,onPayment,onSale,onSettings,onMovementEdit,canEditMovement,renderMatch,initialView='overview',extraControls,backLabel,balanceStatus='ready'}){
  const [view,setView]=useState(initialView),[category,setCategory]=useState('all'),[from,setFrom]=useState(''),[to,setTo]=useState(''),[query,setQuery]=useState(''),[selected,setSelected]=useState(null),[days,setDays]=useState('all');
  const [detailOrigin,setDetailOrigin]=useState('movements');
  const [purchaseVersion,setPurchaseVersion]=useState('original');
+ const [filtersOpen,setFiltersOpen]=useState(false);
  const supplier=account.type==='supplier',currency=account.currency,period=useMemo(()=>compactPeriod(account.rows,from,to,category,query),[account.rows,from,to,category,query]);
  const invalid=!!(from&&to&&from>to),invoiceView=view==='movements'&&category==='invoices',reportFilters={category,query},reportScope=partyReportScope(account,period,from,to,reportFilters);
  const invoiceData=useCustomerInvoiceLines(account,period.rows,!supplier&&invoiceView&&!invalid);
- const title=view==='detail'?'تفاصيل الحركة':view==='match'?'مطابقة الحساب':view==='report'?'كشف حساب مفصل':view==='movements'?(category==='invoices'?(supplier?'مشتريات المورد':'مبيعات العميل'):category==='payments'?'التسديدات':'جميع الحركات'):(supplier?'كشف حساب مورد':'كشف حساب عميل');
- useEffect(()=>{setSelected(null);setView(initialView);},[account.id,account.revision,initialView]);
+ const title=view==='detail'?'تفاصيل الحركة':view==='match'?'مطابقة الحساب':view==='report'?'كشف حساب مفصل':view==='movements'?(category==='invoices'?(supplier?'مشتريات المورد':'مبيعات العميل'):category==='payments'?'التسديدات':!supplier&&category==='other'?'حركات أخرى':'جميع الحركات'):(supplier?'كشف حساب مورد':'كشف حساب عميل');
+ const supplierRevision=supplier?account.revision:undefined;
+ useEffect(()=>{setSelected(null);setView(initialView);},[account.id,supplierRevision,initialView]);
  function changeView(next,tab=category){setView(next);setCategory(tab);window.scrollTo({top:0,behavior:'instant'});}
  function chooseDays(value){setDays(value);if(value==='all'){setFrom('');setTo('');return;}const today=baghdadToday(),date=new Date(today+'T12:00:00Z');date.setUTCDate(date.getUTCDate()-Number(value)+1);setFrom(date.toISOString().slice(0,10));setTo(today);}
  function back(){if(view==='detail'){setSelected(null);changeView(detailOrigin);}else if(view!=='overview')changeView('overview','all');else onBack?.();}
  function openMovement(r){if(r.receiptRestricted)return;setPurchaseVersion('original');setDetailOrigin(view);setSelected(r);setView('detail');window.scrollTo({top:0,behavior:'instant'});}
- const row=selected&&period.all.find(r=>String(r.id)===String(selected.id)),candidate=row||selected,detail=candidate?.receiptRestricted?null:candidate;
+ const row=selected&&period.all.find(r=>String(r.id)===String(selected.id)),candidate=supplier?(row||selected):row,detail=candidate?.receiptRestricted?null:candidate;
+ useEffect(()=>{
+  if (!supplier && view==='detail' && selected && !detail) {
+   setSelected(null);setView(detailOrigin);
+  }
+ },[supplier,view,selected,detail,detailOrigin]);
  const selectedPurchase=detail?.currentOriginal&&purchaseVersion==='current'?detail.currentOriginal:detail?.original;
  const movementDocument=detail&&supplier&&selectedPurchase?{...supplierDocument(selectedPurchase),...(detail.currentOriginal?{subtitle:purchaseVersion==='current'?'النسخة الحالية للوصل بعد التصحيح':'نسخة الحركة الأصلية قبل التصحيح'}:{})}:detail?{title:'تفاصيل حركة حساب',body:compactMovementBody(account,detail),total:money(detail.amount,currency)+' '+unit(currency),subtitle:account.name}:null;
  const statementHtml=a4('كشف حساب '+(supplier?'مورد':'عميل'),compactStatementBody(account,period,from,to,reportFilters),'',escapeHtml(account.name));
  const exportTitle=invoiceView?(supplier?'مشتريات المورد':'مبيعات العميل'):category==='payments'?'كشف التسديدات':'كشف حساب '+(supplier?'مورد':'عميل');
  const movementHtml=invoiceView?a4(exportTitle,groupedInvoicesBody(account,period,from,to,invoiceData.documents,reportFilters),'',escapeHtml(account.name)):a4(exportTitle,compactStatementBody(account,period,from,to,reportFilters),'',escapeHtml(account.name));
- const actions=[['document','كشف حساب',()=>changeView('report','all')],['receipt',supplier?'مشتريات':'مبيعات',()=>changeView('movements','invoices')],['banknote','تسديدات',()=>changeView('movements','payments')],['grid','كل الحركات',()=>changeView('movements','all')],...(renderMatch?[['calculator','مطابقة حساب',()=>changeView('match')]]:onSettings?[['exchange','عملة الحساب',onSettings]]:[]),...(onEdit?[['edit','تعديل البيانات',onEdit]]:[])];
+ const reportActions = [
+  ['document', 'كشف حساب', 'report', 'all'],
+  ['receipt', supplier ? 'مشتريات' : 'مبيعات', 'movements', 'invoices'],
+  ['banknote', 'تسديدات', 'movements', 'payments']
+ ];
+ const showPeriodBalances = supplier || Boolean(from || to);
+ const actions=[...(supplier?reportActions.map(([icon,label,next,tab])=>[icon,label,()=>changeView(next,tab)]):[]),['grid','كل الحركات',()=>changeView('movements','all')],...(renderMatch?[['calculator','مطابقة حساب',()=>changeView('match')]]:onSettings?[['exchange','عملة الحساب',onSettings]]:[]),...(onEdit?[['edit','تعديل البيانات',onEdit]]:[])];
  function excel(){
   const text=v=>typeof v==='number'?String(v):'"'+String(v??'').replaceAll('"','""').replace(/^[=+@\-]/,"'$&")+'"';
   const content='\uFEFF'+[['كشف حساب '+(supplier?'مورد':'عميل'),account.name],['الفترة',reportScope.periodLabel],['عملة الحساب',reportScope.currencyLabel],['نطاق التقرير',reportScope.filterLabel],['الحركات',reportScope.countLabel],['رصيد أول المدة',period.opening],['رصيد نهاية الفترة',period.balance],['معنى الرصيد',partyBalanceLegend(account.type)],['نطاق الأرصدة',reportScope.balanceNote],[],['التاريخ','البيان','رقم الوصل','زيادة الحساب '+unit(currency),'تسديد / تخفيض '+unit(currency),'الرصيد بعد الحركة '+unit(currency)],...period.rows.map(r=>[balanceDate(r.date),r.label,r.receiptNo||'',Math.max(0,r.effect),Math.max(0,-r.effect),r.balance])].map(line=>line.map(text).join(',')).join('\r\n');
   const url=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download='كشف-'+account.name+'.csv';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
  }
+ const periodControls = <div className="miniPeriod"><div className="miniDates"><label>من<input aria-label="من تاريخ" type="date" value={from} max={to||undefined} onChange={e=>{setFrom(e.target.value);setDays('');}}/></label><label>إلى<input aria-label="إلى تاريخ" type="date" value={to} min={from||undefined} onChange={e=>{setTo(e.target.value);setDays('');}}/></label></div><div className="miniSegments" aria-label="فترة الحساب">{[['7','7 أيام'],['30','30 يوم'],['90','3 أشهر'],['all','كل الفترة']].map(([key,label])=><button type="button" key={key} aria-pressed={days===key} onClick={()=>chooseDays(key)}>{label}</button>)}</div>{extraControls}</div>;
+ const categories = !supplier && view==='movements'
+  ? [['all','كل الحركات'],['other','أخرى']]
+  : [['all','الكل'],['invoices',supplier?'المشتريات':'المبيعات'],['payments','التسديدات'],['other','أخرى']];
+ const categoryTabs = <div className="miniSegments miniMovementTabs">{categories.map(([key,label])=>
+  <button type="button" key={key} aria-pressed={category===key} onClick={()=>setCategory(key)}>{label}</button>
+ )}</div>;
+ const searchControl = <div className="miniSearch"><AppIcon name="search" size={17}/><input aria-label="بحث حركات الحساب" value={query} onChange={e=>{setQuery(e.target.value);}} placeholder="بحث بالوصل أو البيان…"/></div>;
+ const statementExports = <div className="partyReportActions"><ReportActions showPrint enabled={!invalid} html={statementHtml} filename={'كشف-'+account.name}/><div className="miniExport"><button type="button" className="miniSecondary" disabled={invalid} onClick={excel}><AppIcon name="download" size={17}/>Excel</button></div></div>;
  return <section className="miniPartyAccount miniParty" data-party-type={account.type}>
   <header className="miniPageHead"><button type="button" className="miniIcon" aria-label={view==='overview'?(backLabel||'رجوع للقائمة'):'رجوع للحساب'} onClick={back}><AppIcon name="arrow" size={19}/></button><h1>{title}</h1><button type="button" className="miniIcon" aria-label="تحديث الحساب" onClick={onRefresh}><AppIcon name="refresh" size={18}/></button></header>
-  {view!=='detail'&&<div className="miniIdentity"><span className="miniAvatar">{partyInitials(account.name)}</span><div><h2>{account.name}</h2><small>{supplier?'عملة الحساب: '+currency:(account.customerType==='wholesale'?'جملة':'مفرد · منظومات')}{account.ownerName?' · '+account.ownerName:''}</small></div><span className="miniCurrency">{currency}</span></div>}
-  {account.phone&&<div className="miniIdentityPhone"><PhoneActions phone={account.phone} label={account.name}/></div>}
-  {view!=='detail'&&view!=='match'&&<div className="miniPeriod"><div className="miniDates"><label>من<input aria-label="من تاريخ" type="date" value={from} max={to||undefined} onChange={e=>{setFrom(e.target.value);setDays('');}}/></label><label>إلى<input aria-label="إلى تاريخ" type="date" value={to} min={from||undefined} onChange={e=>{setTo(e.target.value);setDays('');}}/></label></div><div className="miniSegments" aria-label="فترة الحساب">{[['7','7 أيام'],['30','30 يوم'],['90','3 أشهر'],['all','كل الفترة']].map(([key,label])=><button type="button" key={key} aria-pressed={days===key} onClick={()=>chooseDays(key)}>{label}</button>)}</div>{extraControls}</div>}
+  {supplier&&view!=='detail'&&<div className="miniIdentity"><span className="miniAvatar">{partyInitials(account.name)}</span><div><h2>{account.name}</h2><small>{supplier?'عملة الحساب: '+currency:(account.customerType==='wholesale'?'جملة':'مفرد · منظومات')}{account.ownerName?' · '+account.ownerName:''}</small></div><span className="miniCurrency">{currency}</span></div>}
+  {supplier&&account.phone&&<div className="miniIdentityPhone"><PhoneActions phone={account.phone} label={account.name}/></div>}
+  {!supplier&&view!=='detail'&&<>
+   <CustomerAccountHeader account={account} status={balanceStatus} showStatementBalance={!showPeriodBalances && view==='overview'}/>
+   <nav className="customerAccountSections" aria-label="أقسام حساب العميل">
+    {reportActions.map(([icon,label,next,tab])=><button key={tab} type="button"
+     aria-pressed={view===next&&(next==='report'||category===tab)} onClick={()=>changeView(next,tab)}>
+     <AppIcon name={icon} size={19}/><span>{label}</span>
+    </button>)}
+   </nav>
+  </>}
+  {view!=='detail'&&view!=='match'&&(supplier?periodControls:<div className="customerAccountFilters">
+   <button className="customerOverviewPeriod" type="button" aria-label="تصفية حركات الحساب" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(open=>!open)}>
+    <AppIcon name="filter" size={17}/><span>تصفية الحركات</span>
+    <small>{[from||to?reportScope.periodLabel:'كل الفترة',query.trim()&&'بحث: '+query.trim(),view==='report'&&category!=='all'&&reportScope.filterLabel.split(' · ')[0]].filter(Boolean).join(' · ')}</small><AppIcon name="chevron" size={15}/>
+   </button>
+   {filtersOpen&&<div className="customerAccountFilterBody">
+    {periodControls}
+    {(view==='movements'||view==='report')&&categoryTabs}
+    {searchControl}
+   </div>}
+  </div>)}
+
   {invalid&&<p className="miniAlert" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية.</p>}
   {view==='overview'&&<>
-   <div className="miniAccountStats"><div className="blue"><AppIcon name={supplier?'truck':'receipt'} size={19}/><span>{account.rows.some(r=>r.receiptRestricted)?(supplier?'المشتريات المتاحة لك':'المبيعات المتاحة لك'):(supplier?'إجمالي المشتريات':'إجمالي المبيعات')}</span><b>{money(period.invoices,currency)} <small>{unit(currency)}</small></b></div><div className="green"><AppIcon name="banknote" size={19}/><span>{account.rows.some(r=>r.receiptRestricted)?'التسديدات المتاحة لك':'إجمالي التسديدات'}</span><b>{money(period.payments,currency)} <small>{unit(currency)}</small></b></div><div><AppIcon name="wallet" size={19}/><span>{from?'رصيد أول المدة':'الرصيد الافتتاحي'}</span><b>{money(from?period.opening:period.originalOpening,currency)} <small>{unit(currency)}</small></b></div><div className="rose"><AppIcon name="calculator" size={19}/><span>{to?'رصيد نهاية الفترة':'الرصيد الحالي'}</span><b data-testid={supplier?'supplier-statement-balance':'statement-balance'}>{money(period.balance,currency)} <small>{unit(currency)}</small></b></div></div>
-   {!invalid&&<p className="miniAccountMeaning"><b>{partyBalanceMeaning(account.type,period.balance)}</b> · {reportScope.periodLabel} · {reportScope.currencyLabel}<br/>{partyBalanceLegend(account.type)}</p>}
+   <div className={showPeriodBalances ? 'miniAccountStats' : 'miniAccountStats customerOverviewTotals'}><div className="blue"><AppIcon name={supplier?'truck':'receipt'} size={19}/><span>{account.rows.some(r=>r.receiptRestricted)?(supplier?'المشتريات المتاحة لك':'المبيعات المتاحة لك'):(supplier?'إجمالي المشتريات':'إجمالي المبيعات')}</span><b>{money(period.invoices,currency)} <small>{unit(currency)}</small></b></div><div className="green"><AppIcon name="banknote" size={19}/><span>{account.rows.some(r=>r.receiptRestricted)?'التسديدات المتاحة لك':'إجمالي التسديدات'}</span><b>{money(period.payments,currency)} <small>{unit(currency)}</small></b></div>{showPeriodBalances&&<><div><AppIcon name="wallet" size={19}/><span>{from?'رصيد أول المدة':'الرصيد الافتتاحي'}</span><b>{money(from?period.opening:period.originalOpening,currency)} <small>{unit(currency)}</small></b></div><div className="rose"><AppIcon name="calculator" size={19}/><span>{!supplier||to?'رصيد نهاية الفترة':'الرصيد الحالي'}</span><b data-testid={supplier?'supplier-statement-balance':'statement-balance'}>{money(period.balance,currency)} <small>{unit(currency)}</small></b></div></>}</div>
+   {!showPeriodBalances && period.originalOpening !== 0 && <p className="customerOriginalBalance">الرصيد الافتتاحي <bdi>{money(period.originalOpening,currency)} {unit(currency)}</bdi></p>}
+   {!invalid&&(supplier||from||to)&&<p className="miniAccountMeaning"><b>{partyBalanceMeaning(account.type,period.balance)}</b> · {reportScope.periodLabel} · {reportScope.currencyLabel}<br/>{partyBalanceLegend(account.type)}</p>}
    <div className="miniAccountActions">{actions.map(([icon,label,action])=><button type="button" key={label} onClick={action}><AppIcon name={icon} size={19}/><span>{label}</span></button>)}</div>
    <div className="miniListTitle"><h2>آخر الحركات</h2><button type="button" onClick={()=>changeView('movements','all')}>عرض الكل</button></div>
   </>}
   {account.rows.some(r=>r.receiptRestricted)&&<p className="miniAccountMeaning">الرصيد يشمل جميع حركات الحساب. تفاصيل الوصولات تظهر ضمن صلاحياتك فقط.</p>}{view==='match'&&renderMatch?.()}
-  {(view==='movements'||view==='report')&&<><div className="miniSegments miniMovementTabs">{[['all','الكل'],['invoices',supplier?'المشتريات':'المبيعات'],['payments','التسديدات'],['other','أخرى']].map(([key,label])=><button type="button" key={key} aria-pressed={category===key} onClick={()=>{setCategory(key);}}>{label}</button>)}</div><div className="miniSearch"><AppIcon name="search" size={17}/><input aria-label="بحث حركات الحساب" value={query} onChange={e=>{setQuery(e.target.value);}} placeholder="بحث بالوصل أو البيان…"/></div></>}
+  {supplier&&(view==='movements'||view==='report')&&<>{categoryTabs}{searchControl}</>}
   {(view==='movements'||view==='report')&&!invalid&&<section className="miniReportScope" aria-label="نطاق كشف الحساب"><div className="miniReportScopeHead"><b>{reportScope.filterLabel}</b><span>{reportScope.countLabel}</span></div><p>{reportScope.periodLabel} · {reportScope.currencyLabel}</p><div className="miniReportBalances"><div><span>رصيد أول المدة · كامل الفترة</span><strong><bdi>{money(period.opening,currency)} {unit(currency)}</bdi></strong><small>{partyBalanceMeaning(account.type,period.opening)}</small></div><div><span>رصيد نهاية الفترة · كل الحركات</span><strong><bdi>{money(period.balance,currency)} {unit(currency)}</bdi></strong><small>{partyBalanceMeaning(account.type,period.balance)}</small></div></div><p>{reportScope.balanceNote} {partyBalanceLegend(account.type)}</p>{reportScope.filtered&&<button type="button" onClick={()=>{setCategory('all');setQuery('');}}>عرض كل حركات الفترة</button>}</section>}
   {view==='movements'&&<div className="partyReportActions"><div className="partyReportActionsTitle"><b>{invoiceView?'تقرير الفواتير بالتفصيل':category==='payments'?'كشف التسديدات':'تقرير الحركات'}</b><span>{period.rows.length} حركة</span></div>{invoiceData.error&&<p className="miniAlert" role="alert">{invoiceData.error} <button type="button" onClick={invoiceData.retry}>إعادة المحاولة</button></p>}<ReportActions showPrint enabled={!invalid&&(!invoiceView||supplier||invoiceData.ready)} disabledNotice={invoiceData.loading?'جاري تحميل تفاصيل الفواتير…':'تعذر تجهيز تفاصيل الفواتير؛ حدّث الحساب أو أعد المحاولة.'} html={movementHtml} filename={exportTitle+'-'+account.name}/></div>}
   {['overview','movements'].includes(view)&&<div className="miniMovementList">{[...period.rows].reverse().slice(0,view==='overview'?5:undefined).map(r=><article className={invoiceView?'partyInvoiceCard':'partyMovementCard'} key={r.id}><button type="button" className="miniMovementRow" disabled={r.receiptRestricted} onClick={()=>openMovement(r)}><span className={'miniMovementIcon '+(r.category==='payments'?'green':r.voided?'muted':'blue')}><AppIcon name={r.category==='payments'?'banknote':r.category==='invoices'?'receipt':'document'} size={19}/></span><span className="miniMovementName"><b>{r.label}</b><small>{balanceDate(r.date)}{r.receiptNo?' · #'+r.receiptNo:''}</small></span><span className={'miniMovementAmount '+(r.effect<0?'credit':r.effect>0?'debit':'neutral')}><bdi>{r.effect>0?'+ ':r.effect<0?'− ':''}{money(r.effect===0?r.amount:Math.abs(r.effect),currency)} {unit(currency)}</bdi><small>الرصيد {money(r.balance,currency)}</small></span>{!r.receiptRestricted&&<AppIcon name="chevron" size={14}/>}</button>{invoiceView&&!r.receiptRestricted&&<PartyInvoiceLines account={account} row={r} documents={invoiceData.documents} loading={!supplier&&invoiceData.loading}/>}</article>)}{!period.rows.length&&<p className="miniEmpty">لا توجد حركات ضمن الفترة.</p>}</div>}
   {!supplier&&view==='movements'&&<details className="partyOriginalDocuments"><summary>تصدير الوصولات الأصلية الكاملة</summary><CustomerPeriodDocuments account={account} from={from} to={to} category={category} query={query} invalid={invalid} a4={a4}/></details>}
-  {view==='report'&&<><div className="miniTableWrap"><table className="miniStatementTable"><thead><tr><th>التاريخ</th><th>البيان</th><th>مبلغ الوصل</th><th>زيادة الحساب</th><th>تسديد / تخفيض</th><th>الرصيد بعد الحركة</th></tr></thead><tbody>{period.rows.map(r=><tr key={r.id}><td>{balanceDate(r.date)}</td><td><button type="button" className="miniStatementOpen" disabled={r.receiptRestricted} aria-label={'فتح '+r.label+(r.receiptNo?' #'+r.receiptNo:'')} onClick={()=>openMovement(r)}><span>{r.label}{r.receiptNo?' #'+r.receiptNo:''}</span>{!r.receiptRestricted&&<small>فتح الوصل <AppIcon name="chevron" size={13}/></small>}</button>{r.notes&&<small className="partyStatementNote">{r.notes}</small>}</td><td>{money(r.amount,currency)}</td><td>{money(Math.max(0,r.effect),currency)}</td><td>{money(Math.max(0,-r.effect),currency)}</td><td>{money(r.balance,currency)}</td></tr>)}</tbody><tfoot><tr><td colSpan="5">رصيد نهاية الفترة · {unit(currency)}</td><td>{money(period.balance,currency)}</td></tr></tfoot></table>{!period.rows.length&&<p className="miniEmpty">لا توجد حركات.</p>}</div><div className="partyReportActions"><ReportActions showPrint enabled={!invalid} html={statementHtml} filename={'كشف-'+account.name}/><div className="miniExport"><button type="button" className="miniSecondary" disabled={invalid} onClick={excel}><AppIcon name="download" size={17}/>Excel</button></div></div></>}
+  {view==='report'&&<>{!supplier && statementExports}<PartyStatementTable period={period} currency={currency} onOpen={openMovement} customer={!supplier}/>{supplier && statementExports}</>}
   {view==='detail'&&detail&&<><article className="miniDetail"><div className="miniDetailHero"><span className="miniMovementIcon"><AppIcon name={detail.category==='payments'?'banknote':'receipt'} size={24}/></span><div><h2>{detail.label}</h2><strong className={detail.effect<0?'credit':'debit'}>{money(detail.amount,currency)} {unit(currency)}</strong><small>{balanceDate(detail.date)}</small></div></div><dl><div><dt>{supplier?'المورد':'العميل'}</dt><dd>{account.name}</dd></div><div><dt>رقم الوصل</dt><dd>{detail.receiptNo?'#'+detail.receiptNo:'—'}</dd></div>{detail.original?.sourceCurrency&&<><div><dt>المبلغ الأصلي</dt><dd>{money(Math.abs(Number(detail.original.sourceSubtotal??detail.original.total)),detail.original.sourceCurrency)} {unit(detail.original.sourceCurrency)}</dd></div>{Number(detail.rate)>1&&<div><dt>الصرف المثبت</dt><dd>{money(detail.rate)} د.ع / $</dd></div>}</>}<div><dt>أثر الحركة على الحساب</dt><dd>{money(detail.effect,currency)} {unit(currency)}</dd></div><div><dt>الملاحظات</dt><dd>{detail.notes||'—'}</dd></div></dl></article>
    {onMovementEdit&&!detail.receiptRestricted&&canEditMovement?.(detail)&&<div className="miniEditActions"><button type="button" onClick={()=>onMovementEdit(detail,'update')}><AppIcon name="edit" size={17}/>{detail.currentOriginal?'تعديل الوصل الحالي':'تعديل الحركة'}</button>{detail.category!=='invoices'&&<button type="button" className="danger" onClick={()=>onMovementEdit(detail,'delete')}><AppIcon name="trash" size={17}/>حذف التسديد</button>}</div>}
    <div className="miniBalanceAfter"><span>الرصيد بعد الحركة · {partyBalanceMeaning(account.type,detail.balance)}</span><strong>{money(detail.balance,currency)} {unit(currency)}</strong></div><p className="miniAccountMeaning">{partyBalanceLegend(account.type)}</p>

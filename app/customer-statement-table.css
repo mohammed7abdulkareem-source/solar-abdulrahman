@@ -1,0 +1,37 @@
+.statementMobileLabel { display: none; }
+body.premiumSolar .appContent .customerStatementLedger .statementRunningBalance { color: #154f4d; font-weight: 700; }
+body.premiumSolar .appContent .customerStatementLedger .miniStatementOpen { min-height: 36px; }
+body.premiumSolar .appContent .customerStatementLedger tbody tr:focus-within { background: #f4faf9; }
+
+@media (max-width: 640px) {
+ body.premiumSolar .appContent .customerStatementLedger { border: 0; overflow: visible; }
+ body.premiumSolar .appContent .customerStatementLedger .miniStatementTable { display: block; min-width: 0; }
+ .customerStatementLedger thead {
+  position: absolute; width: 1px; height: 1px; padding: 0;
+  overflow: hidden; clip-path: inset(50%); white-space: nowrap;
+ }
+ .customerStatementLedger tbody, .customerStatementLedger tfoot { display: grid; gap: 8px; }
+ .customerStatementLedger tbody tr {
+  display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px 12px;
+  border: 1px solid #d4e3e5; border-radius: 12px; padding: 11px 12px;
+ }
+ body.premiumSolar .appContent .customerStatementLedger .miniStatementTable td {
+  display: block; min-width: 0; padding: 0; border: 0; white-space: normal;
+  font-size: .92rem; overflow-wrap: anywhere;
+ }
+ .customerStatementLedger .statementDescription { grid-area: 1 / 1; }
+ body.premiumSolar .appContent .customerStatementLedger .miniStatementOpen { min-height: 44px; font-size: .94rem; }
+ body.premiumSolar .appContent .customerStatementLedger .statementDate {
+  grid-area: 1 / 2; text-align: end; color: #536d77; font-size: .83rem;
+ }
+ .customerStatementLedger .statementMobileLabel { display: block; color: #4e6971; font-size: .78rem; }
+ body.premiumSolar .appContent .customerStatementLedger .miniStatementTable td[data-inactive] { display: none; }
+ body.premiumSolar .appContent .customerStatementLedger .miniStatementTable td.statementRunningBalance {
+  grid-column: 1 / -1; display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  padding-block-start: 7px; border-block-start: 1px solid #e0eaea;
+ }
+ .customerStatementLedger tfoot tr {
+  display: flex; justify-content: space-between; gap: 10px; margin-block-start: 10px;
+  border-radius: 10px; background: #edf8f2; padding: 10px 12px;
+ }
+}

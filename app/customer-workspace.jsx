@@ -20,11 +20,11 @@ const typeLabel=type=>type==='wholesale'?'بيع جملة':'منظومات';
 export default function CustomerWorkspace({profile,staff=[],rows:sourceRows=[],onChanged,a4,onPayment,onSale,transactions=[],initialAccountId=null,initialCreate=false}){
  const [records,setRecords]=useState([]),[form,setForm]=useState(()=>emptyForm(profile)),[editing,setEditing]=useState(null),[detail,setDetail]=useState(null),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[editingId,setEditingId]=useState(null),[query,setQuery]=useState(''),[type,setType]=useState('all'),[balance,setBalance]=useState('due'),[page,setPage]=useState(1),[error,setError]=useState(''),[notice,setNotice]=useState(''),[checked,setChecked]=useState([]),[checking,setChecking]=useState(false),[checkError,setCheckError]=useState(false),[uncertain,setUncertain]=useState(false);
  const attempt=useRef(null),generation=useRef(0),panel=useRef(null),detailGeneration=useRef(0);
- const [editorOpen,setEditorOpen]=useState(()=>initialCreate&&canOpenPage(profile,'customerCreate')),[filtersOpen,setFiltersOpen]=useState(false),[paymentEdit,setPaymentEdit]=useState(null);
+ const [editorOpen,setEditorOpen]=useState(()=>initialCreate&&!initialAccountId&&canOpenPage(profile,'customerCreate')),[filtersOpen,setFiltersOpen]=useState(false),[paymentEdit,setPaymentEdit]=useState(null);
  const isAdmin=!!profile.is_admin,canManage=isAdmin||profile.permissions?.customers===true;
  async function load(){const n=++generation.current;setLoading(true);try{const data=await customerDirectory();if(n===generation.current)setRecords(data);}catch(e){if(n===generation.current)setError(e.message||'تعذر تحميل الزبائن. أعد التحديث.');}finally{if(n===generation.current)setLoading(false);}}
  useEffect(()=>{load();return()=>{generation.current++;};},[sourceRows]);
- useEffect(()=>{if(initialAccountId)showAccount(initialAccountId);},[initialAccountId]);
+ useEffect(()=>{if(initialAccountId)showAccount(initialAccountId);return()=>{detailGeneration.current++;};},[initialAccountId]);
  const checkName=editing&&customerNameKey(form.name)===customerNameKey(editing.name)?'':form.name;
  const checkPhone=editing&&customerPhoneKey(form.phone)===customerPhoneKey(editing.phone)?'':form.phone;
  useEffect(()=>{let live=true;setChecked([]);setCheckError(false);if(!checkName.trim()&&!checkPhone.trim()){setChecking(false);return;}
@@ -59,15 +59,33 @@ export default function CustomerWorkspace({profile,staff=[],rows:sourceRows=[],o
   catch(e){setError(e.message||'تعذر تأكيد الحفظ. أعد المحاولة بنفس البيانات.');if(attempt.current){attempt.current.id=payload.id;setUncertain(true);}}
   finally{setBusy(false);}
  }
- async function showAccount(id){if(busy)return;setEditingId(id);setError('');try{setDetail(await customerRecord(id));}catch(e){setError(e.message||'تعذر فتح الحساب');}finally{setEditingId(null);}}
+ async function showAccount(id){
+  if(busy)return;
+  const request=++detailGeneration.current;
+  setEditingId(id);setEditorOpen(false);setError('');
+  setDetail(current=>String(current?.id)===String(id)?current:null);
+  try{
+   const record=await customerRecord(id);
+   if(String(record?.id)!==String(id))throw new Error('تعذر تأكيد حساب العميل المحدد. أعد المحاولة.');
+   if(request===detailGeneration.current)setDetail(record);
+  }catch(e){
+   if(request===detailGeneration.current){setDetail(null);setError(e.message||'تعذر فتح الحساب');}
+  }finally{if(request===detailGeneration.current)setEditingId(null);}
+ }
+ function closeAccount(){detailGeneration.current++;setDetail(null);setEditingId(null);}
+ async function refreshAccountAfterSave(){
+  const request=detailGeneration.current;
+  await changed();
+  if(detail&&request===detailGeneration.current)await showAccount(detail.id);
+ }
  async function remove(record){
   if(busy||uncertain||!canManage||!confirm('حذف الزبون '+record.name+'؟ لا يمكن حذف زبون لديه حركات حساب.'))return;
   setBusy(true);setError('');try{const latest=await customerRecord(record.id);await saveCustomer(attempt,'delete',{id:latest.id,token:latest.token});if(editing?.id===record.id)cancel();setDetail(null);setNotice('تم حذف الزبون الخالي من الحركات.');await changed();}catch(e){setError(e.message||'تعذر الحذف');if(attempt.current){setUncertain(true);setError('لم يتأكد رد الحذف. حدّث الصفحة وتحقق من وجود الزبون قبل أي عملية جديدة.');}}finally{setBusy(false);}
  }
 
  const alerts=<>{error&&<p className="miniAlert" role="alert">{error}</p>}{notice&&<p className="miniSuccess" role="status">{notice}</p>}</>;
- if(paymentEdit)return <div className="miniParty miniEmbedded"><CustomerPaymentHistory initialId={paymentEdit.id} initialAction={paymentEdit.action} backLabel="رجوع لحساب العميل" onBack={()=>{setPaymentEdit(null);if(detail)showAccount(detail.id);}} onChanged={async()=>{await changed();if(detail)setDetail(await customerRecord(detail.id));}}/></div>;
- if(detail&&!editorOpen)return <div>{alerts}<CompactPartyAccount key={detail.id+detail.token} account={customerAccount(detail)} a4={a4} onBack={()=>setDetail(null)} onRefresh={()=>showAccount(detail.id)} onEdit={canManage?()=>edit(detail.id):undefined} onPayment={canOpenPage(profile,detail.customerType==='wholesale'?'customerPayment':'systemPayment')?()=>onPayment?.(detail):undefined} onSale={canOpenPage(profile,detail.customerType==='wholesale'?'sale':'system')?()=>onSale?.(detail):undefined} canEditMovement={r=>r.kind==='customer_payment'&&!['opening_balance','account_reconciliation'].includes(r.mode)&&canOpenPage(profile,'customerPayment')&&(isAdmin||transactions.some(t=>String(t.id)===String(r.id)&&cashOwner(t)===profile.id))} onMovementEdit={(r,action)=>setPaymentEdit({id:r.id,action})} renderMatch={canOpenPage(profile,'customerReconcile')?()=> <CustomerAccountMatch customerId={detail.id} onSaved={async()=>{await changed();setDetail(await customerRecord(detail.id));}}/>:undefined}/></div>;
+ if(paymentEdit)return <div className="miniParty miniEmbedded"><CustomerPaymentHistory initialId={paymentEdit.id} initialAction={paymentEdit.action} backLabel="رجوع لحساب العميل" onBack={()=>{setPaymentEdit(null);if(detail)showAccount(detail.id);}} onChanged={refreshAccountAfterSave}/></div>;
+ if(detail&&!editorOpen)return <div>{alerts}<CompactPartyAccount key={detail.id} account={customerAccount(detail)} balanceStatus={editingId!=null?'loading':'ready'} a4={a4} backLabel="رجوع إلى العملاء" onBack={closeAccount} onRefresh={()=>showAccount(detail.id)} onEdit={canManage?()=>edit(detail.id):undefined} onPayment={onPayment&&canOpenPage(profile,detail.customerType==='wholesale'?'customerPayment':'systemPayment')?()=>onPayment?.(detail):undefined} onSale={onSale&&canOpenPage(profile,detail.customerType==='wholesale'?'sale':'system')?()=>onSale?.(detail):undefined} canEditMovement={r=>r.kind==='customer_payment'&&!['opening_balance','account_reconciliation'].includes(r.mode)&&canOpenPage(profile,'customerPayment')&&(isAdmin||transactions.some(t=>String(t.id)===String(r.id)&&cashOwner(t)===profile.id))} onMovementEdit={(r,action)=>setPaymentEdit({id:r.id,action})} renderMatch={canOpenPage(profile,'customerReconcile')?()=> <CustomerAccountMatch customerId={detail.id} onSaved={refreshAccountAfterSave}/>:undefined}/></div>;
  if(editorOpen)return <section className="miniParty miniPartyEditor customerWorkspace"><header className="miniPageHead"><button type="button" className="miniIcon" aria-label="رجوع للعملاء" disabled={busy||uncertain} onClick={cancel}><AppIcon name="arrow" size={19}/></button><h1>{editing?'تعديل العميل':'إضافة زبون'}</h1><span/></header>{alerts}<div className="customerEditor" ref={panel}>   <form onSubmit={submit}><fieldset disabled={busy||uncertain}>
     <label>اسم الزبون <input aria-label="اسم الزبون" value={form.name} onChange={e=>change('name',e.target.value)} maxLength={150} placeholder="الاسم الكامل للزبون" autoFocus required/></label>
     <label>رقم الهاتف<input aria-label="رقم هاتف الزبون" value={form.phone} onChange={e=>change('phone',e.target.value)} maxLength={40} inputMode="tel" dir="ltr" placeholder="07xx xxx xxxx"/></label>
