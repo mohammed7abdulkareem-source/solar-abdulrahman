@@ -1,0 +1,15 @@
+.materialNameField { display: grid; gap: 6px; min-width: 0; }
+.materialNameSuggestions { border: 1px solid #c8deda; border-radius: 12px; overflow: hidden; background: #fff; }
+.materialNameSuggestions p { color: #335866; margin: 0; padding: 8px 12px; background: #edf6f4; font-size: .84rem; }
+.materialNameSuggestions [role="listbox"] { max-height: min(16rem, 38vh); overflow-y: auto; overscroll-behavior: contain; }
+.productsManager .materialNameSuggestions button {
+ display: grid; width: 100%; gap: 3px; min-height: 46px; padding: 8px 12px;
+ color: #193d48; background: white; text-align: start; border: 0; border-radius: 0;
+ border-bottom: 1px solid #e3eceb; box-shadow: none; overflow-wrap: anywhere;
+}
+.productsManager .materialNameSuggestions button:hover,
+.productsManager .materialNameSuggestions button[aria-selected="true"] { background: #e4f4f0; }
+.materialNameSuggestions strong { justify-self: start; }
+.materialNameSuggestions small { color: #496773; }
+.materialDuplicate { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.materialDuplicate p { margin: 0; }

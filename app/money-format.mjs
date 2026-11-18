@@ -4,6 +4,12 @@ export function formatMoney(value,currency='IQD'){
 }
 export const currencyName=currency=>currency==='USD'?'الدولار الأمريكي':'الدينار العراقي';
 export const currencyUnit=currency=>currency==='USD'?'$':'د.ع';
+// Older purchase lines store only the Iraqi-dinar value.
+export function purchaseUnitPrice(item,currency,receiptRate){
+ const saved=item.sourcePrice??item.source_price;
+ if(saved!=null)return Number(saved);
+ return Number(item.price)/(currency==='USD'?Number(receiptRate):1);
+}
 export function purchaseDisplayTotal(row){
  const currency=row.sourceCurrency||'IQD',rate=Number(row.marketRate>1?row.marketRate:row.exchangeRate||1);
  const value=currency==='USD'?Math.round((Number(row.sourceSubtotal??(Number(row.total||0)-Number(row.expenses||0))/rate)+Number(row.expenses||0)/rate)*100)/100:Number(row.total||0);

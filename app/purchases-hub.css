@@ -1,0 +1,35 @@
+.purchasesHub{width:100%;max-width:970px;margin-inline:auto;display:grid;gap:1rem;color:#193d49}
+.purchaseHubActions,.purchaseHubReceiptActions,.purchaseHubMeta{display:flex;gap:.65rem;flex-wrap:wrap}
+.purchasesHub button{font:inherit;cursor:pointer}
+.purchaseHubActions button,.purchaseHubReceiptActions>button,.purchaseHubMore,.purchaseHubRefresh{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;border-radius:12px;min-height:44px;padding:.65rem 1rem;border:1px solid #cadbdd;background:#fff;color:#145e60;font-weight:700}
+.purchaseHubActions button{background:#086c68;border-color:#086c68;color:#fff}
+.purchaseHubActions .purchaseHubMaterial{background:#eaf5f2;border-color:#c6e1d9;color:#115c55}
+.purchaseHubArchive{background:#fff;padding:clamp(.8rem,2vw,1.5rem);border:1px solid #d7e3e8;border-radius:18px}
+.purchaseHubArchive>header{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1rem}
+.purchaseHubArchive h2{font-size:1.2rem;color:#153d49;margin:0}
+.purchaseHubArchive header small,.purchaseHubSummary time,.purchaseHubIdentity>span,.purchaseHubItems small{display:block;color:#536e77;font-size:.83rem}
+.purchaseHubRefresh{width:44px;padding:0}
+.purchaseHubSearch{display:flex;align-items:center;gap:.55rem;padding:0 .8rem;border:1px solid #cfdee4;border-radius:12px;background:#f8fbfc;margin-bottom:.7rem}
+.purchaseHubSearch input{width:100%;border:0!important;min-height:44px;background:transparent!important;box-shadow:none!important;padding:.5rem 0;color:#193d49}
+.purchaseHubSearch:focus-within,.purchasesHub button:focus-visible{outline:2px solid #007e77;outline-offset:2px}
+.purchaseHubReceipt{border-bottom:1px solid #dde7eb}
+.purchaseHubSummary{width:100%;display:grid;align-items:center;grid-template-columns:auto minmax(0,1fr) auto auto;gap:.75rem;padding:.9rem .25rem;background:transparent;border:0;color:inherit;text-align:start}
+.purchaseHubIdentity,.purchaseHubAmount{display:grid;gap:.2rem}
+.purchaseHubIdentity{overflow-wrap:anywhere}
+.purchaseHubAmount{text-align:end}
+.purchaseHubMark{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:#e9f3f7;color:#246b81}
+.purchaseHubChevron{justify-self:end}
+.purchaseHubSummary[aria-expanded=true] .purchaseHubChevron{transform:rotate(180deg)}
+.purchaseHubDetails{padding:.75rem .4rem 1rem}
+.purchaseHubMeta{color:#496671;margin-bottom:.55rem}
+.purchaseHubMeta span{display:inline-flex;align-items:center;gap:.35rem}
+.purchaseHubItems{overflow-x:auto}
+.purchaseHubItems table{width:100%;border-collapse:collapse;font-size:.9rem}
+.purchaseHubItems td,.purchaseHubItems th{padding:.55rem .4rem;border-bottom:1px solid #e2ecee;text-align:start}
+.purchaseHubItems thead{background:#f0f6f7}
+.purchaseHubItems td bdi{white-space:nowrap}
+.purchaseHubReceiptActions{align-items:start;margin-top:.7rem}
+.purchaseHubReceiptActions .purchaseHubDelete{color:#93393b}
+.purchaseHubEmpty{padding:1.4rem .5rem;text-align:center;color:#536e77}
+.purchaseHubMore{display:flex;margin:1rem auto 0}
+@media(max-width:560px){.purchaseHubActions button{flex:1 1 135px}.purchaseHubSummary{gap:.45rem;font-size:.9rem}.purchaseHubMark{width:29px;height:34px}.purchaseHubReceiptActions{gap:.4rem}.purchaseHubIdentity>span,.purchaseHubSummary time{font-size:.76rem}.purchaseHubAmount{max-width:36vw;overflow-wrap:anywhere}}

@@ -21,6 +21,7 @@ export function canOpenPage(profile, page) {
   if (['users','updates','operationControl'].includes(page)) return false;
   if (page === 'wholesalePricing') return profile.permissions?.wholesalePricingManage === true;
   if (page === 'cash') return !!profile.permissions?.cash || ['cashDeposit','cashExpense','cashExchange','cashExternalProfit','cashAdminTools','cashTransferSend','financeReceive'].some(key=>profile.permissions?.[key]===true);
+  if (page === 'purchasesHub') return profile.permissions?.purchase === true;
   if (page === 'profit') return !!(profile.permissions?.profit || profile.permissions?.profitSettlement);
   if (page === 'customerCreate') return !!(profile.permissions?.customerCreate || profile.permissions?.customers);
   if (page === 'customers') return !!(profile.permissions?.customers || profile.permissions?.customerCreate);
