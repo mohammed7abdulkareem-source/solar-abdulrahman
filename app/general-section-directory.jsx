@@ -13,7 +13,7 @@ const tones={sale:'blue',system:'teal',salesHistory:'indigo',deletionRequests:'r
 // they never replace or collapse another category's contents.
 export default function GeneralSectionDirectory({profile,order=[],query='',onNavigate,compact=false,page='home'}){
  const prefix='general-'+useId().replace(/:/g,''),needle=normalizeSearch(query);
- const groups=sectionGroups.map(group=>({...group,rows:orderedSections(group.ids.map(id=>[id,labels.get(id)]).filter(([id])=>canOpenPage(profile,id)),order)
+ const groups=sectionGroups.map(group=>({...group,rows:orderedSections(group.ids.map(id=>[id,labels.get(id)]).filter(([id])=>canOpenPage(profile,id)),group.fixedOrder?[]:order)
   .filter(([,label])=>!needle||normalizeSearch(label+' '+group.title).includes(needle))})).filter(group=>group.rows.length);
  const total=groups.reduce((sum,group)=>sum+group.rows.length,0);
  function go(event,id){if(event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;event.preventDefault();onNavigate(id);}
