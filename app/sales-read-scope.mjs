@@ -1,6 +1,13 @@
-import {isAdministrator} from './access-utils.mjs';
+import {isAdministrator,canOpenPage} from './access-utils.mjs';
 
-export const salesReadAllowed=profile=>!!profile?.id&&profile.active===true&&!['warehouse','installer'].includes(profile.user_type);
+export const salesReadAllowed=profile=>!!profile?.id&&canOpenPage(profile,'salesHistory');
+
+export function allowedSaleHistoryKinds(profile){
+ if(!salesReadAllowed(profile))return [];
+ const kinds=['sale','system'];
+ const granted=kinds.filter(kind=>canOpenPage(profile,kind));
+ return granted.length?granted:kinds;
+}
 
 // A role change must discard snapshots, report HTML and editors loaded under
 // the previous authorization, even when the signed-in account stays the same.
@@ -22,6 +29,8 @@ export function verifySalesResponse(data,profile,selectedOwner=null,{period=fals
  if(period){
   if(data.scope!==(ownerId===null?'company':'own')||!data.summary||typeof data.summary!=='object')throw scopeFailure();
  }else{
+  const permitted=allowedSaleHistoryKinds(profile);
+  if(permitted.length===1&&data.rows.some(row=>!permitted.includes(row.kind)))throw scopeFailure();
   // Reject the whole page, including totals and document actions, instead of
   // trimming foreign records but retaining a different owner's total count.
   if(!Number.isFinite(data.count)||data.count<0||ownerId!==null&&data.rows.some(row=>row?.created_by!==ownerId))throw scopeFailure();

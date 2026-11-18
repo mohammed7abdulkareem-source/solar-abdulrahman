@@ -1,4 +1,5 @@
-import {salesAuthorizationKey,salesReadAllowed} from './sales-read-scope.mjs';
+import {salesAuthorizationKey} from './sales-read-scope.mjs';
+import {canSeeCash} from './access-utils.mjs';
 
 const failure=()=>Object.assign(new Error('تعذر تأكيد أرصدة القاصات. أعد تحديث البيانات.'),{code:'CASH_BALANCE_SCOPE_MISMATCH'});
 const amounts=value=>{
@@ -9,7 +10,7 @@ const amounts=value=>{
 // Read balances from the protected cash ledger, never from the receipt list:
 // a private receipt may still affect the caller's own cashbox.
 export function cashBalanceSnapshot(data,profile){
- if(!salesReadAllowed(profile)||!data||data.ownerId!==(profile.is_admin===true?null:profile.id)||!Array.isArray(data.owners)||!Number.isFinite(Date.parse(data.asOf)))throw failure();
+ if(!canSeeCash(profile)||!data||data.ownerId!==(profile.is_admin===true?null:profile.id)||!Array.isArray(data.owners)||!Number.isFinite(Date.parse(data.asOf)))throw failure();
  const seen=new Set(),owners=data.owners.map(row=>{
   if(!row||(row.id!==null&&typeof row.id!=='string')||seen.has(row.id)||(!profile.is_admin&&row.id!==profile.id))throw failure();
   seen.add(row.id);return {id:row.id,...amounts(row)};
@@ -19,7 +20,7 @@ export function cashBalanceSnapshot(data,profile){
 }
 
 export function currentCashBalances(snapshot,profile){
- if(!snapshot||!salesReadAllowed(profile)||snapshot.authorizationKey!==salesAuthorizationKey(profile))return null;
+ if(!snapshot||!canSeeCash(profile)||snapshot.authorizationKey!==salesAuthorizationKey(profile))return null;
  const own=snapshot.owners.find(row=>row.id===profile.id);
  if(!own)return null;
  return {own:{IQD:own.IQD,USD:own.USD,usdBook:own.usdBook},total:{...snapshot.summary},asOf:snapshot.asOf};

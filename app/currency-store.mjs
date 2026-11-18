@@ -31,4 +31,4 @@ export async function saveCurrencyInvoice(attempt,kind,meta,items,original){
   send:record=>saveRequest(signal=>supabase.rpc('solar_invoice_save',{request_id:record.requestId,payload:record.payload}).abortSignal(signal))
  });}catch(error){if(error.code==='PT409')refreshValuation();if(!error.invoiceRecovery&&!/^[0-9A-Z]{5}$/.test(error.code||'')&&!/[\u0600-\u06ff]/.test(error.message||''))throw new Error('لم يصل تأكيد الحفظ. استخدم «التحقق من الحفظ السابق» قبل إعادة المحاولة.',{cause:error});throw error;}
 }
-export async function deleteCurrencyPurchase(invoice){return requestReceiptDeletion(invoice.id);}
+export async function deleteCurrencyPurchase(invoice,profile){return requestReceiptDeletion(invoice.id,undefined,profile);}

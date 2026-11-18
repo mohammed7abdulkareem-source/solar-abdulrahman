@@ -18,7 +18,7 @@ do $$declare result jsonb; saved jsonb; affected integer; begin
  if jsonb_array_length(result->'errors')<>0 or (result->>'price')::numeric<>current_setting('quote_test.expected')::numeric then raise exception 'FAIL trusted pricing %',result;end if;
  if result::text ~ 'unitCost|expensesTotal|materialsTotal|"cost"' then raise exception 'FAIL cost disclosure';end if;
  saved:=public.solar_limited_quote('save',current_setting('quote_test.payload')::jsonb,current_setting('quote_test.id')::uuid);
- if saved->'payload' ? 'expenses' or saved->'payload'->'panel' ? 'cost' then raise exception 'FAIL saved disclosure';end if;
+ if not(saved->'payload' ? 'expenses') or saved->'payload'->'expenseOverride' is distinct from 'false'::jsonb or saved->'payload'->'panel' ? 'cost' then raise exception 'FAIL saved disclosure';end if;
  if exists(select 1 from public.solar_quotes) then raise exception 'FAIL direct read';end if;
  begin insert into public.solar_quotes(id,user_id,payload) values(gen_random_uuid(),auth.uid(),'{}');raise exception 'FAIL direct write';exception when insufficient_privilege then null;end;
  saved:=public.solar_limited_quote('save',current_setting('quote_test.payload')::jsonb,current_setting('quote_test.id')::uuid,1);

@@ -1,0 +1,15 @@
+.activityReview {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:14px;align-items:start}
+.activityReview h3 {margin-block:0 6px}
+.activityReview p {margin-block:6px 14px;line-height:1.7;color:var(--activity-sub)}
+.activityCountFields,.activityReview dl {display:flex;flex-wrap:wrap;gap:12px}
+.activityCountFields label {display:grid;gap:5px;flex:1 1 118px;min-width:0}
+.activityCountFields :is(input,select) {min-height:44px;width:100%;min-width:0;box-sizing:border-box}
+.activityCountBook,.activityReviewTotals>div {background:#f3f7f8;border-radius:10px;padding:9px 12px}
+.activityCountBook {margin-top:12px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.activityReview p.activityCountResult,.activityReviewStatus {padding:10px 12px;border-inline-start:3px solid #62908a;background:#f2f7f5}
+.activityReview p.hasGap {border-color:#ac661c;background:#fff4e3;color:#744415}
+.activityReview dl {margin-block:10px}
+.activityReviewTotals>div {flex:1 1 110px}
+.activityReview dd {margin:3px 0 0;font-weight:700;font-variant-numeric:tabular-nums}
+.activityReviewList {list-style:none;margin:0;padding:0}
+.activityReviewList li {border-block-start:1px solid var(--activity-line);padding-block:10px;overflow-wrap:anywhere}

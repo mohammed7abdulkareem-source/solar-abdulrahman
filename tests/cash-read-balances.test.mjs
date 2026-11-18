@@ -34,3 +34,9 @@ test('only approved numeric balance fields survive the read projection and curre
  const data=response();data.owners[0].notes='FOREIGN';data.summary.receiptNo=991;
  const snapshot=cashBalanceSnapshot(data,seller);assert.deepEqual(snapshot.summary,amount(333331,14.25,21660));assert.ok(!JSON.stringify(snapshot).includes('FOREIGN'));assert.ok(!JSON.stringify(snapshot).includes('991'));
 });
+test('explicit cash access is independent of sales, warranty and quote permissions',()=>{
+ const receiver={...seller,permissions:{financeReceive:true}},quote={...seller,permissions:{tahseel:true,tahseelFull:true,ownSales:true}};
+ assert.equal(currentCashBalances(cashBalanceSnapshot(response(receiver),receiver),receiver).own.IQD,333331);
+ assert.throws(()=>cashBalanceSnapshot(response(quote),quote),{code:'CASH_BALANCE_SCOPE_MISMATCH'});
+ assert.equal(currentCashBalances(cashBalanceSnapshot(response(receiver),receiver),quote),null);
+});

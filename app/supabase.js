@@ -8,6 +8,9 @@ import {changedRows} from './review-utils.mjs';
 import {createClient} from '@supabase/supabase-js';
 import {createSessionFetch} from './auth-session-fetch.mjs';
 import {cashBalanceSnapshot} from './cash-read-balances.mjs';
+import {cloudSnapshotAccess} from './cloud-snapshot-access.mjs';
+import {canManageQuotes} from './access-utils.mjs';
+import {salesAuthorizationKey} from './sales-read-scope.mjs';
 
 const url='https://afxxaafsuscwyjzrnagc.supabase.co';
 const key='sb_publishable_NWfk9al_gjcSnI6NBQX6GA_CGiQ2-Jy';
@@ -27,10 +30,12 @@ export async function verifyResetPassword(password){
 
 
 // Financial totals and customer search must not stop at the API's 1,000-row cap.
-async function allRows(table,select='*',order='id'){
+async function allRows(table,select='*',filter=null){
  const rows=[];
  for(let offset=0;;offset+=1000){
-  const result=await supabase.from(table).select(select).order(order).range(offset,offset+999);
+  let query=supabase.from(table).select(select);
+  if(filter)query=query.in(filter.column,filter.values);
+  const result=await query.order('id').range(offset,offset+999);
   if(result.error)return result;
   rows.push(...result.data);
   if(result.data.length<1000)return {data:rows,error:null};
@@ -45,30 +50,36 @@ const mapTx=(r,items=[])=>({id:r.id,...(r.kind==='sale'?{expensesOnCustomer:sale
 const loadSnapshot=createLatestLoader(async userId=>{
  const {data:profile,error:profileError}=await supabase.from('profiles').select('id,active,user_type,is_admin,permissions').eq('id',userId).single();
  if(profileError)throw profileError;
- if(!profile.active||['installer','warehouse'].includes(profile.user_type))return {userId,brands:[],products:[],customers:[],suppliers:[],tx:[],cashBalances:null};
-
+ const access=cloudSnapshotAccess(profile),authorizationKey=salesAuthorizationKey(profile);
+ const empty={data:[],error:null};
+ const kindFilter=kinds=>kinds?{column:'kind',values:kinds}:null;
  const [b,p,c,s,t,ti,ce,fx,contacts,balances]=await Promise.all([
-  allRows('brands','id,name'),
-  supabase.rpc('solar_inventory',{action:'catalog'}),
-  allRows('customers','id,name,phone,customer_type,owner_id'),
-  allRows('suppliers','id,name,phone,account_currency,currency_revision'),
-  allRows('transactions',transactionColumns),
-  allRows('transaction_items'),
-  allRows('solar_cash_entries','id,owner_id,entry_type,delta,notes,created_at,job_id'),
-  supabase.rpc('solar_fx',{action:'state'}),
-  supabase.rpc('solar_receipt_contacts'),
-  supabase.rpc('solar_cash_read_balances')
+  access.brands?allRows('brands','id,name'):empty,
+  access.catalog?supabase.rpc('solar_inventory',{action:'catalog'}):empty,
+  access.customers?allRows('customers','id,name,phone,customer_type,owner_id'):empty,
+  access.suppliers?allRows('suppliers','id,name,phone,account_currency,currency_revision'):empty,
+  access.transactions?allRows('transactions',transactionColumns,kindFilter(access.transactionKinds)):empty,
+  access.items?allRows('transaction_items',access.itemKinds?'*,receipt:transactions!inner(kind)':'*',
+   access.itemKinds?{column:'receipt.kind',values:access.itemKinds}:null):empty,
+  access.cashEntries?allRows('solar_cash_entries','id,owner_id,entry_type,delta,notes,created_at,job_id'):empty,
+  access.fxHistory?supabase.rpc('solar_fx',{action:'state'}):empty,
+  access.receiptContacts?supabase.rpc('solar_receipt_contacts'):empty,
+  access.cashBalances?supabase.rpc('solar_cash_read_balances'):empty
  ]);
  for(const x of [b,p,c,s,t,ti,ce,fx,contacts,balances])if(x.error)throw x.error;
- const cashBalances=cashBalanceSnapshot(balances.data,profile);
+ const cashBalances=access.cashBalances?cashBalanceSnapshot(balances.data,profile):null;
+ const products=access.catalog==='quote'?p.data.map(r=>({
+  id:r.id,code:r.code,name:r.name,brand:r.brands?.name||r.brand||'',category:r.category||'',
+  ...(canManageQuotes(profile)?{cost:Number(r.cost||0)}:{})
+ })):p.data.map(mapProduct);
  const entries=ce.data.map(r=>({id:'cash:'+r.id,systemCash:true,kind:r.entry_type,cash:true,cashDelta:Number(r.delta),total:Math.abs(Number(r.delta)),cashboxUserId:r.owner_id,createdBy:r.owner_id,notes:r.notes||'',date:r.created_at,jobId:r.job_id}));
  const contactsByCreator=new Map(contacts.data.map(r=>[r.id,{creatorName:r.creatorName,creatorPhone:r.creatorPhone}]));
  const byInvoice=new Map();for(const item of refreshMaterialBrands(ti.data,p.data)){const list=byInvoice.get(item.transaction_id)||[];list.push(item);byInvoice.set(item.transaction_id,list);}
- return {userId,cashBalances,brands:b.data.map(x=>({id:x.id,name:x.name})),products:p.data.map(mapProduct),customers:c.data.map(mapCustomer),suppliers:s.data.map(mapSupplier),tx:[...t.data.map(x=>({...mapTx(x,byInvoice.get(x.id)||[]),...(contactsByCreator.get(x.created_by||x.cashbox_user_id)||{})})),...entries,...fxCloudRows(fx.data)].sort((a,b)=>new Date(a.date)-new Date(b.date))};
+ return {userId,authorizationKey,cashBalances,brands:b.data.map(x=>({id:x.id,name:x.name})),products,customers:c.data.map(mapCustomer),suppliers:s.data.map(mapSupplier),tx:[...t.data.map(x=>({...mapTx(x,byInvoice.get(x.id)||[]),...(contactsByCreator.get(x.created_by||x.cashbox_user_id)||{})})),...entries,...fxCloudRows(fx.data)].sort((a,b)=>new Date(a.date)-new Date(b.date))};
 });
 export async function loadCloud(options={}){
  const {data,error}=await supabase.auth.getSession();if(error)throw error;
- if(!data.session)return {userId:null,brands:[],products:[],customers:[],suppliers:[],tx:[],cashBalances:null};
+ if(!data.session)return {userId:null,authorizationKey:salesAuthorizationKey(null),brands:[],products:[],customers:[],suppliers:[],tx:[],cashBalances:null};
  return loadSnapshot(data.session.user.id,options);
 }
 let pendingSaves=[];

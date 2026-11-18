@@ -25,3 +25,13 @@ test('account captions distinguish a customer debt, credit and settled balance f
  assert.equal(balanceCaption(100,true),'مستحق للمورد');
  assert.equal(balanceCaption(-100,true),'رصيدنا عند المورد');
 });
+
+test('a live downgrade discards already returned entity results, including counts',async()=>{
+ const {scopedSearchResults}=await import('../app/quick-search-utils.mjs');
+ const reply={customers:[{id:1}],products:[{id:2}],suppliers:[{id:3}],more:{customers:true,products:true,suppliers:true}};
+ const profile={id:'office',active:true,user_type:'admin_staff',permissions:{sale:true,customers:true}};
+ assert.deepEqual(scopedSearchResults(profile,'customers',reply),{customers:[{id:1}],products:[],suppliers:[],more:{customers:true}});
+ const restricted={...profile,permissions:{tahseel:true,tahseelFull:true,salesDeleteOwn:true}};
+ assert.deepEqual(scopedSearchResults(restricted,'all',reply),{customers:[],products:[],suppliers:[],more:{}});
+ assert.deepEqual(scopedSearchResults(restricted,'products',reply),{customers:[],products:[],suppliers:[],more:{}});
+});

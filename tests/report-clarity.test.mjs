@@ -39,3 +39,18 @@ test('company profit PDF records the sales filter and unavailable settlement amo
  const body=profitBalanceReport({balance:{remaining:-500,period:{earned:600,settled:100,available:500}},ownerName:'مالك',type:'system',from:'2026-01-01',to:'2026-02-01',rows:[{date:'2026-01-10',kind:'system',party:'عميل',receiptNo:99,sales:800,cost:200,earned:600,settled:null,available:null}],expenses:0,fx:-50,externalProfit:0});
  assert.match(body,/المبيعات: المنظومات المغلقة/);assert.match(body,/وصل #99/);assert.match(body,/<td><bdi dir="ltr" class="reportNumber">600<\/bdi><\/td><td>—<\/td><td>—<\/td>/);assert.match(body,/بعد التسوية: <bdi dir="ltr" class="reportNumber">-500<\/bdi> د.ع/);assert.match(body,/فرق الصرف المحقق<\/span><strong><bdi dir="ltr" class="reportNumber">-50<\/bdi> د.ع/);
 });
+
+test('an external profit settlement changes personal remaining without inflating earned profit in either PDF',()=>{
+ const rows=[
+  {date:'2026-11-16',kind:'sale',label:'بيع',value:100,available:100,settled:0},
+  {date:'2026-11-17',kind:'personal_distribution',label:'توزيع أرباح',value:0,available:-30,settled:30},
+  {date:'2026-11-18',kind:'external_adjustment',label:'تسوية أرباح خارجية',value:-70,available:-70,settled:0,adjustment:{delta:-70}}
+ ];
+ const personal=profitStatementDocument({ownerName:'المستخدم',retainedProfit:0,available:0,rows},'','');
+ assert.match(personal,/الرصيد المتبقي بعد التسوية: 0 د.ع/);
+ assert.match(personal,/ربح الفترة قبل التسويات<\/span><strong>100 د.ع/);
+ assert.match(personal,/أثر التسويات الخارجية على الرصيد<\/span><strong>-70 د.ع/);
+ const report=ownerId=>profitBalanceReport({balance:{ownerId,remaining:0,period:{earned:100,settled:0,adjustments:-70,available:0}},rows:[],expenses:0,fx:0,externalProfit:0});
+ assert.match(report('user'),/أثر التسويات الخارجية على الرصيد<\/span><strong><bdi[^>]*>-70/);
+ assert.doesNotMatch(report('all'),/أثر التسويات الخارجية على الرصيد/);
+});

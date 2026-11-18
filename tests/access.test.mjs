@@ -8,8 +8,8 @@ const rows=[
  {id:4,cash:false,createdBy:'staff',kind:'sale',total:800},
  {id:5,cash:true,createdBy:null,kind:'cash_income',total:40}
 ];
-test('all active office users can browse and delete their own past sales, including legacy permission=false',()=>{
- const p={id:'owner',active:true,user_type:'admin_staff',permissions:{salesDeleteOwn:false}};
+test('sales grants allow browsing and direct deletion of the seller’s own receipts',()=>{
+ const p={id:'owner',active:true,user_type:'admin_staff',permissions:{sale:true,salesDeleteOwn:false}};
  assert.equal(canOpenPage(p,'salesHistory'),true);
  assert.equal(canDeleteSale(p,'owner'),true);
  assert.equal(canDeleteSale(p,'other'),false);
@@ -56,4 +56,28 @@ test('profit settlement permission opens only the own-profit workspace',()=>{
  assert.equal(canOpenPage({...p,user_type:'installer'},'profit'),false);
  assert.equal(canOpenPage({...p,user_type:'warehouse'},'profit'),false);
  assert.equal(canOpenPage({active:true,permissions:{}},'profit'),false);
+});
+
+test('staff activity is visible only to active office administrators even if a stale custom permission is present',()=>{
+ const profile={active:true,user_type:'admin_staff',permissions:{userActivity:true}};
+ assert.equal(canOpenPage({...profile,is_admin:true},'userActivity'),true);
+ for(const restricted of [profile,{...profile,user_type:'warehouse',is_admin:true},{...profile,user_type:'installer',is_admin:true},{...profile,active:false,is_admin:true}]){
+  assert.equal(canOpenPage(restricted,'userActivity'),false);
+ }
+});
+
+test('quote and warranty alone never open financial pages, prior sales, or receipt deletion',()=>{
+ const profile={id:'owner',active:true,is_admin:false,user_type:'admin_staff',permissions:{
+  tahseel:true,tahseelFull:true,ownSales:true,ownProfit:true,ownPayments:true,ownCustomers:true,salesDeleteOwn:true
+ }};
+ assert.equal(canOpenPage(profile,'tahseel'),true);
+ assert.equal(canOpenPage(profile,'warranty'),true);
+ for(const page of ['cash','profit','sale','system','exchangeRate','salesHistory','paymentHistory','deletionRequests'])assert.equal(canOpenPage(profile,page),false,page);
+ assert.equal(canDeleteSale(profile,'owner'),false);
+ assert.equal(canOpenPage({...profile,permissions:{...profile.permissions,warranty:false}},'warranty'),false);
+ const sale={...profile,permissions:{sale:true}};
+ assert.equal(canOpenPage(sale,'salesHistory'),true);
+ assert.equal(canOpenPage(sale,'deletionRequests'),false);
+ assert.equal(canOpenPage({...sale,permissions:{sale:true,salesHistory:false}},'salesHistory'),false);
+ assert.equal(canOpenPage({...profile,permissions:{deletionRequests:true}},'deletionRequests'),true);
 });

@@ -17,7 +17,7 @@ import {normalizeSearch} from './party-search-utils.mjs';
 import {RecordNavigator,RecordViewSwitch,useRecordView} from './record-browser';
 import PeriodSales from './period-sales';
 import {baghdadDay,recordPage} from './record-browser-utils.mjs';
-import {salesAuthorizationKey,salesReadAllowed,salesReadOwner,verifySalesResponse} from './sales-read-scope.mjs';
+import {salesAuthorizationKey,salesReadAllowed,salesReadOwner,verifySalesResponse,allowedSaleHistoryKinds} from './sales-read-scope.mjs';
 
 export default function SalesHistory({initialSearch='',initialKind='',profile,customers=[],products=[],staff=[],onUpdateInvoice,onPrepareEdit,a4,openA4,saveA4,shareA4,onFollow,onChanged}){
  const [ownerId,setOwnerId]=useState(''),[users,setUsers]=useState([]);
@@ -27,8 +27,10 @@ export default function SalesHistory({initialSearch='',initialKind='',profile,cu
  const moved=useRef(false);
  const editLock=useRef(false),[preparingEdit,setPreparingEdit]=useState(false);
  const [editing,setEditing]=useState(null),[editItems,setEditItems]=useState([]),[editSearch,setEditSearch]=useState(''),[deleting,setDeleting]=useState(null),[message,setMessage]=useState('');
- async function remove(row){if(deleting!==null)return;setDeleting(row.id);setError('');setMessage('');try{const result=await deleteSale(row.id);if(result){setMessage(deletionResultMessage(result));setOffset(0);setPosition(0);setRefresh(n=>n+1);await onChanged?.()}}catch(e){setError(e.message)}finally{setDeleting(null)}}
- const [query,setQuery]=useState(initialSearch),[search,setSearch]=useState(initialSearch),[kind,setKind]=useState(initialKind),[from,setFrom]=useState(''),[to,setTo]=useState(''),[status,setStatus]=useState(''),[offset,setOffset]=useState(0),[refresh,setRefresh]=useState(0);
+ async function remove(row){if(deleting!==null)return;setDeleting(row.id);setError('');setMessage('');try{const result=await deleteSale(row.id,profile);if(result){setMessage(deletionResultMessage(result));setOffset(0);setPosition(0);setRefresh(n=>n+1);await onChanged?.()}}catch(e){setError(e.message)}finally{setDeleting(null)}}
+ const [query,setQuery]=useState(initialSearch),[search,setSearch]=useState(initialSearch),[selectedKind,setKind]=useState(initialKind),[from,setFrom]=useState(''),[to,setTo]=useState(''),[status,setStatus]=useState(''),[offset,setOffset]=useState(0),[refresh,setRefresh]=useState(0);
+ const offeredKinds=allowedSaleHistoryKinds(profile);
+ const kind=offeredKinds.length===1?offeredKinds[0]:offeredKinds.includes(selectedKind)?selectedKind:'';
  const authorizationKey=salesAuthorizationKey(profile),effectiveOwnerId=salesReadOwner(profile,ownerId);
  const requestKey=JSON.stringify([authorizationKey,search,kind,from,to,status,offset,refresh,effectiveOwnerId]);
  const [result,setResult]=useState({rows:[],count:0}),[loading,setLoading]=useState(true),[error,setError]=useState('');
@@ -53,7 +55,7 @@ export default function SalesHistory({initialSearch='',initialKind='',profile,cu
  return <section className="salesArchive"><WarehousePricing profile={profile} onChanged={()=>{setRefresh(n=>n+1);onChanged?.();}}/><p className="archiveCount">{isAdministrator(profile)?'الإدارة — جميع وصولات المستخدمين':'مبيعات ووصولات حسابك فقط'}</p>
   <form className={'card form salesFilterPanel'+(isAdministrator(profile)?' hasUserFilter':'')} onSubmit={e=>{e.preventDefault();const q=normalizeSearch(query);change(setSearch,/^[#\d,٬\s]+$/.test(q)?receiptQuery(q):query.trim());setRefresh(n=>n+1)}}>
    <label className="archiveSearchField">بحث الوصل أو الزبون<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="رقم الوصل / اسم الزبون"/></label>
-   <div className="archiveFilters">{isAdministrator(profile)&&<label className="archiveUserFilter">المستخدم<select aria-label="مستخدم المبيعات السابقة" value={ownerId} onChange={e=>change(setOwnerId,e.target.value)}><option value="">جميع المستخدمين</option>{userOptions.map(u=><option key={u.id} value={u.id}>{u.name}{u.active===false?' · غير فعال':''}</option>)}</select></label>}<label>نوع البيع<select value={kind} onChange={e=>{change(setKind,e.target.value);setStatus('')}}><option value="">كل المبيعات</option><option value="sale">بيع جملة</option><option value="system">بيع منظومات</option></select></label>
+   <div className="archiveFilters">{isAdministrator(profile)&&<label className="archiveUserFilter">المستخدم<select aria-label="مستخدم المبيعات السابقة" value={ownerId} onChange={e=>change(setOwnerId,e.target.value)}><option value="">جميع المستخدمين</option>{userOptions.map(u=><option key={u.id} value={u.id}>{u.name}{u.active===false?' · غير فعال':''}</option>)}</select></label>}<label>نوع البيع<select value={kind} onChange={e=>{change(setKind,e.target.value);setStatus('')}}>{offeredKinds.length>1&&<option value="">كل المبيعات</option>}{offeredKinds.map(k=><option key={k} value={k}>{k==='sale'?'بيع جملة':'بيع منظومات'}</option>)}</select></label>
    <label>حالة التنصيب<select value={status} disabled={kind==='sale'} onChange={e=>change(setStatus,e.target.value)}><option value="">جميع الحالات</option>{Object.entries(statusLabel).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label></div>
    <div className="dateRange"><label>من<input type="date" value={from} onChange={e=>change(setFrom,e.target.value)}/></label><label>إلى<input type="date" min={from||undefined} value={to} onChange={e=>change(setTo,e.target.value)}/></label></div>
    <div className="recordDateShortcuts"><button type="button" onClick={()=>{change(setFrom,baghdadDay());setTo(baghdadDay());}}>اليوم</button><button type="button" onClick={()=>{change(setFrom,'');setTo('');}}>كل الفترات</button></div><button className="archiveSearchSubmit" disabled={waiting}>بحث / تحديث</button>

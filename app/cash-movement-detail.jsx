@@ -8,9 +8,11 @@ import {cashKind} from './cash-utils.mjs';
 import {cashDate,cashMovementBody,paymentMode,transferStatus} from './cash-movement-utils.mjs';
 import {formatMoney as money,currencyUnit as unit} from './money-format.mjs';
 import ReportActions from './report-actions';
+import {canOpenPage} from './access-utils.mjs';
 import {requestReceiptDeletion} from './receipt-deletion.mjs';
 
 export default function CashMovementDetail({movementId,profile,a4,onClose,onChanged}){
+ const canRequest=canOpenPage(profile,'deletionRequests');
  const panel=useRef(null),deleteLock=useRef(false),[editing,setEditing]=useState(false),[deleting,setDeleting]=useState(false),[deleteError,setDeleteError]=useState(''),[deleteMessage,setDeleteMessage]=useState('');
  useEffect(()=>{panel.current?.scrollIntoView({block:'start',behavior:'smooth'});},[]);
  const [data,setData]=useState(null),[error,setError]=useState(''),[retry,setRetry]=useState(0);
@@ -20,8 +22,8 @@ export default function CashMovementDetail({movementId,profile,a4,onClose,onChan
   return()=>{live=false;clearTimeout(timer);controller.abort();};
  },[movementId,retry]);
  const label=data?.reconciliation?.mode==='zero'?'تصفير القاصة':cashKind(data?.kind);
- async function requestDeletion(){if(deleteLock.current||!data?.deletion?.canRequest)return;deleteLock.current=true;setDeleting(true);setDeleteError('');setDeleteMessage('');try{
-  const r=await requestReceiptDeletion(data.deletion.invoiceId);if(r){setDeleteMessage('أُرسل طلب الحذف إلى الإدارة. تبقى الحركة محسوبة حتى الموافقة.');setRetry(n=>n+1);}
+ async function requestDeletion(){if(!canRequest||deleteLock.current||!data?.deletion?.canRequest)return;deleteLock.current=true;setDeleting(true);setDeleteError('');setDeleteMessage('');try{
+  const r=await requestReceiptDeletion(data.deletion.invoiceId,undefined,profile);if(r){setDeleteMessage('أُرسل طلب الحذف إلى الإدارة. تبقى الحركة محسوبة حتى الموافقة.');setRetry(n=>n+1);}
  }catch(e){setDeleteError(e.code?e.message:'لم يتأكد إرسال الطلب؛ حدّث تفاصيل الحركة قبل المحاولة مجددًا.');setRetry(n=>n+1);}finally{deleteLock.current=false;setDeleting(false);}}
  if(editing)return <CashRecordEditor movementId={movementId} profile={profile} onCancel={()=>setEditing(false)} onSaved={()=>{setEditing(false);setData(null);setRetry(n=>n+1);onChanged?.();}}/>;
  return <section ref={panel} className="cashMovementPanel" aria-label="تفاصيل حركة الصندوق"><header><h3>تفاصيل الحركة</h3><button type="button" aria-label="إغلاق تفاصيل الحركة" onClick={onClose}><AppIcon name="close" size={17}/></button></header>
@@ -35,8 +37,8 @@ export default function CashMovementDetail({movementId,profile,a4,onClose,onChan
    {data.items.length>0&&<div className="cashMovementItems"><h4>مواد الوصل · {data.items.length}</h4>{data.items.map((item,i)=><article key={i}><b>{i+1}. {item.name}</b><small>{item.brand} {item.category}</small><div><span>الكمية <b>{money(item.qty)}</b></span><span>سعر الوحدة <b><bdi>{money(item.price)} د.ع</bdi></b></span><span>المجموع <b><bdi>{money(item.total)} د.ع</bdi></b></span></div></article>)}</div>}
    <p className="cashMovementNote"><b>البيان</b>{data.note||'لا يوجد بيان إضافي.'}</p>
    <div className="cashMovementRecordActions">{data.edit?.canEdit&&<button type="button" className="uiButton cashMovementEditButton" disabled={deleting} onClick={()=>setEditing(true)}><AppIcon name="edit" size={16}/>{data.edit.type==='settlement'?'تعديل تسوية الأرباح':'تعديل الحركة'}</button>}
-   {data.deletion?.canRequest&&<button type="button" className="uiButton cashMovementDeleteButton" disabled={deleting||!!data.deletion.blockedReason||!!data.deletion.pendingRequestId} onClick={requestDeletion}><AppIcon name="trash" size={16}/>{deleting?'جاري إرسال الطلب…':data.deletion.pendingRequestId?'طلب الحذف بانتظار الموافقة':'طلب حذف الحركة'}</button>}</div>
-   {data.deletion?.blockedReason&&<p className="formHint">{data.deletion.blockedReason}</p>}{data.deletion?.pendingRequestId&&<p className="cashMovementDeleteNotice">الحذف يحتاج موافقة الإدارة. <a href={'/?section=deletionRequests&deleteRequest='+data.deletion.pendingRequestId}>متابعة طلب الحذف</a></p>}
+   {canRequest&&data.deletion?.canRequest&&<button type="button" className="uiButton cashMovementDeleteButton" disabled={deleting||!!data.deletion.blockedReason||!!data.deletion.pendingRequestId} onClick={requestDeletion}><AppIcon name="trash" size={16}/>{deleting?'جاري إرسال الطلب…':data.deletion.pendingRequestId?'طلب الحذف بانتظار الموافقة':'طلب حذف الحركة'}</button>}</div>
+   {canRequest&&data.deletion?.blockedReason&&<p className="formHint">{data.deletion.blockedReason}</p>}{canRequest&&data.deletion?.pendingRequestId&&<p className="cashMovementDeleteNotice">الحذف يحتاج موافقة الإدارة. <a href={'/?section=deletionRequests&deleteRequest='+data.deletion.pendingRequestId}>متابعة طلب الحذف</a></p>}
    <ReportActions enabled html={a4('تفاصيل حركة الصندوق',cashMovementBody(data,label),money(data.amount,data.currency)+' '+unit(data.currency),data.ownerName)} filename="تفاصيل-حركة-الصندوق"/>
   </>}
   {deleteError&&<p role="alert" className="workflowError">{deleteError}</p>}{deleteMessage&&<p role="status" className="cashMovementDeleteNotice">{deleteMessage}</p>}

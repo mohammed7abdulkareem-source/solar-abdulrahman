@@ -57,7 +57,7 @@ do $$declare r jsonb;saved jsonb;bad jsonb;begin
  begin perform public.solar_limited_quote('preview',pg_temp.aio_input()||'{"expectedExpenseDefaultsRevision":999999}'); raise exception 'FAIL stale expenses';exception when sqlstate 'PT409' then null;end;
  saved:=public.solar_limited_quote('save',pg_temp.aio_input()||'{"day":"","night":"","allInOnePanelQty":"10"}','00000000-0000-0000-0000-000000396001');
  assert saved->'payload'->>'systemType'='all_in_one' and saved->'payload'->>'allInOneQty'='2' and saved->'payload'->>'allInOnePanelQty'='10';
- assert not(saved->'payload'?'expenses') and not(saved->'payload'->'allInOne'?'cost'),'Saved result exposed costs';
+ assert saved->'payload'?'expenses' and saved->'payload'->'expenseOverride'='false'::jsonb and not(saved->'payload'->'allInOne'?'cost'),'Saved result must include expenses and redact device cost';
  assert not exists(select 1 from public.solar_quotes),'Limited direct read must remain blocked';
  r:=public.solar_limited_quote('list');
  assert exists(select 1 from jsonb_array_elements(r)v where v->>'id'='00000000-0000-0000-0000-000000396001' and(v->'result'->>'price')::numeric=10183250),'Reload lost integrated type or price';

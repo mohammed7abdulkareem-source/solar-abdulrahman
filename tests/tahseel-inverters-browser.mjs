@@ -11,6 +11,7 @@ const dir=process.env.SOLAR_ARTIFACT_DIR||'/workspace/solar-review/v391/browser'
 const sql=q=>execFileSync('python',['/workspace/solar-review/v359/db.py',db],{input:q,encoding:'utf8'}).trim();
 const ids={full:'00000000-0000-0000-0000-000000003911',limited:'00000000-0000-0000-0000-000000003912',warehouse:'00000000-0000-0000-0000-000000003914',installer:'00000000-0000-0000-0000-000000003915'};
 const dirApi=process.env.SOLAR_FIXTURE_API||'http://127.0.0.1:3079',base=process.env.SOLAR_APP_URL||'http://127.0.0.1:3073',contexts=[],calls=[],errors=[],enc=x=>Buffer.from(JSON.stringify(x)).toString('base64url');
+for(const endpoint of [dirApi,base])assert.equal(new URL(endpoint).hostname,'127.0.0.1');
 const tokenFor=uid=>{const raw=enc({alg:'HS256',typ:'JWT'})+'.'+enc({role:'authenticated',sub:uid,exp:Math.floor(Date.now()/1000)+3600});return raw+'.'+createHmac('sha256','solar-local-test-only-signing-secret-347').update(raw).digest('base64url');};
 const browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});let page;
 async function open(who){
@@ -62,14 +63,52 @@ try{
  for(const width of[360,768,1440]){await p.setViewportSize({width,height:1000});await p.getByRole('tab',{name:'المواد',exact:true}).click();await p.evaluate(()=>scrollTo(0,0));assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Full quote overflow '+width);await p.screenshot({path:dir+'/materials-'+width+'.png',fullPage:true});}
  await p.getByRole('tab',{name:'الطلب',exact:true}).focus();await p.keyboard.press('End');assert.equal(await p.getByRole('tab',{name:'الملاحظات',exact:true}).getAttribute('aria-selected'),'true');await p.keyboard.press('Home');assert.equal(await p.getByRole('tab',{name:'الطلب',exact:true}).getAttribute('aria-selected'),'true');
  await p.getByRole('tab',{name:/المسودات/}).click();await p.getByLabel('بحث المسودات',{exact:true}).fill('عرض قديم كامل');await p.getByRole('button',{name:'فتح وتعديل',exact:true}).click();assert.equal(await p.getByLabel('عدد الانفيرترات',{exact:true}).inputValue(),'1');await p.getByTestId('quote-final-price').filter({hasText:'3,848,250'}).waitFor();assert.equal(legacyHash(),old);
- const limited=await open('limited'),l=limited.p;page=l;await fill(l,'عرض محدود ثلاثة');await l.getByLabel('عدد الانفيرترات',{exact:true}).fill('3');await l.getByTestId('quote-final-price').filter({hasText:'5,658,000'}).waitFor();assert.equal(await l.locator('.quoteMaterialCosts,.quoteCostBreakdown').count(),0);assert.equal(await l.getByRole('tab',{name:'المصاريف',exact:true}).count(),0);assert.equal(await l.getByLabel('نسخة مستند التحصيل',{exact:true}).count(),0);
+ const limited=await open('limited'),l=limited.p;page=l;await fill(l,'عرض محدود ثلاثة');await l.getByLabel('عدد الانفيرترات',{exact:true}).fill('3');await l.getByTestId('quote-final-price').filter({hasText:'5,658,000'}).waitFor();assert.equal(await l.locator('.quoteMaterialCosts,.quoteCostBreakdown').count(),0);assert.ok(await l.getByRole('tab',{name:'المصاريف',exact:true}).isVisible());assert.equal(await l.getByLabel('نسبة الربح',{exact:true}).count(),0);assert.equal(await l.getByLabel('نسخة مستند التحصيل',{exact:true}).count(),0);
  const previews=()=>calls.filter(x=>x.who==='limited'&&x.path.endsWith('/solar_limited_quote')&&x.payload?.action==='preview').length;const seen=previews();await l.getByRole('tab',{name:'الملاحظات',exact:true}).click();await l.getByLabel('ملاحظات العرض',{exact:true}).fill('ملاحظات عرض محدود\nثلاثة أجهزة 8 كيلو');await l.waitForTimeout(600);assert.equal(previews(),seen,'Notes caused an unnecessary pricing request');await l.getByRole('button',{name:'حفظ كمسودة',exact:true}).click();await l.getByRole('status').filter({hasText:'تم حفظ المسودة في حسابك.'}).waitFor();
  await pdf(l,'limited-three-inverters.pdf');htmls=await l.evaluate(()=>window.__documentHtmls);doc=htmls.findLast(x=>x.includes('ملاحظات عرض محدود'));assert.match(doc,/8KW\/IP21[\s\S]*?<td>3<\/td>/);assert.ok(doc.includes('ثلاثة أجهزة 8 كيلو'));assert.ok(!doc.includes('كلفة الوحدة')&&!doc.includes('500,000')&&!doc.includes('1,500,000'));
  await l.reload();await l.getByRole('tab',{name:/المسودات/}).click();await l.getByLabel('بحث المسودات',{exact:true}).fill('عرض محدود ثلاثة');await l.getByRole('button',{name:'فتح وتعديل',exact:true}).click();assert.equal(await l.getByLabel('عدد الانفيرترات',{exact:true}).inputValue(),'3');await l.getByTestId('quote-final-price').filter({hasText:'5,658,000'}).waitFor();await l.getByRole('tab',{name:'الملاحظات',exact:true}).click();assert.ok((await l.getByLabel('ملاحظات العرض',{exact:true}).inputValue()).includes('ملاحظات عرض محدود'));await l.screenshot({path:dir+'/limited-notes.png',fullPage:true});
+ const overrideValues={'مصاريف كل لوح':'41000','كرين':'31000','عامل':'19000','مبرمج':'32000','توصيل':'23000','كهربائيات':'123000','عمولة المندوب':'45000'};
+ const expenseTab=l.getByRole('tab',{name:'المصاريف',exact:true});
+ async function customExpenses(){
+  await expenseTab.click();
+  for(const [label,value] of Object.entries(overrideValues))await l.getByLabel(label,{exact:true}).fill(value);
+  assert.equal(await l.getByRole('button',{name:'حفظ المصاريف للجميع',exact:true}).count(),0);
+ }
+ const expectedPrice=(materials,panels)=>Math.round((materials+panels*41000+273000)*1.15);
+ const customStandard=expectedPrice(4200000,7),customAio=expectedPrice(1600000,4);
+ const amount=value=>l.getByTestId('quote-final-price').filter({hasText:value.toLocaleString('en-US')}).waitFor();
+ async function saveAndReopen(customer,expected){
+  const saved=l.waitForResponse(resp=>resp.url().endsWith('/rpc/solar_limited_quote')&&resp.request().postDataJSON()?.action==='save');
+  await l.locator('.quoteSave').click();assert.ok((await saved).ok());
+  await l.getByRole('status').filter({hasText:'تم حفظ المسودة في حسابك.'}).waitFor();
+  await l.reload();await l.getByRole('tab',{name:/المسودات/}).click();
+  await l.getByLabel('بحث المسودات',{exact:true}).fill(customer);
+  await l.getByRole('button',{name:'فتح وتعديل',exact:true}).click();
+  await amount(expected);await expenseTab.click();
+  for(const [label,value] of Object.entries(overrideValues))assert.equal(await l.getByLabel(label,{exact:true}).inputValue(),value);
+ }
+ // Account follows the shared grid on a fresh quote, and may retain a private expense override on a saved quote.
+ const gridBefore=sql("select to_jsonb(g)::text from solar_private.quote_expense_defaults g");
+ await customExpenses();await amount(customStandard);await saveAndReopen('عرض محدود ثلاثة',customStandard);
+ await l.getByRole('button',{name:'استخدام المصاريف العامة',exact:true}).click();
+ await amount(5658000);assert.equal(await l.getByLabel('مصاريف كل لوح',{exact:true}).inputValue(),'45000');
+ await l.getByRole('button',{name:'حساب جديد',exact:true}).click();
+ await l.getByLabel('اسم زبون العرض',{exact:true}).fill('عرض جهاز مدمج بمصاريف خاصة');
+ await l.locator('.quoteTypeChoice label').filter({hasText:'ALL IN ONE'}).click();
+ await l.getByLabel('عدد الألواح',{exact:true}).fill('4');
+ await l.getByRole('tab',{name:'المواد',exact:true}).click();
+ await l.getByLabel('لوح 600 واط',{exact:true}).selectOption('391002');
+ await l.getByLabel('ALL IN ONE',{exact:true}).selectOption('392015');
+ await customExpenses();await amount(customAio);await saveAndReopen('عرض جهاز مدمج بمصاريف خاصة',customAio);
+ await pdf(l,'limited-aio-custom.pdf');
+ const customerOutput=await l.evaluate(()=>window.__documentHtmls.findLast(x=>x.includes('عرض جهاز مدمج بمصاريف خاصة')));
+ assert.ok(customerOutput.includes('5KW AIO test')&&customerOutput.includes(customAio.toLocaleString('en-US')));
+ assert.doesNotMatch(customerOutput,/كلفة الوحدة|عمولة المندوب|41,000|1,200,000|نسبة الربح/);
+ assert.equal(sql("select to_jsonb(g)::text from solar_private.quote_expense_defaults g"),gridBefore);
  const payload={schema:4,day:'15',night:'15',batteryCapacity:'15',inverterQty:'3',inverter:{id:391001,cost:'1'},panel:{id:391002,cost:'1'},battery:{id:391003,cost:'1'},perPanel:'0',expenses:{},markupPercent:'0'};
  const response=await limited.ctx.request.post(dirApi+'/rpc/solar_limited_quote',{headers:{authorization:'Bearer '+limited.token},data:{action:'preview',quote_payload:payload}});assert.equal(response.status(),200);const answer=await response.json();assert.equal(answer.price,5658000);assert.ok(!/unitCost|materialsTotal|expensesTotal|"cost"/.test(JSON.stringify(answer)));
  const own=await limited.ctx.request.get(dirApi+'/solar_quotes?select=id,payload',{headers:{authorization:'Bearer '+limited.token}});assert.deepEqual(await own.json(),[]);
  for(const who of['warehouse','installer']){const r=await full.ctx.request.post(dirApi+'/rpc/solar_limited_quote',{headers:{authorization:'Bearer '+tokenFor(ids[who])},data:{action:'preview',quote_payload:payload}});assert.equal(r.status(),403);}
  await l.setViewportSize({width:360,height:920});assert.ok(await l.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));assert.equal(financialHash(),before);assert.equal(legacyHash(),old);assert.deepEqual(errors,[]);
- await writeFile(dir+'/results.json',JSON.stringify({pass:true,multipleInverters:true,unitCostAndTotals:true,arabicQuantityAndStepper:true,invalidQuantityBlocksExport:true,notesForBothRoles:true,draftsReloadWithQtyAndNotes:true,legacyOneUnchanged:true,customerAndInternalPDF:true,actualPreviewDownloadShare:true,noNotePricingRefetch:true,apiTrustedCostAndFixedMarkup:true,roleAndOwnershipChecks:true,doubleClickSavesOnce:true,noFinancialStockChanges:true,noOverflow:[360,768,1440],calls,errors},null,2));console.log('PASS full and limited quotes: 2/3 inverters, unit/total prices, notes and exact draft reload, legacy defaults, PDF preview/download/share, private costs and role/API scope, no financial changes, responsive UI');
+ await writeFile(dir+'/results.json',JSON.stringify({pass:true,multipleInverters:true,customExpensesForStandardAndAllInOne:true,customQuotesReopenedWithFixed15Percent:true,sharedGridUnchanged:true,unitCostAndTotals:true,arabicQuantityAndStepper:true,invalidQuantityBlocksExport:true,notesForBothRoles:true,draftsReloadWithQtyAndNotes:true,legacyOneUnchanged:true,customerAndInternalPDF:true,actualPreviewDownloadShare:true,noNotePricingRefetch:true,apiTrustedCostAndFixedMarkup:true,roleAndOwnershipChecks:true,doubleClickSavesOnce:true,noFinancialStockChanges:true,noOverflow:[360,768,1440],calls,errors},null,2));console.log('PASS full and limited quotes: 2/3 inverters, unit/total prices, notes and exact draft reload, legacy defaults, PDF preview/download/share, private costs and role/API scope, no financial changes, responsive UI');
 }catch(error){if(page)await page.screenshot({path:dir+'/failure.png',fullPage:true}).catch(()=>{});await writeFile(dir+'/failure.json',JSON.stringify({error:String(error),stack:error.stack,calls,errors},null,2));throw error;}finally{for(const c of contexts)await c.close();await browser.close();}

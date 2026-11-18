@@ -30,7 +30,7 @@ do $$declare r jsonb;saved jsonb;bad jsonb;begin
  assert(r->>'price')::numeric=4508000 and(r->>'inverterQty')::numeric=1,'Old client or draft no longer means one inverter';
  saved:=public.solar_limited_quote('save',pg_temp.quote_input(),'00000000-0000-0000-0000-000000391002');
  assert saved->'payload'->>'inverterQty'='2'and saved->'payload'->>'notes'=pg_temp.quote_input()->>'notes';
- assert not(saved->'payload'?'expenses')and not(saved->'payload'?'perPanel')and not(saved->'payload'->'inverter'?'cost'),'Saved quote exposes private cost fields';
+ assert saved->'payload'?'expenses' and saved->'payload'?'perPanel' and not(saved->'payload'->'inverter'?'cost'),'Saved quote must include expenses and redact material cost';
  assert not exists(select 1 from public.solar_quotes),'Limited direct read must remain blocked';
  saved:=public.solar_limited_quote('save',pg_temp.quote_input('"3"'),'00000000-0000-0000-0000-000000391002',1);
  assert(saved->>'revision')::int=2 and saved->'payload'->>'inverterQty'='3';

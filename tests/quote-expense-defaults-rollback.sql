@@ -26,7 +26,7 @@ do $$declare s jsonb;begin
 end$$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000039202',true);
 do $$declare s jsonb;begin
- s:=public.solar_quote_defaults();assert not(s?'expenses')and not(s?'perPanel')and not(s->>'canManage')::boolean,'Limited metadata leaked expense details or write rights';
+ s:=public.solar_quote_defaults();assert s->'expenses'->>'commission'='75000' and s->>'perPanel'='45000' and not(s->>'canManage')::boolean,'Limited user must read the seven defaults without shared write access';
  begin perform public.solar_quote_defaults('save',gen_random_uuid(),pg_temp.shared_expense_payload());raise exception 'FAIL limited flag alone granted defaults';exception when insufficient_privilege then null;end;
 end$$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000039201',true);

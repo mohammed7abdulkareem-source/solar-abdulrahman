@@ -1,0 +1,66 @@
+.userActivity {--activity-ink:#153c48;--activity-sub:#536e78;--activity-line:#d7e4e5;--activity-teal:#08776d;max-width:1020px;margin-inline:auto;color:var(--activity-ink);min-width:0;}
+.userActivity * {box-sizing:border-box;}
+.userActivity h1,.userActivity h2,.userActivity h3,.userActivity h4,.userActivity p,.userActivity dl,.userActivity dd {margin:0;}
+.userActivity button,.userActivity input {font:inherit;}
+.userActivity button {cursor:pointer;min-height:44px;}
+.userActivity button:focus-visible,.userActivity input:focus-visible {outline:3px solid #248c84;outline-offset:2px;}
+.activityDirectoryHead,.activityDetailHead {display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.activityDirectoryHead {border-radius:18px 18px 0 0;padding:clamp(18px,3vw,28px);background:#123d4a;color:white;}
+.activityDirectoryHead h1,.activityIdentity h1 {font-size:clamp(1.35rem,2.5vw,1.8rem);line-height:1.5;}
+.activityDirectoryHead p {color:#d3e9e9;margin-top:4px;}
+.userActivity .activityRefresh,.userActivity .activityBack,.userActivity .activityReset {display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:0;padding:6px 12px;border-radius:10px;border:1px solid var(--activity-line);color:var(--activity-ink);background:white;box-shadow:none;}
+.activityDirectoryHead .activityRefresh {border-color:#6b989e;background:#214f5b;color:white;}
+.activityDirectoryTools {background:white;padding:14px;border:1px solid var(--activity-line);border-radius:0 0 16px 16px;}
+.activityDirectoryTools label {display:flex;align-items:center;gap:8px;border:1px solid #bdcfd1;border-radius:10px;padding-inline:10px;color:var(--activity-sub);}
+.activityDirectoryTools input {min-width:0;flex:1;min-height:44px;border:0!important;background:transparent!important;color:var(--activity-ink);font-size:16px;}
+.activityRoleFilter,.activityTabs {display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;}
+.userActivity .activityRoleFilter button,.userActivity .activityTabs button {color:#345761;background:#fff;border:1px solid var(--activity-line);border-radius:10px;box-shadow:none;padding:7px 15px;}
+.userActivity :is(.activityRoleFilter,.activityTabs) button[aria-pressed=true] {color:#07574c;border-color:#7db6a7;background:#e6f4ed;font-weight:700;}
+.activityDirectoryCount {font-size:.86rem;color:var(--activity-sub);padding:12px 2px 6px;}
+.activityDirectory {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,270px),1fr));gap:10px;margin:0;padding:0;list-style:none;}
+.activityDirectory li {min-width:0;}
+.userActivity .activityDirectory button {display:flex;align-items:center;gap:11px;width:100%;padding:14px;min-height:78px;text-align:start;border:1px solid var(--activity-line);border-radius:14px;color:var(--activity-ink);background:#fff;box-shadow:none;}
+.activityDirectory button:hover {border-color:#8ebbb1;}
+.activityUserName,.activityIdentity>div {display:grid;gap:4px;flex:1;min-width:0;}
+.activityUserName strong,.activityIdentity h1 {overflow-wrap:anywhere;}
+.activityUserName small,.activityIdentity small,.activityCard small,.activityPeriod {color:var(--activity-sub);}
+.activityAvatar {width:42px;height:42px;flex:none;display:grid;place-items:center;background:#e0f1ed;color:#166758;border-radius:13px;font-weight:700;}
+.warehouse .activityAvatar {background:#e7effb;color:#2c5e99;}.installer .activityAvatar {background:#faf0d9;color:#835c14;}
+.activityIdentity {display:flex;align-items:center;gap:12px;background:white;border:1px solid var(--activity-line);border-radius:16px;padding:16px;margin-block:10px;}
+.activityIdentity span {color:var(--activity-sub);}
+.activityDates {display:flex;align-items:end;flex-wrap:wrap;gap:8px;padding:12px;background:#fff;border:1px solid var(--activity-line);border-radius:13px;}
+.activityDates label {display:grid;gap:4px;min-width:0;flex:1 1 130px;color:var(--activity-sub);font-size:.85rem;}
+.activityDates input {width:100%;min-width:0;max-width:100%;min-height:44px;font-size:16px;padding:6px 10px;border:1px solid #c7d8db;border-radius:9px;background:#fff;color:var(--activity-ink);}
+.userActivity .activityApply {display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:9px;background:#076e63;color:#fff;padding:7px 15px;}
+.activityDates small {width:100%;color:#923f2b;}
+.activityPeriod {font-size:.82rem;margin-block:8px!important;}
+.activityTabs {margin:0 0 10px;}
+.activityFinancialGrid,.activityOperational {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+.activityCard {min-width:0;padding:16px;border:1px solid var(--activity-line);border-radius:14px;background:white;}
+.activityCardHeading {display:flex;align-items:center;gap:9px;margin-bottom:10px;}
+.activityCardHeading>span {display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:#e9f3f3;color:var(--activity-teal);flex:none;}
+.activityCardHeading h3 {font-size:1rem;line-height:1.55;color:var(--activity-ink);}
+.activityCardHeading small {font-size:.8rem;line-height:1.5;}
+.activityPair {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;}
+.activityMetric {min-width:0;padding:9px;background:#f4f8f9;border-radius:8px;}
+.activityMetric dt {font-size:.82rem;color:#476674;line-height:1.6;}
+.activityMetric dd {font-size:1.07rem;font-weight:700;line-height:1.6;font-variant-numeric:tabular-nums;color:#163d48;overflow-wrap:anywhere;}
+.activityMetric dd small {font-size:.75rem;}
+.activitySales .activityMetric:first-child {background:#e6f3ed;}.activityDebts .activityMetric:first-child {background:#faf1e4;}
+.activityHandovers h4 {font-size:.92rem;margin-block:7px 5px;}
+.activityHandover>span {display:block;margin-block:4px;color:var(--activity-sub);font-size:.8rem;}
+.activityHandover+.activityHandover,.activityRows li+li {border-top:1px solid var(--activity-line);}
+.activityRows {list-style:none;margin:0;padding:0;}
+.activityRows li {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding-block:10px;overflow-wrap:anywhere;}
+.activityRows li>div {display:grid;gap:3px;}
+.activityRows span {color:var(--activity-sub);}
+.activityFeedback {padding:16px;color:#486b75;background:#f5f9fa;border-radius:10px;margin-block:8px;}
+.activityFeedback.error {color:#873d2b;}.activityFeedback button {margin-inline-start:8px;}
+@media(max-width:620px){
+ .activityFinancialGrid,.activityOperational {grid-template-columns:minmax(0,1fr);}
+ .activityDirectory {grid-template-columns:minmax(0,1fr);}
+ .activityDates {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+ .activityDates .activityApply:only-of-type {grid-column:1/-1;}
+ .activityTabs button {flex:1;min-width:0;}.userActivity .activityTabs button,.userActivity .activityRoleFilter button {padding:7px 9px;}
+ .activityCard {padding:13px;}
+}

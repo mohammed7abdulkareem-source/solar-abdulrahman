@@ -1,0 +1,25 @@
+.externalProfit { display: grid; gap: 14px; min-width: 0; }
+.externalProfit h2,.externalProfit h3,.externalProfit p { margin-block: 0; }
+.externalProfit .panelTitle p { margin-top: 4px; line-height: 1.75; }
+.externalProfit label,.externalProfit form,.externalProfit fieldset { display: grid; gap: 8px; min-width: 0; }
+.externalProfit form { gap: 12px; }
+.externalProfit fieldset { margin: 0; padding: 0; border: 0; gap: 10px; }
+.externalProfit input,.externalProfit select { width: 100%; min-width: 0; box-sizing: border-box; min-height: 44px; }
+.externalProfitBalance { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; border-radius: 12px; padding: 14px; background: #e8f4ef; color: #18544a; }
+.externalProfitBalance strong { font-size: 1.45rem; font-variant-numeric: tabular-nums; }
+.externalProfitBalance small {font-size: .85rem;}
+.externalProfitInputs { display: grid; grid-template-columns: minmax(5em,1fr) auto auto; gap: 6px; align-items: center; }
+.externalProfitInput small,.externalProfit fieldset small { color: #546570; }
+.externalProfit button { min-height: 44px; }
+.externalProfitPreview,.externalProfitPending { padding: 13px; border: 1px solid #c8ded7; border-radius: 12px; background: #f3f9f6; min-width: 0; }
+.externalProfitPreview p,.externalProfitHistory p { overflow-wrap: anywhere; white-space: pre-wrap; }
+.externalProfit dl { margin: 8px 0 0; display: flex; gap: 8px 20px; flex-wrap: wrap; }
+.externalProfit dl>div { min-width: 0; }
+.externalProfit dd { margin: 2px 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.externalProfitHistory summary { cursor: pointer; padding: 10px 0; }
+.externalProfitHistory article { padding: 12px 0; border-top: 1px solid #d7e3e0; }
+.externalProfitHistory article>div { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.profitExternalPeriodTotal {display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center; background:#f0f5fa; color:#31596a; padding:10px 14px; border-radius:10px; }
+.profitExternalAudit dl {display:flex; flex-wrap:wrap; gap:9px 17px; margin:10px 0; }
+.profitExternalAudit dd {margin:3px 0; font-weight:700; }
+.profitExternalAudit p {overflow-wrap:anywhere; white-space:pre-wrap;}

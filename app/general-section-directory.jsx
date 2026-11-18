@@ -7,7 +7,7 @@ import {canOpenPage} from './access-utils.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 
 const labels=new Map(sections.flatMap(([,rows])=>rows));
-const tones={sale:'blue',system:'teal',salesHistory:'indigo',deletionRequests:'rose',customerCreate:'sky',customerPayment:'emerald',systemPayment:'teal',customerDebts:'amber',customerStatement:'cyan',customers:'violet',purchase:'blue',suppliers:'violet',supplierPayment:'amber',supplierStatement:'cyan',supplierBalances:'indigo',products:'sky',stock:'teal',stockMovement:'blue',warehouse:'amber',installations:'violet',brands:'rose',cash:'emerald',capital:'indigo',cashTransfers:'cyan',profit:'teal',paymentHistory:'blue',exchangeRate:'amber',tahseel:'amber',warranty:'teal',users:'violet',operationControl:'rose',updates:'slate'};
+const tones={sale:'blue',system:'teal',salesHistory:'indigo',deletionRequests:'rose',customerCreate:'sky',customerPayment:'emerald',systemPayment:'teal',customerDebts:'amber',customerStatement:'cyan',customers:'violet',purchase:'blue',suppliers:'violet',supplierPayment:'amber',supplierStatement:'cyan',supplierBalances:'indigo',products:'sky',stock:'teal',stockMovement:'blue',warehouse:'amber',installations:'violet',brands:'rose',cash:'emerald',capital:'indigo',cashTransfers:'cyan',profit:'teal',paymentHistory:'blue',exchangeRate:'amber',tahseel:'amber',warranty:'teal',users:'violet',userActivity:'blue',operationControl:'rose',updates:'slate'};
 
 // Every permitted section stays in the page. Category links only scroll;
 // they never replace or collapse another category's contents.

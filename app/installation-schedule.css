@@ -58,3 +58,56 @@
 .jobSalePrice>span{font-size:13px;font-weight:650}.jobSalePrice strong{font-size:21px;color:#115980;white-space:nowrap;line-height:1.6}.jobSalePrice small{font-size:12px;font-weight:500}
 @media(max-width:600px){.premiumSolar .installationRefresh .workflowStats>button{padding:10px 3px;min-height:83px}.premiumSolar .installationRefresh .workflowStats b{font-size:22px}.premiumSolar .installationRefresh .workflowStats span{font-size:10px}.jobSalePrice strong{font-size:19px}.jobSalePrice>span{font-size:12px}}
 @media(max-width:350px){.premiumSolar .installationRefresh .workflowStats{gap:4px}.premiumSolar .installationRefresh .workflowStats span{font-size:9px}.jobSalePrice{padding:10px}.jobSalePrice strong{font-size:17px}}
+
+/* The field engineer's queue shares the same data and report actions as the office. */
+.installerAgenda{min-width:0;align-content:start}
+.installerHeading,.installerAgenda .installerContact,.installerAgenda .installerJobDetail summary,.installerToolbar,.installerHeading>div{display:flex;align-items:center;gap:10px}
+.installerHeading{justify-content:space-between}
+.installerHeading>div{align-items:start;flex-direction:column;gap:3px}
+.installerHeading h2{margin:0;font-size:clamp(21px,3vw,28px);line-height:1.5;color:#163d4b}
+.installerHeading p,.installerAgenda .installerContact>small{margin:0;color:#476675;font-size:13px}
+.installerAgenda .installerControl{min-height:44px;padding:7px 12px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #bdcfd7;border-radius:10px;color:#175567;background:white;font:inherit;font-size:13px}
+.installerFilters{display:flex;gap:5px;flex-wrap:wrap;background:#e8f0f2;border:1px solid #d5e1e4;border-radius:13px;padding:5px}
+.installerAgenda .installerFilters button{display:flex;align-items:center;justify-content:center;gap:8px;flex:1 1 auto;border:1px solid transparent;color:#345766;background:transparent;border-radius:9px;min-height:44px;padding:7px 9px;font:inherit;font-size:13px;font-weight:650}
+.installerFilters button>b{display:grid;place-items:center;min-width:21px;padding:2px 4px;min-height:21px;border-radius:7px;background:#dce8eb;color:#3e5b67;font-size:11px}
+.installerAgenda .installerFilters button[aria-pressed=true]{color:#fff;background:#075e64;border-color:#075e64}
+.installerFilters button[aria-pressed=true]>b{color:#fff;background:#ffffff24}
+.installerToolbar{justify-content:space-between;flex-wrap:wrap}
+.installerToolbar label{flex:1 1 220px;display:flex;align-items:center;gap:6px;min-width:0;border:1px solid #c6d6de;border-radius:10px;background:#fff;color:#4e6b7b;padding-inline:10px}
+.premiumSolar .installerAgenda .installerToolbar input{width:100%;min-width:0;min-height:44px;border:0!important;box-shadow:none;background:transparent;padding:8px 3px}
+.installerToolbar label:focus-within{outline:2px solid #158775;outline-offset:1px}
+.installerCards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:12px;align-items:start}
+.installerAgenda .installerJob{min-width:0;overflow-wrap:anywhere}
+.installerJob header{align-items:start}.installerJob header>div{min-width:0}
+.installerJob header h3{margin:3px 0 0}
+.installerJob .workflowStatus{flex-shrink:0}
+.installerVisit{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:14px 0;padding:10px 0;border-block:1px solid #e3eaed}
+.installerVisit dt,.installerTimeline dt{color:#496573;font-size:12px}
+.installerVisit dd{display:flex;align-items:center;gap:4px;font-weight:650;font-size:14px;line-height:1.7;margin:3px 0 0;color:#214458;white-space:pre-line}
+.installerVisit dd svg{flex:none}
+.installerAgenda .installerContact{justify-content:space-between;flex-wrap:wrap;margin:3px 0 12px}
+.installerJob .phoneActions a{min-width:40px;min-height:40px;box-sizing:border-box}
+.installerAgenda .installerJob .workflowPrimary{width:100%;margin-block:3px;min-height:44px}
+.installerAgenda .installerJob .workflowPrimary:disabled{cursor:default}
+.installerOutcome{display:flex;align-items:center;gap:7px;line-height:1.7;font-size:13px;margin:5px 0;color:#16634e}
+.installerJobDetail{border-top:1px solid #e0e9ed;margin-top:11px}
+.installerAgenda .installerJobDetail summary{min-height:44px;cursor:pointer;list-style:none;font-weight:650;font-size:13px;justify-content:space-between;color:#275566}
+.installerJobDetail summary::-webkit-details-marker{display:none}
+.installerJobDetail summary>span{margin-inline-start:auto;font-weight:500;color:#506c79}
+.installerJobDetail summary::after{content:"";width:6px;height:6px;margin:0 4px;border-inline-end:2px solid;border-bottom:2px solid;transform:rotate(-45deg)}
+.installerJobDetail[open] summary::after{transform:rotate(135deg)}
+.installerJobDetail .installerVisit{margin-block:0}
+.installerMaterials{list-style:none;padding:0;margin:5px 0}
+.installerMaterials li,.installerTimeline div{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid #e7edef;font-size:13px}
+.installerMaterials small{display:block;color:#586d78}
+.installerMaterials b{white-space:nowrap;color:#145f56}
+.installerTimeline{margin:0}.installerTimeline dd{margin:0;color:#315568;font-size:12px}
+.installerAgenda .installationCalendar:has(+.installationResultsHeading) .installationCalendarTable th{width:auto}
+@media(max-width:480px){
+ .installerFilters{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}
+ .installerAgenda .installerFilters button{flex-direction:column;gap:3px;padding:5px 2px;font-size:11px;line-height:1.4}
+ .installerToolbar{gap:6px;flex-wrap:nowrap}
+ .installerToolbar .installerControl{flex:none;font-size:12px;padding-inline:8px}
+ .installerVisit{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:8px}
+ .installerVisit dd{font-size:13px}
+}

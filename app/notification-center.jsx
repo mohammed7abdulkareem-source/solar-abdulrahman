@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import {createPortal} from 'react-dom';
+import {salesAuthorizationKey} from './sales-read-scope.mjs';
 import {supabase} from './supabase';
 import {createNoticeTracker,soundEnabled,setSoundEnabled,unlockNotificationSound,playNotificationSound} from './notification-sound.mjs';
 import AdminAnnouncement from './admin-announcement';
@@ -14,7 +15,12 @@ import './notification-details.css';
 function BellIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg>}
 function PowerIcon(){return <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9M6.4 6.4a8 8 0 1 0 11.2 0"/></svg>}
 
-export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse,onStockTransfer,onProfit,onDeleteRequest,warehouse=false,admin=false}){
+export default function NotificationCenter(props){
+ if(!props.profile?.active||props.profile.id!==props.userId)return null;
+ return <ScopedNotificationCenter key={salesAuthorizationKey(props.profile)} {...props}/>;
+}
+const noticeColumns='id,job_id,transfer_id,stock_transfer_id,delete_request_id,event,title,body,details,created_at,read_at';
+function ScopedNotificationCenter({userId,onOpen,onTransfer,onWarehouse,onStockTransfer,onProfit,onDeleteRequest,warehouse=false,admin=false}){
  const [toast,setToast]=useState(null),[sound,setSound]=useState(false);
  const tracker=useRef(createNoticeTracker()),alive=useRef(true),latestLoad=useRef(0),panel=useRef(null);
  const [loadError,setLoadError]=useState(''),[loading,setLoading]=useState(false),[noticeOwner,setNoticeOwner]=useState(userId),[unreadTotal,setUnreadTotal]=useState(null),[readBusy,setReadBusy]=useState(false),[readMessage,setReadMessage]=useState(''),[readError,setReadError]=useState(false);
@@ -32,7 +38,7 @@ export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse
   setLoading(true);
   try{
    const [list,count]=await Promise.all([
-    supabase.from('solar_notifications').select('id,job_id,transfer_id,stock_transfer_id,delete_request_id,event,title,body,details,created_at,read_at').eq('user_id',owner).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(30),
+    supabase.from('solar_notifications').select(noticeColumns).eq('user_id',owner).order('created_at',{ascending:false}).order('id',{ascending:false}).limit(30),
     supabase.from('solar_notifications').select('id',{count:'exact',head:true}).eq('user_id',owner).is('read_at',null)
    ]);
    if(!current(owner,epoch)||request!==latestLoad.current)return;
@@ -77,7 +83,17 @@ export default function NotificationCenter({userId,onOpen,onTransfer,onWarehouse
  useEffect(()=>{
   alive.current=true;sessionEpoch.current++;readAllLock.current=false;readingIds.current=new Set();confirmedReads.current=new Map();arrivals.current=new Map();arrivalVersion.current=0;setNoticeOwner(userId);setNotices([]);setUnreadTotal(null);setReadBusy(false);setReadMessage('');setReadError(false);setToast(null);tracker.current=createNoticeTracker();setSupported(pushSupported());setSound(soundEnabled(userId));
   registeredOnThisDevice(userId).then(ok=>{if(alive.current)setEnabled(ok)}).catch(()=>{});load(true);
-  const channel=supabase.channel('notices-'+userId).on('postgres_changes',{event:'INSERT',schema:'public',table:'solar_notifications',filter:'user_id=eq.'+userId},({new:n})=>{if(!alive.current||currentUser.current!==userId||n.user_id!==userId)return;arrivals.current.set(n.id,{notice:n,version:++arrivalVersion.current});receive([n],false,true);setNotices(v=>mergeNotificationRows(v,[n],confirmedReads.current));setUnreadTotal(null);void load();}).subscribe();
+  const epoch=sessionEpoch.current;
+  const channel=supabase.channel('notices-'+userId).on('postgres_changes',{event:'INSERT',schema:'public',table:'solar_notifications',filter:'user_id=eq.'+userId},async({new:arrival})=>{
+   if(!current(userId,epoch)||arrival.user_id!==userId||!arrival.id)return;
+   // A queued realtime event can arrive after role or warehouse access changed.
+   try{
+    const {data:n,error}=await supabase.from('solar_notifications').select(noticeColumns).eq('user_id',userId).eq('id',arrival.id).maybeSingle();
+    if(!current(userId,epoch)||error||!n)return;
+    arrivals.current.set(n.id,{notice:n,version:++arrivalVersion.current});
+    receive([n],false,true);setNotices(v=>mergeNotificationRows(v,[n],confirmedReads.current));setUnreadTotal(null);void load();
+   }catch{/* Polling will retry the currently visible inbox. */}
+  }).subscribe();
   const refresh=()=>{if(document.visibilityState==='visible')load();};
   const settings=e=>{if(e.detail?.userId!==userId)return;if(e.type==='solar-push-setting'&&typeof e.detail.enabled==='boolean')setEnabled(e.detail.enabled);setSound(soundEnabled(userId));};
   const unlock=()=>{if(soundEnabled(userId))unlockNotificationSound();};

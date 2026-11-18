@@ -68,3 +68,11 @@ test('a snapshot loaded as admin is invalid after same-account demotion; restric
   assert.equal(salesReadAllowed(profile),false);denied(()=>verifySalesResponse(ownPage(),profile));
  }
 });
+
+test('a wholesale-only archive refuses a system receipt even when its owner matches',()=>{
+ const wholesale={...seller,permissions:{sale:true}};
+ denied(()=>verifySalesResponse(ownPage(),wholesale));
+ const row=ownPage().rows[0],page={ownerId:seller.id,count:1,rows:[row],users:[]};
+ assert.equal(verifySalesResponse(page,wholesale),page);
+ assert.equal(salesReadAllowed({...seller,permissions:{tahseel:true,ownSales:true,salesDeleteOwn:true}}),false);
+});

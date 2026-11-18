@@ -9,6 +9,16 @@ export function searchCategories(profile){
   ...(!isEngineer(profile)&&(isWarehouse(profile)||admin||['stock','stockMovement','warehouse','sale','system','purchase'].some(id=>canOpenPage(profile,id)))?['products']:[]),
   ...(financial&&canOpenPage(profile,'suppliers')?['suppliers']:[])];
 }
+export function scopedSearchResults(profile,category,response){
+ const allowed=searchCategories(profile);
+ const visible={customers:[],products:[],suppliers:[],more:{}};
+ for(const key of allowed){
+  if(key==='all'||(category!=='all'&&key!==category)||!Array.isArray(response?.[key]))continue;
+  visible[key]=response[key];
+  visible.more[key]=response.more?.[key]===true;
+ }
+ return visible;
+}
 export function searchSections(sections,profile,query){
  const words=normalizeSearch(query).split(/\s+/).filter(Boolean);
  if(!words.length)return [];

@@ -5,7 +5,7 @@ import {sections,sectionGroups} from './section-directory.mjs';
 import {canOpenPage} from './access-utils.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 const labels=new Map(sections.flatMap(([,rows])=>rows));
-const quickChoices={installer:['installations'],warehouse:['warehouse','stock','stockMovement'],default:['sale','system','salesHistory','cash','installations','purchase','customers']};
+const quickChoices={installer:['installations'],warehouse:['warehouse','stock','stockMovement'],default:['sale','system','salesHistory','cash','installations','purchase','customers','tahseel','warranty']};
 export default function PremiumCommandDirectory({profile,query='',onNavigate}){
  const [picked,setPicked]=useState('sales'),needle=normalizeSearch(query),groups=sectionGroups.map(g=>({...g,rows:g.ids.filter(id=>canOpenPage(profile,id)&&normalizeSearch(labels.get(id)).includes(needle))})).filter(g=>g.rows.length),active=groups.find(g=>g.id===picked)||groups[0];
  const quick=(quickChoices[profile.user_type]||quickChoices.default).filter(id=>canOpenPage(profile,id)&&normalizeSearch(labels.get(id)).includes(needle)).slice(0,3),count=groups.reduce((n,g)=>n+g.rows.length,0);

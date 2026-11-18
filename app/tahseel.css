@@ -19,3 +19,7 @@
 
 .quoteManualPanels{display:grid;gap:6px;margin:14px 0 2px}
 .quoteManualPanels>small{color:#607c87;font-size:11px;line-height:1.7}
+
+.quoteLimitedExpenses{margin-top:1rem;padding:1rem;border-radius:12px;background:#f1f8f6;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem}
+.quoteLimitedExpenses>div{display:grid;gap:.25rem}.quoteLimitedExpenses strong{color:#08665b;font-size:1.2rem}
+.quoteLimitedExpenses button{background:white;border:1px solid #b9d6d0;border-radius:9px;color:#135c52;padding:.55rem .9rem}.quoteLimitedExpenses button:disabled{opacity:.5}

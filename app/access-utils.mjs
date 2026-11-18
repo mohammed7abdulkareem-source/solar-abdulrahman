@@ -12,27 +12,31 @@ export function cashBalance(rows, userId, all = false) {
 }
 export function canOpenPage(profile, page) {
   if (!profile?.active) return false;
-  if (page === 'exchangeRate') return !isEngineer(profile) && !isWarehouse(profile);
   if (page === 'home') return true;
-  if (page === 'warranty') return !isEngineer(profile) && !isWarehouse(profile);
   if (isEngineer(profile)) return page === 'installations';
   if (isWarehouse(profile)) return ['warehouse','stock','stockMovement'].includes(page);
   if (isAdministrator(profile)) return true;
-  if (['users','updates','operationControl'].includes(page)) return false;
-  if (page === 'wholesalePricing') return profile.permissions?.wholesalePricingManage === true;
-  if (page === 'cash') return !!profile.permissions?.cash || ['cashDeposit','cashExpense','cashExchange','cashExternalProfit','cashAdminTools','cashTransferSend','financeReceive'].some(key=>profile.permissions?.[key]===true);
-  if (page === 'purchasesHub') return profile.permissions?.purchase === true;
-  if (page === 'profit') return !!(profile.permissions?.profit || profile.permissions?.profitSettlement);
-  if (page === 'customerCreate') return !!(profile.permissions?.customerCreate || profile.permissions?.customers);
-  if (page === 'customers') return !!(profile.permissions?.customers || profile.permissions?.customerCreate);
-  if (page === 'tahseel') return profile.permissions?.tahseel !== undefined ? !!profile.permissions.tahseel : !!profile.permissions?.system;
-  if (page === 'cashTransfers') return !!(profile.permissions?.cashTransferSend || profile.permissions?.financeReceive);
-  if (page === 'installations') return !!(profile.permissions?.installations || profile.permissions?.system);
-  if (page === 'paymentHistory') return paymentKinds.some(([kind])=>canReadPaymentKind(profile,kind));
-  if (page === 'salesHistory' || page === 'deletionRequests') return true;
-  return !!profile.permissions?.[page];
+  const permissions=profile.permissions||{};
+  const has=key=>permissions[key]===true;
+  const quoteAccess=permissions.tahseel===undefined?has('system'):has('tahseel');
+  if (['users','userActivity','updates','operationControl'].includes(page)) return false;
+  if (page==='exchangeRate') return has('exchangeRate')||has('exchangeRateEdit');
+  if (page==='warranty') return permissions.warranty===undefined?quoteAccess||has('sale')||has('system'):has('warranty');
+  if (page==='salesHistory') return permissions.salesHistory===undefined?has('sale')||has('system'):has('salesHistory');
+  if (page==='deletionRequests') return has('deletionRequests');
+  if (page==='wholesalePricing') return has('wholesalePricingManage');
+  if (page==='cash') return ['cash','cashDeposit','cashExpense','cashExchange','cashExternalProfit','cashTransferSend','financeReceive'].some(has);
+  if (page==='purchasesHub') return has('purchase');
+  if (page==='profit') return has('profit')||has('profitSettlement');
+  if (page==='customerCreate'||page==='customers') return has('customerCreate')||has('customers');
+  if (page==='tahseel') return quoteAccess;
+  if (page==='cashTransfers') return has('cashTransferSend')||has('financeReceive');
+  if (page==='installations') return has('installations')||has('system');
+  if (page==='paymentHistory') return paymentKinds.some(([kind])=>canReadPaymentKind(profile,kind));
+  return has(page);
 }
-export const canDeleteSale = (profile, ownerId) => !!profile?.active && !isEngineer(profile) && !isWarehouse(profile) && (isAdministrator(profile) || (!!ownerId && profile.id === ownerId));
+export const canDeleteSale = (profile,ownerId,kind) => isAdministrator(profile) ||
+  !!(ownerId&&profile?.id===ownerId&&(kind?['sale','system'].includes(kind)&&canOpenPage(profile,kind):canOpenPage(profile,'sale')||canOpenPage(profile,'system')));
 export const canSeeCash = profile => !isEngineer(profile) && canOpenPage(profile,'cash');
 
 export const canManageQuotes = profile => canOpenPage(profile,'tahseel') && (isAdministrator(profile) || profile.permissions?.tahseelFull === true);
