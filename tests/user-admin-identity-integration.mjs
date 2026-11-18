@@ -109,4 +109,34 @@ assert.equal(okay(await edge(removeClean)).mode,'deleted');
 refused(await edge(cleanCreate));
 assert.equal(sqlCount('auth.users',"id='"+clean.id+"'"),0);
 assert.equal(await current(clean.id),undefined);
+// A permanent provider record can exist even when the first independent SQL write fails.
+const interruptedId=randomUUID(),pendingUsername=username+'_p',fault='qa_staff_'+tag;
+const interrupted={...details,request_id:interruptedId,username:pendingUsername};
+sql("create function solar_private."+fault+"() returns trigger language plpgsql as $$begin if new.action='save_details' and new.request_id='"+interruptedId+"' then raise exception 'local test interruption';end if;return new;end;$$; create trigger "+fault+" before insert on solar_private.staff_admin_requests for each row execute function solar_private."+fault+"()");
+try{
+ const failed=await edge(interrupted);refused(failed);assert.match(failed.body.error,/local test interruption/);
+ assert.equal(sql("select active from profiles where id='"+interruptedId+"'"),'f');
+ assert.equal(sql("select banned_until>now() from auth.users where id='"+interruptedId+"'"),'t');
+ refused(await login(pendingUsername+'@solar-user.local',password));
+}finally{sql("drop trigger "+fault+" on solar_private.staff_admin_requests;drop function solar_private."+fault+"()");}
+const partial=await current(interruptedId);assert.equal(partial.active,false);
+assert.equal(partial.warehouse.all,false);assert.deepEqual(partial.warehouse.ids,[]);
+// A second signed-in admin session reviews the draft while the first browser is offline.
+const adminLoginFile=process.env.SOLAR_ADMIN_FIXTURE_LOGIN||'/workspace/solar-review/v4114/wizard-edge/local-admin-login.json';
+const adminLogin=JSON.parse(await readFile(adminLoginFile,'utf8'));
+const secondAdmin=okay(await login(adminLogin.email,adminLogin.password)).access_token;
+assert.equal(await principal(secondAdmin),adminId);
+assert.notEqual(secondAdmin,admin);
+const resumePayload={...interrupted,request_id:randomUUID(),user_id:partial.id,token:partial.token,password:undefined};
+const repaired=okay(await edge(resumePayload,secondAdmin)).user;
+assert.equal(repaired.id,interruptedId);assert.equal(repaired.active,false);
+const reviewed=okay(await edge(finalize(repaired,{warehouse:selected}),secondAdmin)).user;
+assert.equal(reviewed.active,true);assert.equal(reviewed.permissions.warranty,true);
+const staleCreation=await edge(interrupted);
+assert.equal(staleCreation.status,409);refused(staleCreation);
+const afterRetry=await current(interruptedId);
+assert.equal(afterRetry.token,reviewed.token);
+assert.deepEqual(afterRetry.permissions,reviewed.permissions);
+assert.deepEqual(afterRetry.warehouse,selected);
+assert.equal(await principal(okay(await login(pendingUsername,password)).access_token),interruptedId);
 console.log('PASS identity lifecycle via Edge + GoTrue + PostgREST: staged creation/retry, activation, username and preserved email, password change, stale updates, admin safeguards, archive/history and removal.');

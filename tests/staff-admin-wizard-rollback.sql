@@ -40,5 +40,40 @@ begin
  begin delete from public.profiles where id=fresh;raise exception 'Historical identity erased';exception when foreign_key_violation then null;end;
  assert (select t.created_by=fresh and t.total=12000 from public.transactions t where t.id=-88411267);
 end$$;
+-- Simulate the Edge caller disappearing after Auth inserted the profile and
+-- before the first save_details call. A different admin resumes by user ID.
+do $$
+declare
+ creator uuid:=gen_random_uuid(); reviewer uuid:=gen_random_uuid(); pending uuid:=gen_random_uuid();
+ input jsonb; snapshot jsonb; saved jsonb;
+begin
+ assert not has_table_privilege('authenticated','solar_private.staff_provision_intents','insert');
+ assert not has_function_privilege('authenticated','solar_private.staff_provision_reserve(uuid,uuid,jsonb)','execute');
+ insert into public.profiles(id,active,is_admin,user_type,display_name)
+ values(creator,true,true,'admin','Creator'),(reviewer,true,true,'admin','Reviewer');
+ input:=jsonb_build_object('user_id',pending,'creating',true,'username','wizard_qa_resume','display_name','مستخدم جديد','phone','07700000000');
+ perform public.solar_admin_user_wizard(creator,'check_create',pending,input);
+ begin
+  perform public.solar_admin_user_wizard(reviewer,'check_create',pending,input);
+  raise exception 'Reservation reassigned to a different creator';
+ exception when sqlstate 'PT409' then null; end;
+ begin
+  perform public.solar_admin_user_wizard(creator,'check_create',pending,input||'{"username":"changed"}'::jsonb);
+  raise exception 'Reservation details overwritten';
+ exception when sqlstate 'PT409' then null; end;
+ insert into public.profiles(id,active,is_admin,user_type,display_name) values(pending,true,false,'admin_staff','Bootstrap');
+ select u into snapshot from jsonb_array_elements(public.solar_admin_user_wizard(reviewer,'directory')->'users') u where u->>'id'=pending::text;
+ assert snapshot->>'username'='wizard_qa_resume' and snapshot->>'display_name'='مستخدم جديد' and snapshot->>'phone'='07700000000';
+ assert snapshot->'active'='false'::jsonb and snapshot->'is_admin'='false'::jsonb and snapshot#>'{warehouse,ids}'='[]'::jsonb;
+ assert not solar_private.warehouse_access_allowed(pending,solar_private.primary_warehouse());
+ assert not exists(select 1 from solar_private.staff_admin_requests where target_id=pending);
+ saved:=public.solar_admin_user_wizard(reviewer,'finalize',gen_random_uuid(),
+   jsonb_build_object('user_id',pending,'token',snapshot->>'token','active',true,'role','user','permissions','{"warranty":true}'::jsonb));
+ begin
+  perform public.solar_admin_user_wizard(creator,'save_details',pending,input);
+  raise exception 'Delayed initial save overwrote the reviewed account';
+ exception when sqlstate 'PT409' then null; end;
+ assert solar_private.staff_wizard_user(pending)=saved->'user' and saved#>'{user,active}'='true'::jsonb and saved#>'{user,permissions,warranty}'='true'::jsonb;
+end$$;
 rollback;
-\echo PASS staged user, permissions and warehouses, stale rejection, historical-account archive and removal retry.
+\echo PASS inactive bootstrap, interrupted cross-admin review, permissions and warehouses, stale rejection, historical-account archive and removal retry.
