@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {capitalAccounts,capitalStockReport,capitalCashReport,capitalDebtReport} from '../app/capital-reports.mjs';
-import {cashRowsFor,cashBalance} from '../app/access-utils.mjs';
 import {capitalSnapshotReport} from '../app/capital-snapshot-report.mjs';
 
 test('different accounts retain gross debts and credits on both sides',()=>{
@@ -31,11 +30,22 @@ test('capital debt reports include opening/reconciliation and exclude settled ca
  assert.equal(capitalDebtReport(suppliers,true).total,800);
  const credit=capitalAccounts([{kind:'customer_payment',party:'عميل',total:100}]);assert.equal(credit.total,0);assert.equal(credit.net,-100);assert.match(capitalDebtReport(credit).body,/-100/);
 });
-test('cash report uses cash owner scope and explicit transfer deltas just like tile',()=>{
- const tx=[{id:1,date:'2026-10-01',kind:'cash_income',cash:true,total:1000,createdBy:'admin',cashboxUserId:'staff'},{id:2,date:'2026-10-02',kind:'transfer_out',cash:true,total:250,cashDelta:-250,createdBy:'staff'},{id:3,date:'2026-10-03',kind:'cash_income',cash:true,total:9999,createdBy:'other'}];
- const report=capitalCashReport(cashRowsFor(tx,'staff'));
- assert.equal(report.total,750);assert.equal(report.total,cashBalance(tx,'staff'));assert.doesNotMatch(report.body,/9,999/);
- assert.equal(capitalCashReport(cashRowsFor(tx,null,true)).total,cashBalance(tx,null,true));
+test('cash snapshot lists only current balances in the selected currency and names both parties to open handovers',()=>{
+ const holder=(ownerName,iqd,usd=0,usdBook=0,kind='owner')=>({kind,ownerName,iqd,usd,usdBook});
+ const cash={iqd:102,usd:2,usdBook:2900,allocations:[
+  holder('قاصة <أحمد>',110),holder('علي',-10),holder('رصيد صفري',0),holder('دولار فقط',0,2,2900),holder('',2,0,0,'transit')],
+  pendingHandovers:[{senderName:'مرسل <م>',recipientName:'مستلم & شريك',amount:2,currency:'IQD'}]};
+ const company=capitalCashReport({scope:'company',cash});
+ assert.equal(company.total,102);
+ for(const text of ['قاصة &lt;أحمد&gt;','علي','-10','مرسل &lt;م&gt;','مستلم &amp; شريك','مبالغ قيد الاستلام'])assert.ok(company.body.includes(text),text);
+ assert.match(company.body,/المتاح في قاصات المستخدمين<\/span><strong>100 د.ع/);
+ assert.doesNotMatch(company.body,/رصيد صفري|دولار فقط|إجمالي الداخل|الرصيد بعد الحركة/);
+ const usd=capitalCashReport({scope:'company',cash},'USD');
+ assert.equal(usd.total,2900);assert.match(usd.body,/دولار فقط/);assert.match(usd.body,/2,900/);
+ assert.doesNotMatch(usd.body,/مبالغ قيد الاستلام|علي|مرسل/);
+ const own=capitalCashReport({scope:'own',cash:{...cash,iqd:0,allocations:[]}});
+ assert.equal(own.total,0);assert.match(own.body,/لا توجد قاصات/);assert.match(own.body,/مستلم &amp; شريك/);
+ assert.doesNotMatch(capitalCashReport({scope:'own',cash:{...cash,allocations:[],pendingHandovers:[]}}).body,/مبالغ قيد الاستلام/);
 });
 test('stock report counts stocked products and preserves escaped names and brands',()=>{
  const report=capitalStockReport([{name:'بطارية',brand:'A&B',category:'بطارية',qty:2,cost:1500},{name:'فارغ',qty:0,cost:5000}]);

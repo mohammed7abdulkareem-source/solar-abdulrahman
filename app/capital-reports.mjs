@@ -1,13 +1,11 @@
-import {userDisplayName} from './user-name-utils.mjs';
 import {phoneContactDocument} from './phone-contact-utils.mjs';
 import {accountEffect} from './reconciliation-utils.mjs';
-import {supplierEffect,money,receiptNumber} from './supplier-utils.mjs';
-import {escapeHtml as e,warehouseDate} from './warehouse-utils.mjs';
-import {cashOwner} from './access-utils.mjs';
+import {supplierEffect,money} from './supplier-utils.mjs';
+import {escapeHtml as e} from './warehouse-utils.mjs';
 
 const rounded=n=>Math.round((n+Number.EPSILON)*100)/100;
-const metric=(label,value)=>'<div class="reportMetric"><span>'+e(label)+'</span><strong>'+money(value)+' د.ع</strong></div>';
-const table=(headers,rows,widths=[])=>'<table data-pdf-paginate>'+(widths.length?'<colgroup>'+widths.map(w=>'<col style="width:'+w+'%">').join('')+'</colgroup>':'')+'<thead><tr>'+headers.map(h=>'<th>'+e(h)+'</th>').join('')+'</tr></thead><tbody>'+(rows.length?rows.map(cells=>'<tr>'+cells.map((c,i)=>'<td'+(i===0?' style="white-space:nowrap"':'')+'>'+c+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+headers.length+'">لا توجد بيانات</td></tr>')+'</tbody></table>';
+const metric=(label,value,unit='د.ع')=>'<div class="reportMetric"><span>'+e(label)+'</span><strong>'+money(value)+' '+unit+'</strong></div>';
+const table=(headers,rows,widths=[],nowrapFirst=true)=>'<table data-pdf-paginate>'+(widths.length?'<colgroup>'+widths.map(w=>'<col style="width:'+w+'%">').join('')+'</colgroup>':'')+'<thead><tr>'+headers.map(h=>'<th>'+e(h)+'</th>').join('')+'</tr></thead><tbody>'+(rows.length?rows.map(cells=>'<tr>'+cells.map((c,i)=>'<td'+(nowrapFirst&&i===0?' style="white-space:nowrap"':'')+'>'+c+'</td>').join('')+'</tr>').join(''):'<tr><td colspan="'+headers.length+'">لا توجد بيانات</td></tr>')+'</tbody></table>';
 export function capitalAccounts(tx,parties=[],supplier=false){
  const posted=new Set(tx.filter(t=>t.fxAccountEntry&&t.linkedTransaction!=null).map(t=>String(t.linkedTransaction)));
  const kinds=supplier?['purchase','supplier_payment','supplier_fx_book']:['sale','system','customer_payment','system_payment'];
@@ -35,15 +33,39 @@ export function capitalDebtReport(accounts,supplier=false){
  const creditOnly=accounts.rows.length>0&&accounts.rows.every(r=>r.balance<0),totalLabel=creditOnly?(supplier?'سلفنا لدى الموردين':'أرصدة العملاء الدائنة'):(supplier?'ديون الموردين علينا':'ديون العملاء لنا');
  return {title,total:accounts.total,body:'<div class="meta"><div>نطاق الكشف: حسابات '+(supplier?'الموردين':'العملاء')+' المشمولة في بيانات رأس المال</div><div>عملة المجاميع والقيمة الدفترية: الدينار العراقي · IQD</div></div><div class="reportSummary">'+metric(totalLabel,accounts.total)+metric('صافي أرصدة الحسابات',accounts.net)+'</div><p>'+(supplier?'الموجب مستحق للموردين، والسالب سلف وأرصدة لنا عندهم.':'الموجب مستحق لنا على العملاء، والسالب أرصدة للعملاء عندنا.')+(currency?' عمود «الرصيد بعملة الحساب» يعرض العملة الأصلية لكل حساب، وأعمدة الدينار والمجاميع تعرض القيمة الدفترية المثبتة.':'')+'</p>'+table(['ت',supplier?'المورد':'العميل','الهاتف',...(currency?['الرصيد بعملة الحساب']:[]),supplier?'علينا · دفتري د.ع':'لنا · دفتري د.ع',supplier?'لنا · دفتري د.ع':'للعميل · دفتري د.ع'],accounts.rows.map((r,i)=>[i+1,e(r.name),phoneContactDocument(r.phone),...(currency?[money(r.amount)+' '+(r.currency==='USD'?'$':'د.ع')]:[]),money(Math.max(0,r.balance)),money(Math.max(0,-r.balance))]),currency?[6,22,13,19,20,20]:[7,30,17,23,23])+'<div data-pdf-end class="notes">عدد الحسابات: '+accounts.rows.length+'<br>صافي الأرصدة بالقيمة الدفترية: '+money(accounts.net)+' د.ع</div>'};
 }
-const cashLabels={capital_deposit:'إيداع رأس مال',capital_withdraw:'سحب رأس مال',deposit:'إيداع دولار',withdraw:'سحب دولار',expense:'مصروف',supplier_payment_refund:'إرجاع تسديد مورد ملغى',cash_reconcile:'تسوية قاصة إدارية',buy_usd:'شراء دولار من الدينار',sell_usd:'بيع دولار إلى الدينار',sale:'بيع نقدي',system:'بيع منظومة',purchase:'شراء نقدي',customer_payment:'تسديد عميل',system_payment:'تسديد منظومة',supplier_payment:'تسديد مورد',cash_income:'إيداع بالصندوق',cash_expense:'مصروف من الصندوق',capital:'رأس مال',profit_distribution:'توزيع أرباح',installation_payout:'دفع مصاريف تنصيب',installation_refund:'استرجاع فرق التنصيب',handover_expense:'مصروف قبل تسليم القاصة',transfer_out:'إرسال أموال',transfer_in:'استلام أموال',transfer_refund:'إرجاع تحويل',transfer_transit:'أموال قيد التسليم'};
-// Receives the same cash-owner-scoped rows used by the capital tile.
-export function capitalCashReport(rows,staff=[]){
- let total=0,incoming=0,outgoing=0;
- const data=[...rows].sort((a,b)=>new Date(a.date)-new Date(b.date)||String(a.id).localeCompare(String(b.id))).map((t,i)=>{
-  const delta=t.cashDelta!==undefined?Number(t.cashDelta):(['purchase','supplier_payment','cash_expense','profit_distribution'].includes(t.kind)?-1:1)*Number(t.total||0);
-  total+=delta;incoming+=Math.max(0,delta);outgoing+=Math.max(0,-delta);
-  const owner=staff.find(u=>u.id===cashOwner(t));
-  return [i+1,e(warehouseDate(t.date)),e(cashLabels[t.kind]||t.kind)+'<br>'+e(t.party||t.notes||'')+(owner?'<br>'+e(userDisplayName(owner,'')):''),t.systemCash?'—':e(receiptNumber(t)),money(Math.max(0,delta)),money(Math.max(0,-delta)),money(total)];
- });
- return {title:'كشف الصندوق',total,body:'<div class="meta"><div>نطاق الكشف: حركات القاصات المشمولة في بيانات رأس المال</div><div>العملة: الدينار العراقي · IQD</div></div><div class="reportSummary">'+metric('إجمالي الداخل',incoming)+metric('إجمالي الخارج',outgoing)+metric('الرصيد بعد الحركات المعروضة',total)+'</div><p>الرصيد متراكم حسب ترتيب حركات الدينار المعروضة من الأقدم إلى الأحدث.</p>'+table(['ت','التاريخ','البيان / القاصة','الوصل','داخل د.ع','خارج د.ع','الرصيد بعد الحركة د.ع'],data,[7,12,23,10,16,16,16])+'<div data-pdf-end class="documentCounts">عدد الحركات: '+data.length+' • الداخل: '+money(incoming)+' د.ع • الخارج: '+money(outgoing)+' د.ع</div>'};
+export function capitalCashReport(snapshot,currency='IQD'){
+ const {cash,scope}=snapshot;
+ const dollar=currency==='USD', unit=dollar?'$':'د.ع';
+ const balance=row=>Number(dollar?row.usd:row.iqd);
+ const hasBalance=row=>balance(row)!==0||(dollar&&Number(row.usdBook)!==0);
+ const allocations=cash.allocations.filter(hasBalance);
+ const owners=allocations.filter(row=>row.kind==='owner');
+ const pending=cash.pendingHandovers.filter(row=>row.currency===currency);
+ const available=owners.reduce((sum,row)=>sum+balance(row),0);
+ const held=allocations.find(row=>row.kind==='transit');
+ const unassigned=allocations.find(row=>row.kind==='unassigned');
+ const amount=value=>'<bdi dir="ltr">'+money(value,currency)+'</bdi>';
+ const balanceRow=(label,row)=>[e(label),amount(balance(row)),...(dollar?[money(row.usdBook)]:[])];
+ const cashboxes=owners.map(row=>balanceRow(row.ownerName,row));
+ if(unassigned)cashboxes.push(balanceRow('رصيد غير مسند إلى قاصة مستخدم',unassigned));
+
+ const summary=[metric('المتاح في قاصات المستخدمين',available,unit)];
+ if(unassigned)summary.push(metric('رصيد غير مسند',balance(unassigned),unit));
+ if(scope==='company'&&held)summary.push(metric('الرصيد قيد الاستلام',balance(held),unit));
+ if(dollar)summary.push(metric('القيمة الدفترية بالدينار',cash.usdBook));
+
+ const sections=[
+  '<div class="meta"><div>'+ (scope==='company'?'قاصات الشركة':'قاصتي') +'</div><div>'+ (dollar?'الدولار الأمريكي · USD':'الدينار العراقي · IQD') +'</div></div>',
+  '<div class="reportSummary">'+summary.join('')+'</div>',
+  '<h3 class="reportSectionTitle">أرصدة القاصات الحالية</h3>',
+  cashboxes.length?table(['صاحب القاصة','الرصيد الحالي · '+unit,...(dollar?['القيمة الدفترية · د.ع']:[])],cashboxes,dollar?[44,28,28]:[62,38],false):'<p>لا توجد قاصات برصيد حالي بهذه العملة.</p>'
+ ];
+ if(pending.length){
+  const pendingTotal=pending.reduce((sum,row)=>sum+Number(row.amount),0);
+  sections.push('<h3 class="reportSectionTitle">مبالغ قيد الاستلام</h3>',
+   table(['من المستخدم','إلى المستخدم','المبلغ · '+unit],pending.map(row=>[e(row.senderName),e(row.recipientName),amount(row.amount)]),[34,34,32],false),
+   '<p data-pdf-end>مجموع التسليمات بانتظار الاستلام <b>'+amount(pendingTotal)+' '+unit+'</b></p>');
+  if(scope==='own')sections.push('<p>التسليمات المعلّقة معروضة للمتابعة. رصيد قاصتك يعرض المبلغ المتاح حالياً.</p>');
+ }
+ return {title:dollar?'كشف قاصة الدولار':'كشف الصندوق',total:dollar?cash.usdBook:cash.iqd,body:sections.join('')};
 }

@@ -8,25 +8,36 @@ import {previewPdf} from './pdf-preview.mjs';
 import {money} from './supplier-utils.mjs';
 import {capitalStockReport,capitalCashReport,capitalDebtReport} from './capital-reports.mjs';
 import {capitalSnapshotReport} from './capital-snapshot-report.mjs';
+import {salesAuthorizationKey} from './sales-read-scope.mjs';
 
 function Amount({value}){return <span className="capitalAmount"><bdi dir="ltr">{money(value)}</bdi><small>د.ع</small></span>;}
-export default function CapitalWorkspace({profile,revision}){
+export default function CapitalWorkspace(props){
+ return <ScopedCapitalWorkspace key={salesAuthorizationKey(props.profile)} {...props}/>;
+}
+function ScopedCapitalWorkspace({profile,revision}){
  const [snapshot,setSnapshot]=useState(null),[refresh,setRefresh]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState('');
- useEffect(()=>{let live=true;setLoading(true);setError('');supabase.rpc('solar_capital_snapshot').then(({data,error})=>{
-  if(!live)return;if(error)throw error;if(!data?.asOf||!Number.isFinite(Number(data.net)))throw new Error('تعذر التحقق من بيانات رأس المال');setSnapshot(data);
- }).catch(err=>{if(live){setSnapshot(null);setError(err.message||'تعذر تحميل الحساب. أعد المحاولة.');}}).finally(()=>{if(live)setLoading(false);});return()=>{live=false;};},[profile.id,revision,refresh]);
+ useEffect(()=>{let live=true;setLoading(true);setError('');supabase.rpc('solar_capital_current_snapshot').then(({data,error})=>{
+  if(!live)return;
+  if(error)throw error;
+  if(!data?.asOf||!Number.isFinite(Number(data.net))||data.scope!==(profile.is_admin?'company':'own')||
+     !Array.isArray(data.cash?.allocations)||!Array.isArray(data.cash?.pendingHandovers))
+   throw new Error('تعذر التحقق من بيانات رأس المال');
+  if(data.scope==='own'&&(data.cash.allocations.some(row=>row.kind!=='owner'||row.ownerId!==profile.id)||
+     data.cash.pendingHandovers.some(row=>row.senderId!==profile.id&&row.recipientId!==profile.id)))
+   throw new Error('تعذر تأكيد نطاق القاصة. أعد التحديث.');
+  setSnapshot(data);
+ }).catch(err=>{if(live){setSnapshot(null);setError(err.message||'تعذر تحميل الحساب. أعد المحاولة.');}}).finally(()=>{if(live)setLoading(false);});return()=>{live=false;};},[profile.id,profile.is_admin,revision,refresh]);
  const report=snapshot?capitalSnapshotReport(snapshot):null;
  const document=r=>a4(r.title,r.body,money(r.total)+' د.ع',new Date(snapshot.asOf).toLocaleString('en-GB',{timeZone:'Asia/Baghdad'}));
  const preview=r=>previewPdf(document(r),r.title);
  const s=snapshot;
  const debt=(accounts,supplier=false,credit=false)=>{const total=credit?(supplier?accounts.prepayments:accounts.advances):(supplier?accounts.payable:accounts.receivable);const r=capitalDebtReport({rows:credit?accounts.rows.filter(r=>r.balance<0):accounts.rows,net:credit?-total:accounts.net,total},supplier);return credit?{...r,title:supplier?'كشف سلفنا لدى الموردين':'كشف أرصدة العملاء الدائنة'}:r;};
- const cashRows=s?.cash.rows.filter(r=>r.currency==='IQD').map(r=>({...r,total:Math.abs(r.delta),cashDelta:r.delta,cashboxUserId:r.ownerId,party:[r.party,r.ownerName].filter(Boolean).join(' · '),systemCash:!r.id.startsWith('tx:')}));
  const tiles=s?[
   ['المخزون بالكلفة',s.stock.value,'package',()=>capitalStockReport(s.stock.rows)],
-  ['الصندوق بالدينار',s.cash.iqd,'wallet',()=>capitalCashReport(cashRows)],
+  ['الصندوق بالدينار',s.cash.iqd,'wallet',()=>capitalCashReport(s)],
   ['ديون العملاء لنا',s.customers.receivable,'customers',()=>debt(s.customers)],
   ['ديون الموردين علينا',s.suppliers.payable,'suppliers',()=>debt(s.suppliers,true)],
-  ...(s.cash.usd!==0||s.cash.usdBook!==0?[['قاصة الدولار بالكلفة',s.cash.usdBook,'wallet',()=>({title:'قاصة الدولار',total:s.cash.usdBook,body:'<p>رصيد الدولار: '+money(s.cash.usd)+' $</p><p>القيمة الدفترية: '+money(s.cash.usdBook)+' د.ع</p>'})]]:[]),
+  ...(s.cash.allocations.some(row=>Number(row.usd)!==0||Number(row.usdBook)!==0)?[['قاصة الدولار بالكلفة',s.cash.usdBook,'wallet',()=>capitalCashReport(s,'USD')]]:[]),
   ...(s.suppliers.prepayments!==0?[['سلفنا لدى الموردين',s.suppliers.prepayments,'suppliers',()=>debt(s.suppliers,true,true)]]:[]),
   ...(s.customers.advances!==0?[['أرصدة العملاء الدائنة',s.customers.advances,'customers',()=>debt(s.customers,false,true)]]:[])
  ]:[];

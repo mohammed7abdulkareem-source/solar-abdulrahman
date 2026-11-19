@@ -64,7 +64,7 @@ try{
  const seller=await open('seller');await section(seller.page,'capital');await seller.page.locator('.capitalScopeNote').waitFor();
  assert.doesNotMatch(await seller.page.locator('.capitalWorkspace').innerText(),/ABDULRAHMAN|188,194,000|269,868,000/);
  await noOverflow(seller.page);await seller.page.screenshot({path:dir+'/own-capital-mobile.png',fullPage:true});
- await admin.page.route('**/rest/v1/rpc/solar_capital_snapshot',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({code:'TEST_ONLY',message:'تعذر تحميل الحساب للاختبار'})}));
+ await admin.page.route('**/rest/v1/rpc/solar_capital_current_snapshot',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({code:'TEST_ONLY',message:'تعذر تحميل الحساب للاختبار'})}));
  await admin.page.getByRole('button',{name:'تحديث الحساب',exact:true}).click();
  await admin.page.getByRole('alert').filter({hasText:'تعذر تحميل الحساب للاختبار'}).waitFor();
  assert.equal(await admin.page.locator('.capitalSnapshotHero').count(),0,'failed snapshot showed misleading old/zero balance');
