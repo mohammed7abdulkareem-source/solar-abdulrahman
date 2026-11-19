@@ -40,33 +40,40 @@ try{
  await p.getByTestId('profit-current-balance').filter({hasText:'1,000,000'}).waitFor();
  await p.getByLabel('مستخدم تقرير الأرباح',{exact:true}).selectOption(ids.owner);
  await p.getByTestId('profit-current-balance').filter({hasText:/^0/}).waitFor();
- assert.ok((await p.locator('.profitResultSummary').innerText()).includes('7,535,136.32'));
+ assert.ok((await p.getByTestId('profit-period-earned').innerText()).includes('7,535,136.32'));
  await p.screenshot({path:dir+'/settled-profit-zero-mobile.png',fullPage:true});
  const oldDate=sql("select ((now()at time zone'Asia/Baghdad')::date-1)::text");
  await p.getByLabel('نهاية فترة الأرباح',{exact:true}).fill(oldDate);
  await p.getByTestId('profit-current-balance').filter({hasText:/^0/}).waitFor();
- await p.locator('.profitTransactions>summary').click();
+ await p.getByRole('navigation',{name:'أقسام تقرير أرباح الشركة',exact:true}).getByRole('button',{name:'المبيعات والمنظومات',exact:true}).click();
  const movement=p.locator('.profitCompanyRow .profitMovement').first();
  await movement.locator('summary strong').filter({hasText:/^0/}).waitFor();
  await movement.locator('summary').click();
  await movement.locator('.profitMovementBalance').filter({hasText:'7,535,136.32'}).waitFor();
- const report=p.locator('.profitWorkspace>.uiPanel').filter({has:p.getByRole('heading',{name:'تقرير الأرباح',exact:true})}).locator('>.reportExport');
+ await p.getByRole('navigation',{name:'أقسام تقرير أرباح الشركة',exact:true}).getByRole('button',{name:'تصدير التقرير',exact:true}).click();
+ const report=p.locator('.companyReportExport .reportExport');
  await report.getByRole('button',{name:'حفظ PDF',exact:true}).waitFor();
- await p.waitForFunction(()=>Array.from(document.querySelectorAll('.profitWorkspace>.uiPanel')).find(x=>x.querySelector('h2')?.textContent==='تقرير الأرباح')?.querySelector('.reportButton.download')?.disabled===false);
+ await report.locator('.reportButton.download:not([disabled])').waitFor();
  const [download]=await Promise.all([p.waitForEvent('download'),report.getByRole('button',{name:'حفظ PDF',exact:true}).click()]);await download.saveAs(dir+'/current-profit.pdf');
  const bytes=await readFile(dir+'/current-profit.pdf');assert.equal(bytes.subarray(0,5).toString(),'%PDF-');
- const pdfHtmls=await p.evaluate(()=>window.__documentHtmls);
- assert.ok(pdfHtmls.some(x=>x.includes('الأرباح المتبقية بعد التسوية: 0 د.ع')&&x.includes('ربح الفترة قبل التسويات: 7,535,136.32')));
+ const matchesReport=await p.evaluate(()=>window.__documentHtmls.some(html=>{
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  const period=[...doc.querySelectorAll('.reportMetric')].find(el=>el.querySelector('span')?.textContent==='ربح الفترة قبل التسويات');
+  return doc.querySelector('.reportCurrentBalance strong')?.textContent==='الأرباح المتبقية بعد التسوية: 0 د.ع'
+   &&period?.querySelector('strong')?.textContent==='7,535,136.32 د.ع';
+ }));
+ assert.ok(matchesReport,'PDF should distinguish settled current balance and historical period profit');
  await report.getByRole('button',{name:'مشاركة',exact:true}).click();await report.getByText('تمت مشاركة ملف PDF.',{exact:true}).waitFor();
  const shares=await p.evaluate(()=>window.__sharedPdfs);assert.ok(shares[0].active);assert.equal(shares[0].hash,createHash('sha256').update(bytes).digest('hex'));
  const [preview]=await Promise.all([ctx.waitForEvent('page'),report.getByRole('button',{name:'معاينة',exact:true}).click()]);await preview.waitForLoadState();await preview.getByRole('button',{name:'طباعة',exact:true}).waitFor();await preview.screenshot({path:dir+'/profit-pdf-preview.png'});await preview.close();
  failBalance=true;await p.getByLabel('مستخدم تقرير الأرباح',{exact:true}).selectOption(ids.other);
  await p.getByRole('alert').filter({hasText:'تعذر تأكيد الرصيد التجريبي'}).waitFor();
- assert.ok((await p.getByTestId('profit-current-balance').innerText()).includes('…'));
+ assert.equal((await p.getByTestId('profit-current-balance').innerText()).trim(),'—');
  assert.ok(await report.getByRole('button',{name:'معاينة',exact:true}).isDisabled());
  await p.getByRole('button',{name:'إعادة تحميل الأرباح',exact:true}).click();await p.getByTestId('profit-current-balance').filter({hasText:'1,000,000'}).waitFor();
  await p.getByLabel('مستخدم تقرير الأرباح',{exact:true}).selectOption(ids.owner);
  await p.getByTestId('profit-current-balance').filter({hasText:/^0/}).waitFor();
+ await p.getByRole('navigation',{name:'أقسام تقرير أرباح الشركة',exact:true}).getByRole('button',{name:'نظرة عامة',exact:true}).click();
  for(const width of[360,768,1440]){await p.setViewportSize({width,height:920});assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));await p.screenshot({path:dir+'/profit-'+width+'.png'});}
  const own=await open('owner','profit');page=own.page;
  await own.page.getByTestId('staff-profit-current-balance').filter({hasText:/^0$/}).waitFor();
@@ -78,7 +85,7 @@ try{
  await page.locator('.accountDataRow').filter({hasText:'شركة ديون الاختبار'}).locator('.accountAmountCell').click();
  await page.getByRole('heading',{name:'كشف حساب عميل',exact:true}).waitFor();
  await page.getByTestId('statement-balance').filter({hasText:'16,667,000'}).waitFor();
- assert.equal(await page.locator('.miniIdentity h2').innerText(),'شركة ديون الاختبار');
+ assert.equal(await page.getByRole('region',{name:'رصيد العميل الحالي'}).getByRole('heading',{level:2}).innerText(),'شركة ديون الاختبار');
  await page.screenshot({path:dir+'/debtor-account-mobile.png'});
  await page.getByRole('button',{name:'كشف حساب',exact:true}).click();await page.getByRole('heading',{name:'كشف حساب مفصل',exact:true}).waitFor();
  assert.ok((await page.locator('.miniStatementTable').innerText()).includes('16,667,000'));

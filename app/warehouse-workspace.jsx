@@ -1,7 +1,9 @@
 'use client';
 import PhoneActions from './phone-actions';
 import AppIcon from './app-icons';
+import {materialQuantity} from './material-movement-utils.mjs';
 import {salesAuthorizationKey} from './sales-read-scope.mjs';
+import WarehouseQueueRow,{QueueStates} from './warehouse-queue-row';
 import './warehouse-queue.css';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {inventoryCall,useWarehouseInventory,WarehouseField} from './warehouse-data';
@@ -90,7 +92,7 @@ function DailyWarehouseWorkspace({profile,a4,openA4,shareA4,onChanged,selectedIn
  const first=rows.find(row=>row.status==='pending'&&!row.pricingPending);
  const refresh=()=>{void load();void stock.refresh();};
  return <section className="dailyWarehouse" aria-label="تجهيز المخزن" data-testid="warehouse-daily-queue">
-  <header className="warehouseDayHead"><div><h1>قائمة تجهيز المخزن</h1><small>{new Intl.DateTimeFormat('ar-IQ',{timeZone:'Asia/Baghdad',weekday:'long',day:'numeric',month:'long'}).format(new Date())}</small></div>
+  <header className="warehouseDayHead"><span className="warehouseQueueMark"><AppIcon name="warehouse" size={22}/></span><div><h1>قائمة تجهيز المخزن</h1><small>{new Intl.DateTimeFormat('ar-IQ',{timeZone:'Asia/Baghdad',weekday:'long',day:'numeric',month:'long'}).format(new Date())}</small></div>
    <button type="button" className="warehouseDayRefresh" disabled={busy||loading} aria-label="تحديث قائمة التجهيز" onClick={refresh}><AppIcon name="refresh" size={18}/>تحديث</button></header>
   {canPrepare&&<nav className="warehouseWorkTabs" aria-label="نوع تجهيز المخزن">
    <button type="button" aria-pressed={pane==='invoices'} onClick={()=>choosePane('invoices')}><AppIcon name="receipt" size={17}/>فواتير البيع</button>
@@ -98,11 +100,7 @@ function DailyWarehouseWorkspace({profile,a4,openA4,shareA4,onChanged,selectedIn
   </nav>}
   {pane==='transfers'&&canPrepare?<TransferPreparation inventory={stock} a4={a4} selectedTransfer={selectedTransfer} onClearSelection={onClearTransfer} onChanged={()=>{stock.refresh();onChanged?.();}}/>:
   <section className="warehouseWorkspace warehouseDailyOrders">
-   <nav className="warehouseQueueTabs" aria-label="قوائم التجهيز">
-    {[['pending','بانتظار التجهيز'],['ready','تم التجهيز'],['','كل الفواتير']].map(([value,label])=><button type="button" key={label} aria-pressed={state===value} onClick={()=>chooseState(value)}>
-     <span>{label}</span><b>{showRows&&result.statusCounts?.[value||'all']!=null?quantity(result.statusCounts[value||'all']):'—'}</b>
-    </button>)}
-   </nav>
+   <QueueStates label="قوائم التجهيز" choices={[[ 'pending','بانتظار التجهيز'],['ready','تم التجهيز'],['','كل الفواتير']]} counts={showRows?result.statusCounts:null} value={state} onChange={chooseState}/>
    <form className="card warehouseFilters warehouseDailySearch" onSubmit={event=>{
     event.preventDefault();const term=normalizeSearch(query).replace(/^#/,'');if(offset===0&&term===search)load();else{setOffset(0);setSearch(term);}
     if(selectedInvoice)onClearSelection?.();
@@ -110,9 +108,6 @@ function DailyWarehouseWorkspace({profile,a4,openA4,shareA4,onChanged,selectedIn
     <div className="warehouseSearchBox"><AppIcon name="search" size={18}/><input value={query} onChange={event=>setQuery(event.target.value)} placeholder="رقم الوصل أو اسم الزبون" aria-label="بحث فواتير التجهيز"/></div>
     <button type="submit" disabled={loading}>بحث / تحديث</button>
     <WarehouseField inventory={stock} allowAll label="مخزن التجهيز"/>
-    <label className="warehouseLocationField">حالة التجهيز<select aria-label="حالة التجهيز" value={state} onChange={event=>chooseState(event.target.value)}>
-     <option value="pending">بانتظار التجهيز</option><option value="ready">تم التجهيز</option><option value="">جميع الفواتير</option>
-    </select></label>
     {(search||selectedInvoice)&&<button type="button" className="warehouseClearSearch" onClick={()=>{setQuery('');setSearch('');setState('pending');setOffset(0);onClearSelection?.();}}>عرض قائمة التجهيز كاملة</button>}
    </form>
    {message&&<p role="status" className="workflowSuccess">{message}</p>}
@@ -122,17 +117,15 @@ function DailyWarehouseWorkspace({profile,a4,openA4,shareA4,onChanged,selectedIn
    {loading&&!showRows&&<p role="status" className="empty">جاري تحميل الفواتير…</p>}
    {rows.map(row=>{
     const ready=row.status==='ready', pricing=!!row.pricingPending;
-    const qty=row.items.every(item=>item.qty!=null&&Number.isFinite(Number(item.qty)))?quantity(row.items.reduce((sum,item)=>sum+Number(item.qty),0)):'—';
-    return <article tabIndex={-1} id={'warehouse-order-'+row.id} key={row.id} data-preparation-state={ready?'ready':pricing?'pricing':'pending'} className={'card warehouseOrder'+(String(row.id)===String(selectedInvoice)?' highlighted':'')}>
-     <header><div><small>{row.kind==='system'?'منظومة':'جملة'} • وصل #{row.receiptNo}</small><h3>{row.party||'زبون نقدي'}</h3>
-      <small className="orderWarehouseLabel">مخزن التجهيز: {row.warehouseName||'غير محدد'} · {warehouseDate(row.date)}</small></div>
-      <span className={'warehouseBadge '+(ready?'ready':pricing?'pricing':'pending')}>{ready?'تم التجهيز':pricing?'بانتظار التسعير':'بانتظار التجهيز'}</span></header>
-     <PhoneActions phone={row.phone} label={row.party||'الزبون'}/>{row.address&&<p>{row.address}</p>}
-     <div className="warehousePickTotal"><span>عدد فقرات الوصل <bdi>{quantity(row.items.length)}</bdi></span><span>{ready?'مجموع الكميات المجهّزة':'مجموع الكميات المطلوبة'} <bdi data-testid={ready?'warehouse-prepared-quantity':'warehouse-required-quantity'}>{qty}</bdi></span></div>
-     <details className="warehousePickList" open={String(row.id)===String(selectedInvoice)||undefined}>
-      <summary>مواد الوصل <AppIcon name="chevron" size={16}/></summary>
-      {row.items.map(item=><div className="warehouseOrderLine" key={item.lineId??'pending-'+item.productId}><div><b dir="auto">{item.name}</b><small>{[item.brand,item.category].filter(Boolean).join(' • ')}</small></div><strong>{quantity(item.qty)}</strong></div>)}
-     </details>
+    const selected=String(row.id)===String(selectedInvoice);
+    return <WarehouseQueueRow key={row.id} id={'warehouse-order-'+row.id} className="warehouseOrder" detailsClass="warehousePickList" selected={selected}
+     state={ready?'ready':pricing?'pricing':'pending'} status={ready?'تم التجهيز':pricing?'بانتظار التسعير':'بانتظار التجهيز'}
+     label={'تفاصيل وصل #'+row.receiptNo} identity={<>{row.kind==='system'?'منظومة':'جملة'} · وصل <bdi>#{row.receiptNo}</bdi></>}
+     title={row.party||'زبون نقدي'} context={<>مخزن التجهيز: {row.warehouseName||'غير محدد'} · {warehouseDate(row.date)}</>}
+     items={row.items} quantityLabel={ready?'المجهّز':'المطلوب'} quantityTestId={ready?'warehouse-prepared-quantity':'warehouse-required-quantity'}>
+     {()=><><div className="warehouseRowItems"><h3>مواد الوصل</h3>
+      {row.items.map(item=><div className="warehouseOrderLine" key={item.lineId??'pending-'+item.productId}><span><b dir="auto">{item.name}</b><small>{[item.brand,item.category].filter(Boolean).join(' · ')}</small></span><strong>{materialQuantity(item.qty)}</strong></div>)}
+     </div><PhoneActions phone={row.phone} label={row.party||'الزبون'}/>{row.address&&<p>{row.address}</p>}
      {pricing&&<p className="warehousePricingBadge">تعديلات المواد بانتظار تسعير الإدارة</p>}
      {row.preparedBy&&<p>جهّزها: {row.preparedBy} • {warehouseDate(row.preparedAt)}</p>}{row.note&&<p>{row.note}</p>}
      {editing?.id===row.id?<WarehouseOrderEditor key={editing.token} row={editing} onReload={async()=>{
@@ -146,7 +139,8 @@ function DailyWarehouseWorkspace({profile,a4,openA4,shareA4,onChanged,selectedIn
      </div>}
      {!row.canEdit&&<small>ملف التنصيب قيد التنفيذ أو مكتمل؛ تعديل المواد مقفل.</small>}
      <DocumentActions title={'وصل-مخزني-'+row.receiptNo} html={()=>a4('وصل تجهيز مخزني',warehouseDocument(row),'',warehouseDate(row.date))} openA4={openA4} shareA4={shareA4}/>
-    </article>;
+     </>}
+    </WarehouseQueueRow>;
    })}
    {showRows&&!loading&&!rows.length&&<section className="warehouseEmpty"><p>{search?'لا توجد فواتير مطابقة للبحث.':state==='pending'?'لا توجد فواتير بانتظار التجهيز.':state==='ready'?'لا توجد فواتير مجهّزة.':'لا توجد فواتير تجهيز.'}</p>
     {state==='pending'&&Number(result.statusCounts?.ready)>0&&<button type="button" onClick={()=>chooseState('ready')}>عرض {quantity(result.statusCounts.ready)} فاتورة مجهّزة</button>}</section>}

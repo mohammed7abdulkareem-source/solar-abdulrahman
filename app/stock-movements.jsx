@@ -1,63 +1,46 @@
 'use client';
-import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import {inventoryCall,useWarehouseInventory} from './warehouse-data';
-import MaterialMovementPicker from './material-movement-picker';
-import {salesAuthorizationKey} from './sales-read-scope.mjs';
+import {useEffect,useRef,useState} from 'react';
 import dynamic from 'next/dynamic';
-const MaterialMovementLedger=dynamic(()=>import('./material-movement-ledger'));
-import ReportActions from './report-actions';
-import {normalizeSearch} from './party-search-utils.mjs';
-import {quantity,warehouseDate,movementDocument,escapeHtml} from './warehouse-utils.mjs';
+import AppIcon from './app-icons';
+import {useWarehouseInventory} from './warehouse-data';
+import {salesAuthorizationKey} from './sales-read-scope.mjs';
+import MovementCriteriaReport from './movement-criteria-report';
+import './movement-report-workspace.css';
 
-function Icon({name='movement'}){
- const paths={movement:'M4 7h15m-5-5 5 5-5 5M20 17H5m5-5-5 5 5 5',search:'m21 21-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',refresh:'M20 7a9 9 0 1 0 1 8M20 2v6h-6',eye:'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12m13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0',download:'M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5',share:'m8 9 8-4M8 15l8 4M8 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0M22 4a3 3 0 1 1-6 0 3 3 0 0 1 6 0M22 20a3 3 0 1 1-6 0 3 3 0 0 1 6 0'};
- return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]}/></svg>;
+const MaterialMovementLedger=dynamic(()=>import('./material-movement-ledger'));
+const reports=[
+ {id:'ledger',title:'حركة مادة محددة',icon:'package',description:'دخول المادة وخروجها والرصيد بعد كل حركة.'},
+ {id:'customer',title:'مادة وعميل',icon:'customers',description:'مشتريات عميل واحد من مادة تختارها.'},
+ {id:'materials',title:'جميع الحركات',icon:'exchange',description:'حركات المواد في المخازن حسب الفترة والمستند.'}
+];
+
+function SelectedReport({report,profile,a4}){
+ const inventory=useWarehouseInventory({aggregate:true});
+ if(report.id==='ledger')return <MaterialMovementLedger profile={profile} inventory={inventory} a4={a4}/>;
+ return <MovementCriteriaReport mode={report.id} inventory={inventory} a4={a4}/>;
 }
-const emptyFilters={warehouse:'',query:'',product:'',materialQuery:'',materialPending:false,customer:'',from:'',to:''};
-const dayInBaghdad=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Baghdad',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-const label=r=>r.kind==='transfer_reserved'?'حجز لطلب نقل':r.kind==='transfer_cancelled'?'إلغاء حجز النقل':r.kind==='transfer_return_in'?'إلغاء نقل / دخول':r.kind==='transfer_return_out'?'إلغاء نقل / خروج':r.kind==='transfer_in'?'نقل وارد':r.kind==='transfer_out'?'نقل صادر':r.kind==='stock_adjustment'?'تسوية رصيد':r.kind==='purchase'?'شراء':r.kind==='system'?'بيع منظومة':'بيع جملة';
-export default function StockMovements({a4,profile}){
- const inventory=useWarehouseInventory({aggregate:true}),authorizationKey=salesAuthorizationKey(profile);
- const [loadedScope,setLoadedScope]=useState('');
- const [tab,setTab]=useState('ledger'),[draft,setDraft]=useState(emptyFilters),[applied,setApplied]=useState(emptyFilters),[direction,setDirection]=useState('all'),[preset,setPreset]=useState('all'),[rows,setRows]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[page,setPage]=useState(0);const request=useRef(0),tabFilters=useRef(emptyFilters);
- const load=useCallback(async filters=>{const generation=++request.current;setError('');setLoadedScope('');if(filters.materialPending&&!filters.product){setRows([]);setApplied(filters);setLoading(false);return;}setLoading(true);setRows([]);setApplied(filters);setPage(0);try{const data=await inventoryCall('movements',{warehouseId:filters.warehouse?Number(filters.warehouse):null,productId:filters.product?Number(filters.product):null,customer:filters.customer.trim(),from:filters.from||null,to:filters.to||null});if(generation!==request.current)return;if(!Array.isArray(data)||filters.product&&data.some(row=>String(row.productId)!==String(filters.product))||filters.warehouse&&data.some(row=>String(row.warehouseId)!==String(filters.warehouse)))throw new Error('تغيّرت المادة في نتيجة البحث. أعد اختيار المادة.');setRows(data);setApplied(filters);setLoadedScope(authorizationKey);setPage(0)}catch(err){if(generation===request.current){setRows([]);setError(err.message||'تعذر تحميل السجل. اضغط تحديث للمحاولة مرة أخرى.');}}finally{if(generation===request.current)setLoading(false)}},[authorizationKey]);
- useEffect(()=>{if(tab==='ledger')return;load(tabFilters.current);return()=>{request.current++}},[load,tab]);
- const shown=useMemo(()=>{const words=normalizeSearch(applied.query).replace(/#/g,'').split(/\s+/).filter(Boolean);return (loadedScope===authorizationKey?rows:[]).filter(r=>{const text=normalizeSearch([r.warehouseName,r.receiptNo,r.party,r.note,r.createdByName,r.preparedByName,label(r)].join(' '));return words.every(word=>text.includes(word))&&(direction==='all'||(direction==='in'?Number(r.inQty)>0:Number(r.outQty)>0))})},[rows,loadedScope,authorizationKey,applied.query,direction]);
- const pendingMaterial=!!draft.materialPending&&!draft.product,selectedMaterial=inventory.products.find(product=>String(product.id)===String(applied.product));
- const totals=shown.reduce((s,r)=>({in:s.in+Number(r.inQty||0),out:s.out+Number(r.outQty||0)}),{in:0,out:0}),pageCount=Math.max(1,Math.ceil(shown.length/30)),currentPage=Math.min(page,pageCount-1),visible=shown.slice(currentPage*30,currentPage*30+30);
- const period=applied.from||applied.to?`${applied.from||'البداية'} — ${applied.to||'اليوم'}`:'جميع الفترات';
- const title=applied.customer?'حركة المادة والعميل — '+applied.customer:selectedMaterial?'حركة مادة — '+selectedMaterial.name:'سجل جميع حركات المواد';
- const warehouseLabel=inventory.warehouses.find(w=>String(w.id)===applied.warehouse)?.name||'جميع المخازن المسموحة';
- const html=useMemo(()=>a4(title,'<div class="meta"><div><b>الفترة:</b> '+escapeHtml(period)+'</div><div><b>المخزن:</b> '+escapeHtml(warehouseLabel)+'</div><div><b>الحركات:</b> '+({all:'جميع الاتجاهات',in:'دخول فقط',out:'خروج فقط'}[direction])+'</div><div><b>عدد الحركات الظاهرة:</b> '+quantity(shown.length)+'</div>'+(applied.query?'<div><b>البحث:</b> '+escapeHtml(applied.query)+'</div>':'')+'</div>'+movementDocument(shown),'','كشف كميات · بدون أسعار'),[a4,title,period,direction,applied.query,warehouseLabel,shown]);
- function quickRange(value){const today=dayInBaghdad();let from='';if(value==='today')from=today;if(value==='month')from=today.slice(0,8)+'01';if(value==='week'){const date=new Date(today+'T12:00:00Z');date.setUTCDate(date.getUTCDate()-6);from=date.toISOString().slice(0,10)}const filters={...draft,from,to:value==='all'?'':today};setPreset(value);setDraft(filters);load(filters)}
- function switchTab(value){if(value===tab)return;setTab(value);const filters={...draft,customer:'',product:'',materialQuery:'',materialPending:false};setDraft(filters);tabFilters.current=filters;}
- const edit=(key,value)=>setDraft(current=>({...current,[key]:value}));
- function searchMaterial(value){request.current++;setLoadedScope('');const filters={...draft,product:'',materialQuery:value,materialPending:true};setDraft(filters);setApplied(filters);setRows([]);setLoading(false);setError('');setPage(0);}
- function chooseMaterial(product){if(!inventory.ready)return;const filters={...draft,product:String(product.id),materialQuery:'',materialPending:false};setDraft(filters);load({...filters,customer:tab==='customer'?filters.customer:''});}
- function showAllMaterials(){const filters={...draft,product:'',materialQuery:'',materialPending:false};setDraft(filters);load({...filters,customer:tab==='customer'?filters.customer:''});}
- return <section className="movementWorkspace">
-  <header className="movementHero"><div className="movementHeroIcon"><Icon/></div><div><h1>حركة المواد</h1><p>اختر المادة، وتابع دخولها وخروجها ورصيدها خطوة بخطوة</p></div></header>
-  <div className="movementTabs movementTabsThree" role="tablist" aria-label="نوع سجل الحركة"><button role="tab" aria-selected={tab==='ledger'} aria-controls="movement-panel" id="movement-ledger-tab" onClick={()=>switchTab('ledger')}>حركة مادة محددة</button><button role="tab" aria-selected={tab==='materials'} aria-controls="movement-panel" id="movement-materials-tab" onClick={()=>switchTab('materials')}>جميع الحركات</button><button role="tab" aria-selected={tab==='customer'} aria-controls="movement-panel" id="movement-customer-tab" onClick={()=>switchTab('customer')}>مادة وعميل</button></div>
-  <div role="tabpanel" id="movement-panel" aria-labelledby={tab==='ledger'?'movement-ledger-tab':tab==='materials'?'movement-materials-tab':'movement-customer-tab'}>
-  {tab==='ledger'?<MaterialMovementLedger inventory={inventory} profile={profile} a4={a4}/>:<>
-  <div className="movementSectionHead"><div className="movementHeading"><span><Icon/></span><div><small>المواد والمخزن</small><h2>{tab==='materials'?'السجل العام للمواد':'حركة المادة والعميل'}</h2></div></div><button className="movementRefresh" disabled={loading||pendingMaterial} onClick={()=>load(applied)}><Icon name="refresh"/>تحديث</button></div>
-  <form className="movementFilters" onSubmit={e=>{e.preventDefault();if(!pendingMaterial)load({...draft,customer:tab==='customer'?draft.customer:''})}}>
-   <label>المخزن<select aria-label="مخزن حركة المواد" value={draft.warehouse} onChange={ev=>edit('warehouse',ev.target.value)}><option value="">جميع المخازن المسموحة</option>{inventory.warehouses.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select></label>
-   <MaterialMovementPicker products={inventory.products} selectedId={draft.product} query={draft.materialQuery} onQuery={searchMaterial} onSelect={chooseMaterial} onClear={()=>searchMaterial('')} onShowAll={showAllMaterials} loading={inventory.loading} error={inventory.error}/>
-   <label className="movementSearch">بحث بالمستند أو الطرف<div><Icon name="search"/><input aria-label="بحث المستند أو الطرف" value={draft.query} onChange={event=>edit('query',event.target.value)} placeholder="رقم الوصل، اسم الطرف أو البيان"/></div></label>
-   {tab==='customer'&&<label>اسم العميل<input aria-label="اسم العميل في الحركة" value={draft.customer} onChange={event=>edit('customer',event.target.value)} placeholder="اكتب اسم العميل أو جزءاً منه"/></label>}
-   <div className="movementDates"><label>من تاريخ<input aria-label="من تاريخ" type="date" max={draft.to||undefined} value={draft.from} onChange={e=>{edit('from',e.target.value);setPreset('')}}/></label><label>إلى تاريخ<input aria-label="إلى تاريخ" type="date" min={draft.from||undefined} value={draft.to} onChange={e=>{edit('to',e.target.value);setPreset('')}}/></label><button className="movementSubmit" disabled={loading||pendingMaterial}><Icon name="search"/>{loading?'جاري التحميل…':'عرض السجل'}</button></div>
-   <div className="movementQuick"><div className="movementChips" aria-label="اتجاه الحركة">{[['all','الكل'],['in','دخول'],['out','خروج']].map(([value,text])=><button key={value} type="button" aria-pressed={direction===value} onClick={()=>{setDirection(value);setPage(0)}}>{text}</button>)}</div><div className="movementChips movementPeriods" aria-label="الفترة السريعة">{[['today','اليوم'],['week','٧ أيام'],['month','الشهر'],['all','كل الفترات']].map(([value,text])=><button type="button" key={value} aria-pressed={preset===value} onClick={()=>quickRange(value)}>{text}</button>)}</div></div>
-  </form>
-  {pendingMaterial?<div className="mlEmpty" role="status"><Icon name="search"/><b>اختر المادة من نتائج البحث</b><p>لن نعرض سجلًا مختلطًا أثناء البحث عن مادة. لعرض السجل العام اضغط «عرض جميع المواد».</p></div>:<section className="movementResults" aria-label="حركات المواد" aria-busy={loading}>
-   <div className="movementResultsHeading"><h2>حركات المواد <span>{quantity(shown.length)} حركة</span></h2><p>{period}</p></div>
-   <div className="movementReportContext"><span>{warehouseLabel}</span><span>{selectedMaterial?'المادة: '+selectedMaterial.name:'السجل العام · جميع المواد'}</span><span>كشف كميات · بدون أسعار</span><span>{direction==='all'?'جميع الاتجاهات':direction==='in'?'دخول فقط':'خروج فقط'}</span>{applied.query&&<span>البحث: {applied.query}</span>}</div>
-   <div className="movementReportActions"><ReportActions enabled={!loading&&!error&&loadedScope===authorizationKey} showPrint html={html} filename={title} disabledNotice="انتظر تحميل الحركات لتجهيز كشف مطابق للفترة والبحث."/></div>
-   <div className="movementTotals"><div><span className="movementDot in"/>الدخول الظاهر<b>{quantity(totals.in)}</b></div><div><span className="movementDot out"/>الخروج الظاهر<b>{quantity(totals.out)}</b></div><div>عدد المواد<b>{new Set(shown.map(r=>r.productId)).size}</b></div></div>
-   {error?<p className="movementError" role="alert">{error}</p>:loading?<div className="movementEmpty" role="status">جاري تحميل سجل الحركة…</div>:!shown.length?<div className="movementEmpty"><Icon name="search"/><b>لا توجد حركات ضمن البحث</b><span>جرّب مادة أخرى أو وسّع الفترة المحددة.</span></div>:<>
-   <div className="movementTable"><div className="movementTableHead"><span>المادة / الطرف</span><span>المستند / التاريخ</span><span>دخول</span><span>خروج</span><span>الرصيد بعد الحركة</span></div>{visible.map(r=><article className="movementEntry" key={r.id}><div className="movementMaterial"><b dir="auto">{r.name}</b><small>{[r.warehouseName,r.brand,r.category].filter(Boolean).join(' • ')}</small><span>{r.kind==='stock_adjustment'?'مطابقة الجرد':r.party||'زبون نقدي'}</span></div><div className="movementDoc"><span className={'movementBadge '+(r.kind==='stock_adjustment'?'adjust':Number(r.inQty)>0?'in':'out')}>{label(r)} <b>#{r.receiptNo}</b></span><time>{warehouseDate(r.date)}</time></div><div className="movementAmount"><small>دخول</small><b>{quantity(r.inQty)}</b></div><div className="movementAmount"><small>خروج</small><b>{quantity(r.outQty)}</b></div><div className="movementAmount movementBalance"><small>الرصيد</small><b>{quantity(r.balance)}</b></div>{r.note&&<p className="movementNote">{r.note}</p>}</article>)}</div>
-   {pageCount>1&&<nav className="movementPagination" aria-label="صفحات الحركات"><button disabled={!currentPage} onClick={()=>setPage(p=>p-1)}>السابق</button><span>{currentPage+1} / {pageCount}</span><button disabled={currentPage+1>=pageCount} onClick={()=>setPage(p=>p+1)}>التالي</button></nav>}</>}
-   <p className="movementFootnote">الرصيد بعد كل حركة يخص المادة والمخزن المذكورين معها؛ تصفية البحث والاتجاه لا تعيد احتسابه. ملف PDF يشمل جميع نتائج البحث، وكل الصفحات.</p>
-  </section>}</>}</div>
+function MovementWorkspace({profile,a4}){
+ const [report,setReport]=useState(null);
+ const heading=useRef(null),previousMode=useRef(null);
+ useEffect(()=>{
+  if(report)heading.current?.focus();
+  else if(previousMode.current)document.querySelector('[data-movement-mode="'+previousMode.current+'"]')?.focus();
+ },[report]);
+ function open(choice){previousMode.current=choice.id;setReport(choice);}
+
+ return <section className="movementWorkspace movementReportWorkspace" data-active-movement-mode={report?.id||'chooser'}>
+  <header className="workspaceHead movementReportHeader">
+   <div><h1 ref={heading} tabIndex={-1}>{report?.title||'حركة المواد'}</h1>{!report&&<p>اختر الكشف الذي تريد عرضه.</p>}</div>
+   {report&&<button type="button" className="movementReportBack" onClick={()=>setReport(null)}><AppIcon name="arrow" size={17}/>تغيير نوع الكشف</button>}
+  </header>
+  {report?<SelectedReport key={report.id} report={report} profile={profile} a4={a4}/>:<div className="movementReportChoices" aria-label="نوع كشف الحركة">
+   {reports.map(choice=><button key={choice.id} type="button" className="movementReportChoice" aria-label={choice.title} data-movement-mode={choice.id} onClick={()=>open(choice)}>
+    <span className="movementChoiceIcon"><AppIcon name={choice.icon} size={23}/></span>
+    <span className="movementChoiceText"><strong>{choice.title}</strong><small>{choice.description}</small></span><AppIcon name="chevron" size={19}/>
+   </button>)}
+  </div>}
  </section>;
+}
+export default function StockMovements({profile,a4}){
+ return <MovementWorkspace key={salesAuthorizationKey(profile)} profile={profile} a4={a4}/>;
 }

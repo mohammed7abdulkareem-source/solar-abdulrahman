@@ -48,7 +48,7 @@ try{
  assert.equal(await card.getByTestId('warehouse-required-quantity').innerText(),'3');
  assert.equal(await pricing.getByTestId('warehouse-required-quantity').innerText(),'3');
  assert.equal(await queue.getByTestId('warehouse-prepared-quantity').count(),0);
- assert.equal(await pricing.getByRole('button',{name:'تم التجهيز ✓'}).isDisabled(),true);
+ await pricing.locator('.warehousePickList>summary').click();assert.equal(await pricing.getByRole('button',{name:'تم التجهيز ✓'}).isDisabled(),true);
  await queue.getByRole('button',{name:/مراجعة وصل/}).click();
  await card.locator('.warehousePickList[open]').waitFor();
  assert.equal(await page.evaluate(()=>document.activeElement.id),'warehouse-order-'+invoiceId);
@@ -69,7 +69,8 @@ try{
  await card.locator('[data-testid="warehouse-prepared-quantity"]').waitFor();
  assert.equal(await card.getByTestId('warehouse-prepared-quantity').innerText(),'3');
  assert.equal(await card.getByTestId('warehouse-required-quantity').count(),0);
- assert.ok((await card.innerText()).includes('أمين تجهيز الاختبار'));
+ await card.locator('.warehousePickList>summary').click();
+ await card.getByText(/جهّزها: أمين تجهيز الاختبار/).waitFor();
  assert.equal(balances(),start);
  await page.goto(base+'/?section=warehouse&job='+invoiceId);
  await card.locator('.warehousePickList[open]').waitFor();

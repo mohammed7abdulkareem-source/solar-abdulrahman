@@ -64,3 +64,50 @@
  .activityTabs button {flex:1;min-width:0;}.userActivity .activityTabs button,.userActivity .activityRoleFilter button {padding:7px 9px;}
  .activityCard {padding:13px;}
 }
+
+.activityPeriodTools{display:flex;align-items:center;justify-content:space-between;gap:.8rem;flex-wrap:wrap;margin-block:.65rem}
+.activityPerformance{display:grid;gap:.75rem;margin-block:0 1rem}
+.activityPerformanceCards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.65rem}
+.activityPerformanceCards>div{display:grid;align-content:start;gap:.28rem;border:1px solid #d5e4e5;border-top:3px solid var(--kpi-color);border-radius:.85rem;padding:.85rem;background:var(--kpi-wash);min-width:0}
+.performanceSales{--kpi-color:#16736c;--kpi-wash:#eef8f5}.performanceCompany{--kpi-color:#79538e;--kpi-wash:#f6f2f8}
+.performanceShare{--kpi-color:#a37224;--kpi-wash:#fcf7ed}.performanceMean{--kpi-color:#46769b;--kpi-wash:#f0f6fa}
+.activityPerformanceCards dt{font-size:.83rem;line-height:1.55;color:#38545e;font-weight:650}
+.activityPerformanceCards dd{font-size:clamp(1.15rem,2.2vw,1.55rem);font-weight:750;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.activityPerformance small,.activityKpiFoot small{font-size:.78rem;font-weight:500}.activityPerformanceCards dd.activityKpiFoot{font-size:.8rem;font-weight:500;color:#3e5d67;line-height:1.6}.activityKpiFoot>span{font-weight:700}
+.activityChartPanel,.activityPerformanceBasis{background:#fff;border:1px solid var(--activity-line);border-radius:.9rem;min-width:0}
+.activityChartPanel{padding:clamp(.8rem,2.2vw,1.4rem)}
+.activityChartHead,.activityBucket,.activityChartSwitch,.activityBucketButtons{display:flex;align-items:center;gap:.55rem}
+.activityChartHead,.activityBucket{justify-content:space-between}
+.activityChartHead h3{font-size:1.05rem;font-weight:725}.activityChartHead small,.activityBucket small{color:var(--activity-sub)}
+.activityChartSwitch{border:1px solid var(--activity-line);border-radius:.68rem;padding:.18rem;gap:.15rem}
+.userActivity .activityChartSwitch button,.userActivity .activityBucketButtons button{width:auto;margin:0;border:0;border-radius:.48rem;padding:.34rem .7rem;box-shadow:none;background:transparent;color:#375460;white-space:nowrap}
+.userActivity .activityChartSwitch button[aria-pressed=true]{background:#e3f1ef;color:#075a52;font-weight:700}
+.activityPlot{direction:ltr;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:.6rem;align-items:start;padding-top:.9rem}
+.activityPlotAxis,.activityBars{height:clamp(8rem,19vw,12rem);position:relative}
+.activityPlotAxis{display:flex;flex-direction:column;justify-content:space-between;text-align:end;font-size:.76rem;color:#506877;font-variant-numeric:tabular-nums}
+.activityAxisZero{position:absolute;top:var(--activity-zero);inset-inline-end:0;transform:translateY(-50%)}
+.activityPlotField{min-width:0}.activityBars{display:flex;align-items:stretch;isolation:isolate;gap:1px;border-block:1px solid #d4e2e4;background:repeating-linear-gradient(to bottom,transparent 0,transparent calc(25% - 1px),#eef3f3 calc(25% - 1px),#eef3f3 25%)}
+.activityZeroLine{pointer-events:none;position:absolute;z-index:1;inset-inline:0;top:clamp(0px,var(--activity-zero),calc(100% - 1px));height:1px;background:#82989f}
+.activityBarSpace{flex:1;min-width:0;position:relative;display:flex;justify-content:center;cursor:pointer}
+.activityBarSpace>i{display:block;position:absolute;width:min(75%,2.6rem);background:var(--activity-series);border-radius:3px 3px 0 0}
+.activityBarSpace>i.negative{background:#a13e31;border-radius:0 0 3px 3px}
+.activityBarSpace.isSelected,.activityBarSpace:hover{background:#163c4b0c}
+.activityPlotDates{display:flex;align-items:center;justify-content:space-between;font-size:.78rem;color:#506877;line-height:1.55;padding-top:.25rem}
+.activityBucket{background:#f3f7f8;border-radius:.65rem;padding:.55rem .7rem;margin-top:.65rem}
+.activityBucket>div:first-child{display:grid;gap:.1rem;min-width:0}.activityBucket strong{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.userActivity .activityBucketButtons button{border:1px solid #c9d8dc;background:#fff;min-width:3rem}
+.activityBucketButtons button:disabled{opacity:.48;cursor:default}
+.activitySeriesTable{margin-top:.75rem}.activitySeriesTable summary,.activityPerformanceBasis summary{cursor:pointer;font-weight:650;min-height:44px;align-content:center;color:#235963}
+.activitySeriesTable summary:focus-visible,.activityPerformanceBasis summary:focus-visible,.activityTableScroll:focus-visible{outline:3px solid #248c84;outline-offset:2px}
+.activityTableScroll{overflow:auto;max-height:22rem}.activityTableScroll table{width:100%;border-collapse:collapse;text-align:start;font-variant-numeric:tabular-nums}
+.activityTableScroll th,.activityTableScroll td{padding:.4rem .5rem;border-bottom:1px solid #dce6e8;text-align:start;font-size:.85rem}.activityTableScroll th{font-weight:650}.activityTableScroll thead{position:sticky;top:0;background:#edf4f5}
+.activityPerformanceBasis{padding:.18rem .85rem}.activityPerformanceBasis p{font-size:.85rem;line-height:1.85;margin-bottom:.55rem}
+.activityChartEmpty{border-radius:.6rem;background:#f2f7f7;color:#45636b;padding:1rem;margin-top:.7rem!important}
+.activityPerformance .performanceNegative{color:#943d32}
+@media(max-width:700px){
+ .activityPerformanceCards{grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}.activityPerformanceCards>div{padding:.65rem}
+ .activityChartHead{align-items:flex-start;flex-wrap:wrap}.activityChartHead>div:first-child{flex:1 0 100%}
+ .activityPeriodTools{align-items:stretch}.activityPeriodTools>*{max-width:100%}
+ .activityBucket{align-items:flex-start;flex-wrap:wrap}.activityBucketButtons{margin-inline-start:auto}
+ .activityTableScroll th,.activityTableScroll td{padding:.36rem .25rem;font-size:.78rem}
+}

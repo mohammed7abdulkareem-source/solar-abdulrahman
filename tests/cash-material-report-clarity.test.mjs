@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {cashStatementCurrencyTotals,cashStatementDocument} from '../app/cash-statement-report.mjs';
-import {materialMovementDocument,materialReportPeriod,filterMaterialRows} from '../app/material-movement-utils.mjs';
+import {materialMovementDocument,materialReportPeriod,filterMaterialRows,materialQuantity,materialVisibleTotals} from '../app/material-movement-utils.mjs';
 import {movementDocument} from '../app/warehouse-utils.mjs';
 
 const cash={from:'2026-11-01',to:'2026-11-07',asOf:'2026-11-08T09:00:00Z',ownerName:'القاصات المسموحة',count:1,filterLabel:'مصروف تشغيلي',unfilteredCount:9,ledgers:[
@@ -45,4 +45,14 @@ test('general movement export carries the full result and visible quantities wit
  assert.ok(html.includes('الرصيد بعد الحركة')&&html.includes('&lt;أ&gt;'));
  assert.ok(!html.includes('1,234,567.89')&&!html.includes('<script>'));
  assert.match(html,/<tfoot>[\s\S]*<bdi>5<\/bdi>[\s\S]*<bdi>3<\/bdi>/);
+});
+
+test('current movement reports distinguish cross-product counts from customer quantities and retain fractional balances',()=>{
+ const rows=[{...movements[0],inQty:'0.000045',outQty:0,balance:'10.000045'},{...movements[1],inQty:0,outQty:8,balance:2}];
+ const options={formatQuantity:materialQuantity};
+ const general=movementDocument(rows,{...options,totals:{in:1,out:1},countMovements:true});
+ const customer=movementDocument(rows,{...options,totals:materialVisibleTotals(rows)});
+ assert.match(general,/<tfoot>[^]*عدد حركات الدخول والخروج[^]*?<bdi>1<\/bdi>[^]*?<bdi>1<\/bdi>/);
+ assert.match(customer,/<tfoot>[^]*مجموع كميات الحركات الظاهرة[^]*?<bdi>0\.000045<\/bdi>[^]*?<bdi>8<\/bdi>/);
+ for(const html of [general,customer])assert.match(html,/class="wmBalance"><bdi>10\.000045<\/bdi>/);
 });

@@ -1,6 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {profitBalanceReport,companySaleExpenses} from '../app/profit-balance-report.mjs';
+import {profitBalanceReport,companySaleExpenses,profitSalesBreakdown} from '../app/profit-balance-report.mjs';
+
+test('sales margins use recognized invoice profits and weighted revenue per sale type',()=>{
+ const rows=[
+  {kind:'sale',sales:800,cost:700,earned:80},
+  {kind:'sale',sales:200,cost:250,earned:-50},
+  {kind:'system',sales:0,cost:30,earned:-30}
+ ];
+ const [wholesale,systems]=profitSalesBreakdown(rows);
+ assert.deepEqual([wholesale.sales,wholesale.cost,wholesale.profit,wholesale.count,wholesale.marginPercent],[1000,950,30,2,3]);
+ assert.equal(systems.marginPercent,null);
+ assert.equal(systems.profit,-30);
+ assert.equal(profitSalesBreakdown([])[0].marginPercent,null);
+});
 
 test('PDF distinguishes the zero current balance from historical profit settled in full',()=>{
  const html=profitBalanceReport({balance:{remaining:0,period:{earned:7535136.32,settled:7535136.32,available:0}},ownerName:'سفيان <script>',from:'2026-10-01',to:'2026-10-29',rows:[{date:'2026-10-20T09:00:00Z',kind:'sale',party:'الزبون & شركاؤه',sales:10000000,cost:2464863.68,earned:7535136.32,settled:7535136.32,available:0}],expenses:0,fx:0,externalProfit:0});

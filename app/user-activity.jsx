@@ -2,6 +2,8 @@
 import {useEffect,useMemo,useState} from 'react';
 import AppIcon from './app-icons';
 import UserActivityReview from './user-activity-review';
+import ActivityPerformance,{usablePerformance} from './user-activity-performance';
+import UserActivityReport from './user-activity-report';
 import {isAdministrator} from './access-utils.mjs';
 import {baghdadToday} from './party-balances-utils.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
@@ -37,7 +39,7 @@ function useActivity(ownerId,from,to,enabled,revision){
     const payload=ownerId?{ownerId,from:from||null,to:to||null}:{};
     const {data,error}=await supabase.rpc('solar_user_activity',{payload}).abortSignal(controller.signal);
     if(error)throw error;
-    if(ownerId?data?.user?.id!==ownerId:!Array.isArray(data?.users))throw new Error('تعذّر قراءة بيانات النشاط.');
+    if(ownerId?data?.user?.id!==ownerId||data.from!==(from||null)||(to&&data.to!==to):!Array.isArray(data?.users))throw new Error('تعذّر تأكيد المستخدم أو فترة النشاط.');
     if(live)setResponse({key,data});
    }catch(err){if(live)setResponse({key,error:err.message||'تعذّر تحميل النشاط.'});}
   }
@@ -64,8 +66,8 @@ function FinancialSummary({data}){
  return <div className="activityFinancialGrid" aria-label="الملخص المالي">
   <section className="activityCard activitySales"><Heading icon="receipt" title="المبيعات" caption="الفواتير خلال الفترة"/>
    <dl className="activityPair">
-    <Metric label="إجمالي المبيعات" value={sales?.totalIQD} currency="IQD" metric="sales.totalIQD"/>
-    <Metric label="عدد الفواتير" value={sales?.count} metric="sales.count"/>
+    {!usablePerformance(data.performance)&&<><Metric label="إجمالي المبيعات" value={sales?.totalIQD} currency="IQD" metric="sales.totalIQD"/>
+    <Metric label="عدد الفواتير" value={sales?.count} metric="sales.count"/></>}
     <Metric label="مبيعات الجملة" value={sales?.wholesaleIQD} currency="IQD" metric="sales.wholesaleIQD"/>
     <Metric label="فواتير الجملة" value={sales?.wholesaleCount} metric="sales.wholesaleCount"/>
     <Metric label="مبيعات المنظومات" value={sales?.systemIQD} currency="IQD" metric="sales.systemIQD"/>
@@ -79,7 +81,7 @@ function FinancialSummary({data}){
     <Metric label="عدد الزبائن" value={debts?.customerCount} metric="debts.customerCount"/>
    </dl></section>
   <section className="activityCard"><Heading icon="chart" title="الأرباح"/><dl className="activityPair">
-   <Metric label="ربح الفترة" value={profit?.earnedIQD} currency="IQD" metric="profit.earnedIQD"/>
+   <Metric label="صافي نتيجة المستخدم خلال الفترة" value={profit?.earnedIQD} currency="IQD" metric="profit.earnedIQD"/>
    <Metric label="رصيد الأرباح الحالي · كل الفترات" value={profit?.remainingIQD} currency="IQD" metric="profit.remainingIQD"/>
   </dl></section>
   <section className="activityCard"><Heading icon="wallet" title="رصيد القاصة الحالي" caption="الرصيد المتاح الآن"/><AmountPair values={cash} scope="cash"/></section>
@@ -124,17 +126,18 @@ function Operations({data,role}){
   <section className="activityCard"><Heading icon="document" title="آخر العمليات"/><ActivityRows rows={data.operations?.recent}/></section>
  </div>;
 }
-function Detail({user,onBack}){
+function Detail({user,onBack,a4}){
  const [period,setPeriod]=useState({from:'',to:''}),[draft,setDraft]=useState(period),[revision,setRevision]=useState(0);
- const role=roleOf(user),[tab,setTab]=useState(role==='office'?'finance':'operations');
+ const [pickedTab,setTab]=useState(roleOf(user)==='office'?'finance':'operations');
  const {data,error}=useActivity(user.id,period.from,period.to,true,revision);
+ const detailUser=data?.user||user,role=roleOf(detailUser),tab=pickedTab==='operations'&&role==='office'?'finance':pickedTab;
  const invalid=!!(draft.from&&draft.to&&draft.from>draft.to);
  const tabs=[['finance','الملخص المالي'],['review','مراجعة الحساب'],...(role==='office'?[]:[['operations','العمليات']]),['recent','آخر الحركات']];
  return <section className="userActivity" dir="rtl" aria-label="نشاط المستخدم">
   <header className="activityDetailHead"><button className="activityBack" type="button" aria-label="رجوع إلى دليل المستخدمين" onClick={onBack}><AppIcon name="arrow" size={18}/>دليل المستخدمين</button>
    <button type="button" className="activityRefresh" aria-label="تحديث نشاط المستخدم" onClick={()=>setRevision(n=>n+1)}><AppIcon name="refresh" size={17}/>تحديث</button></header>
-  <div className={'activityIdentity '+role}><span className="activityAvatar" aria-hidden="true">{partyInitials(user.name)}</span>
-   <div><h1>{user.name}</h1><span>{roleLabel[role]}{user.active===false?' · حساب غير نشط':''}</span></div></div>
+  <div className={'activityIdentity '+role}><span className="activityAvatar" aria-hidden="true">{partyInitials(detailUser.name)}</span>
+   <div><h1>{detailUser.name}</h1><span>{roleLabel[role]}{detailUser.active===false?' · حساب غير نشط':''}</span></div></div>
   <form className="activityDates" onSubmit={event=>{event.preventDefault();if(!invalid)setPeriod({...draft});}}>
    <label>من تاريخ<input aria-label="من تاريخ النشاط" type="date" value={draft.from} max={draft.to||baghdadToday()} onChange={e=>setDraft({...draft,from:e.target.value})}/></label>
    <label>إلى تاريخ<input aria-label="إلى تاريخ النشاط" type="date" value={draft.to} max={baghdadToday()} min={draft.from||undefined} onChange={e=>setDraft({...draft,to:e.target.value})}/></label>
@@ -142,13 +145,15 @@ function Detail({user,onBack}){
    {(draft.from||draft.to||period.from||period.to)&&<button type="button" className="activityReset" onClick={()=>{setDraft({from:'',to:''});setPeriod({from:'',to:''});}}>كل الفترة</button>}
    {invalid&&<small role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية.</small>}
   </form>
-  <p className="activityPeriod">الفترة المعروضة · {period.from||'بداية التعامل'} إلى {period.to||'اليوم'}</p>
+  <div className="activityPeriodTools"><p className="activityPeriod">الفترة المعروضة · {period.from||'بداية التعامل'} إلى {period.to||'اليوم'}</p>
+   {data&&!error&&<UserActivityReport data={data} a4={a4}/>}
+  </div>
   <nav className="activityTabs" aria-label="أقسام نشاط المستخدم">{tabs.map(([key,label])=><button type="button" key={key} aria-pressed={tab===key} onClick={()=>setTab(key)}>{label}</button>)}</nav>
   {error?<div className="activityFeedback error" role="alert">{error}<button type="button" onClick={()=>setRevision(n=>n+1)}>إعادة المحاولة</button></div>:!data?<p className="activityFeedback" role="status">جاري تحميل نشاط المستخدم…</p>:
-   tab==='finance'?<FinancialSummary data={data}/>:tab==='review'?<UserActivityReview review={data.review}/>:tab==='operations'?<Operations data={data} role={role}/>:<section className="activityCard"><Heading title="آخر الحركات المالية" icon="receipt"/><ActivityRows rows={data.recent}/></section>}
+   tab==='finance'?<><ActivityPerformance key={JSON.stringify([user.id,period.from,period.to])} data={data}/><FinancialSummary data={data}/></>:tab==='review'?<UserActivityReview review={data.review}/>:tab==='operations'?<Operations data={data} role={role}/>:<section className="activityCard"><Heading title="آخر الحركات المالية" icon="receipt"/><ActivityRows rows={data.recent}/></section>}
  </section>;
 }
-function Directory(){
+function Directory({a4}){
  const [selected,setSelected]=useState(null),[query,setQuery]=useState(''),[role,setRole]=useState('all'),[revision,setRevision]=useState(0);
  const {data,error}=useActivity(null,null,null,true,revision);
  const users=useMemo(()=>(data?.users||[]).filter(user=>user?.id&&!user.isAdmin&&!user.is_admin&&user.userType!=='admin'),[data]);
@@ -156,7 +161,7 @@ function Directory(){
   const words=normalizeSearch(query).split(/\s+/).filter(Boolean);
   return users.filter(user=>{const text=normalizeSearch([user.name,user.username,roleLabel[roleOf(user)]].join(' '));return (role==='all'||roleOf(user)===role)&&words.every(word=>text.includes(word));});
  },[users,query,role]);
- if(selected)return <Detail key={selected.id} user={selected} onBack={()=>setSelected(null)}/>;
+ if(selected)return <Detail key={selected.id} user={selected} a4={a4} onBack={()=>setSelected(null)}/>;
  return <section className="userActivity" dir="rtl" aria-label="دليل نشاط المستخدمين">
   <header className="activityDirectoryHead"><div><h1>نشاط المستخدمين</h1><p>اختر المستخدم لعرض حساباته وعملياته.</p></div>
    <button type="button" className="activityRefresh" aria-label="تحديث دليل المستخدمين" onClick={()=>setRevision(n=>n+1)}><AppIcon name="refresh" size={18}/>تحديث</button></header>
@@ -169,7 +174,7 @@ function Directory(){
     <AppIcon name="chevron" size={17}/></button></li>)}</ul>{!matches.length&&<p className="activityFeedback">لا يوجد مستخدم مطابق.</p>}</>}
  </section>;
 }
-export default function UserActivity({profile}){
+export default function UserActivity({profile,a4}){
  if(!isAdministrator(profile))return <p role="alert" className="activityFeedback">هذه الصفحة مخصّصة للإدارة.</p>;
- return <Directory key={profile.id}/>;
+ return <Directory key={profile.id} a4={a4}/>;
 }

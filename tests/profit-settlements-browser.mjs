@@ -103,8 +103,10 @@ assert.equal(await jsonSql('select count(*) from transactions where profit_settl
 await manager.getByRole('button',{name:'إعادة تأكيد العملية',exact:true}).click();await manager.getByText('تم صرف الحصة وتسجيلها مصروف عمل وإغلاق أرباح الفترة.',{exact:true}).waitFor();
 assert.equal(await jsonSql('select count(*) from transactions where profit_settlement_id is not null'),1);
 assert.equal(await jsonSql("select solar_private.cash_balance('"+owner+"')"),475000);
-await manager.getByRole('button',{name:'أرباح الشركة',exact:true}).click();await manager.locator('.profitWorkspace').waitFor();
-assert.match(await manager.locator('.profitResultSummary').innerText(),/25,000/);assert.match(await manager.locator('.profitResultSummary').innerText(),/75,000/);
+const approvedShare=manager.locator('.profitRequest.approved').filter({hasText:'أشرف الأرباح'});
+await approvedShare.filter({hasText:'حصته: 25,000 د.ع'}).waitFor();
+await manager.getByRole('button',{name:'أرباح الشركة',exact:true}).click();
+await manager.getByTestId('profit-current-balance').filter({hasText:'75,000'}).waitFor();
 await employee.getByRole('button',{name:'تحديث',exact:true}).last().click();
 await employee.locator('.profitRequest.approved').waitFor();assert.match(await employee.locator('.staffProfitMetrics .available').innerText(),/0/);
 await employee.locator('.profitRequest.approved').click();await employee.locator('.profitApproval').waitFor();

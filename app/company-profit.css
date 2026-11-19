@@ -1,0 +1,83 @@
+.profitWorkspace.companyProfit {
+ --profit-ink:#173b46;--profit-muted:#4a6570;--profit-line:#cedfe0;
+ display:grid;gap:14px;color:var(--profit-ink);max-width:1180px;margin-inline:auto;min-width:0;
+}
+.companyProfit * {box-sizing:border-box}
+.companyProfit .companyProfitHead,.companyProfit .companyProfitHead>div,.companyProfit .companySectionHeading,
+.companyProfit .companySaleGroups header,.companyProfit .companyProfitFilters>summary,.companyProfit .companyProfitRefresh {
+ display:flex;align-items:center;gap:10px
+}
+.companyProfit .companyProfitHead,.companyProfit .companySectionHeading,.companyProfit .companySaleGroups header,.companyProfit .companyProfitFilters>summary {justify-content:space-between}
+.companyProfit .companyProfitHead h1 {font-size:clamp(22px,3vw,30px);margin:0;color:var(--profit-ink);line-height:1.45}
+.companyProfit .companyProfitIcon {display:grid;place-items:center;width:42px;height:42px;border-radius:12px;background:#d9efea;color:#09645c}
+.companyProfit .companyProfitRefresh,.companyProfit .companyClearPeriod {font:inherit;min-height:40px;padding:6px 12px;border-radius:10px;border:1px solid var(--profit-line);background:white;color:#165950;cursor:pointer;font-size:12px}
+.companyProfit button:focus-visible,.companyProfit summary:focus-visible,.companyProfit select:focus-visible,.companyProfit input:focus-visible {outline:3px solid #19a896;outline-offset:2px}
+.companyProfit .companyProfitTotals {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.companyProfit .companyProfitTotals article {display:grid;align-content:center;gap:6px;min-width:0;padding:17px 20px;border-radius:13px}
+.companyProfit .companyProfitTotals article>span {display:flex;align-items:center;gap:8px;font-weight:700;font-size:13px}
+.companyProfit .companyProfitTotals article>b {line-height:1.4;font-size:clamp(23px,3vw,32px);font-weight:750;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.companyProfit .companyProfitTotals article>b small {font-size:12px;font-weight:500}
+.companyProfit .companyProfitTotals article>small {line-height:1.6;font-size:11px;overflow-wrap:anywhere}
+.companyProfit .companyProfitPeriod {color:#fff;background:linear-gradient(115deg,#155468,#0b655d);border:1px solid #125d63}
+.companyProfit .companyProfitCurrent {color:#164a60;background:#e8f2f6;border:1px solid #c3dbe4}
+.companyProfit .companyProfitPeriod .profitNegative {color:#ffe0d9}
+.companyProfit .companyProfitCurrent .profitNegative,.companyProfit .companyFigure .profitNegative {color:#a63332}
+.companyProfit .companyProfitNav {display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px;padding:5px;background:#e3eded;border:1px solid var(--profit-line);border-radius:12px}
+.companyProfit .companyProfitNav button {display:flex;align-items:center;justify-content:center;gap:7px;min-height:42px;border:1px solid transparent;border-radius:8px;background:transparent;color:#3b5661;font:inherit;font-weight:650;font-size:13px;line-height:1.5;padding:6px;cursor:pointer;box-shadow:none}
+.companyProfit .companyProfitNav button svg {flex-shrink:0}
+.companyProfit .companyProfitNav button[aria-pressed=true] {background:#fff;border-color:#accfc8;color:#075d54;box-shadow:0 1px 3px #15444010}
+.companyProfit .companyProfitNav button:disabled,.companyProfit button:disabled {opacity:.55;cursor:default}
+.companyProfit .companyProfitFilters {background:#fff;border:1px solid var(--profit-line);border-radius:12px;min-width:0;overflow:hidden}
+.companyProfit .companyProfitFilters>summary {padding:10px 15px;min-height:43px;cursor:pointer;list-style:none;flex-wrap:wrap}
+.companyProfit .companyProfitFilters>summary::-webkit-details-marker {display:none}
+.companyProfit .companyProfitFilters>summary>span {display:flex;align-items:center;gap:7px;font-weight:700;color:#24565a;font-size:13px}
+.companyProfit .companyProfitFilters>summary:after {content:'';width:7px;height:7px;border-left:2px solid #4c7372;border-bottom:2px solid #4c7372;transform:rotate(-45deg);margin-inline-start:2px}
+.companyProfit .companyProfitFilters[open]>summary:after {transform:rotate(135deg)}
+.companyProfit .companyProfitFilters>summary>small {margin-inline-start:auto;min-width:0;color:var(--profit-muted);font-size:11px}
+.companyProfit .companyFilterFields {padding:8px 15px 14px;margin:0;min-width:0;border:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.companyProfit .companyFilterFields label {display:grid;gap:4px;min-width:0;font-size:12px;color:var(--profit-muted)}
+.companyProfit .companyFilterFields input,.companyProfit .companyFilterFields select {display:block;width:100%;min-width:0;max-width:100%;min-height:42px;padding:6px 9px;border:1px solid #cbdbdf;border-radius:8px;background:#f6f9fa;color:var(--profit-ink);font:inherit;font-size:14px}
+.companyProfit .companyClearPeriod {justify-self:start;grid-column:1/-1}
+.companyProfit .companyProfitView {display:grid;gap:14px;min-width:0}
+.companyProfit .companyProfitView .uiPanel,.companyProfit .companyProfitView.uiPanel {padding:17px;border:1px solid var(--profit-line);border-radius:13px;background:#fff;color:var(--profit-ink)}
+.companyProfit .companyProfitView h2,.companyProfit .companyProfitView h3 {margin:0 0 9px;color:var(--profit-ink);line-height:1.6}
+.companyProfit .companyProfitView h2 {font-size:18px}.companyProfit .companyProfitView h3 {font-size:15px}
+.companyProfit .companyFigures {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:8px;margin:0}
+.companyProfit .companyFigures>.companyFigure {margin:0;display:block;padding:12px;border:1px solid #deeaeb;border-radius:8px;min-width:0;background:#f5f9f9;text-align:start}
+.companyProfit .companyFigure dt,.companyProfit .companySectionHeading>small,.companyProfit .companySaleGroups header>small {font-size:12px;color:var(--profit-muted)}
+.companyProfit .companyFigure dd {margin:4px 0 0;color:var(--profit-ink);font-size:17px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.companyProfit .companyFigure small,.companyProfit .companyAccountingNote small {font-size:11px;font-weight:500}
+.companyProfit .profitResultSummary>.companyFigures {margin:8px 0 0;padding:0;border:0}
+.companyProfit .companyAccountingNote,.companyProfit .companyReportStatus,.companyProfit .companyProfitEmpty {padding:11px 12px;border-radius:8px;background:#f1f6f6;color:#36575a;line-height:1.8;font-size:13px}
+.companyProfit .companyAccountingNote {margin:10px 0 0}
+.companyProfit .companyReportStatus,.companyProfit .companyProfitEmpty {margin:0}
+.companyProfit .companySaleGroups {display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px}
+.companyProfit .companySaleGroups>article {padding:12px;border:1px solid #d4e6e4;border-inline-start:3px solid #218879;border-radius:9px}
+.companyProfit .companySaleGroups>article[data-profit-sale-kind=system] {border-inline-start-color:#98742e}
+.companyProfit .companySaleGroups header {margin-bottom:8px}
+.companyProfit .companySaleGroups header h3,.companyProfit .companySectionHeading h2 {margin:0}
+.companyProfit .companySaleGroups .companyFigures {grid-template-columns:repeat(2,minmax(0,1fr))}
+.companyProfit .companySaleGroups .companyFigure {padding:8px;border-color:transparent}
+.companyProfit .companyLedgerList {grid-column:1/-1;min-width:0}
+.companyProfit .companyExportScope {display:flex;flex-wrap:wrap;gap:12px 30px;margin:0;padding:10px 14px;background:#f2f7f7;border-radius:9px}
+.companyProfit .companyExportScope dt {font-size:11px;color:var(--profit-muted)}.companyProfit .companyExportScope dd {margin:3px 0;font-size:13px;font-weight:650}
+.companyProfit .companyDistribution>summary {cursor:pointer;font-weight:700;padding:13px;min-height:44px}
+.companyProfit .distributionForm {display:grid;gap:12px}.companyProfit .distributionForm>p {margin:0;line-height:1.8}
+.companyProfit .profitTransactions,.companyProfit .companyLedgerList .profitMovement {min-width:0}
+.companyProfit .profitList {max-height:none}
+@media(max-width:760px){
+ .profitWorkspace.companyProfit {gap:10px}
+ .companyProfit .companyProfitTotals {gap:7px}
+ .companyProfit .companyProfitTotals article {padding:12px 10px;gap:5px}
+ .companyProfit .companyProfitTotals article>span {font-size:12px;gap:4px}
+ .companyProfit .companyProfitTotals article>span svg {display:none}
+ .companyProfit .companyProfitTotals article>b {font-size:clamp(19px,5.6vw,25px)}
+ .companyProfit .companyProfitNav {grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
+ .companyProfit .companyProfitNav button {grid-column:span 2;font-size:12px;min-height:40px;gap:5px}
+ .companyProfit .companyProfitNav button:nth-last-child(-n+2) {grid-column:span 3}
+ .companyProfit .companyFilterFields {grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:4px 11px 11px}
+ .companyProfit .companyProfitFilters>summary {padding:9px 11px}
+ .companyProfit .companyProfitView .uiPanel,.companyProfit .companyProfitView.uiPanel {padding:12px}
+ .companyProfit .companyFigures {grid-template-columns:repeat(2,minmax(0,1fr))}
+ .companyProfit .companyFigures>.companyFigure {padding:9px}
+}

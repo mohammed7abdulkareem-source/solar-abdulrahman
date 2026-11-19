@@ -55,18 +55,17 @@ export function materialMovementPresentation(row){
  const stockNote=cancelledReservation?'حجز سابق أُلغي دون تجهيز؛ إعادة الكمية مثبتة بحركة إلغاء الحجز.':kind==='transfer_reserved'?'كمية محجوزة للنقل؛ تقلّل المتاح ولم تُجهّز بعد.':kind==='transfer_cancelled'?'إلغاء الحجز يعيد الكمية إلى المتاح.':kind==='transfer_out'?'خصم المصدر مثبت بتاريخ طلب النقل؛ وقت التجهيز موضح بصورة مستقلة.':['sale','system'].includes(kind)?'خصم البيع من المتاح يُثبت عند تسجيل الفاتورة؛ التجهيز حالة مستقلة.':'';
  return {label,partyLabel,preparerLabel:preparationApplicable?'مسؤول تجهيز المخزن':null,preparationApplicable,preparationLabel,isReservation,stockNote};
 }
-export function materialVisibleTotals(rows){
- // Only displayed quantity totals are summed here, never a running balance.
- // Decimal addition avoids exposing binary 0.1 + 0.2 artifacts after formatting.
- const sum=values=>{
+// Exact decimal addition for displayed totals, including very small stock quantities.
+export function sumMaterialQuantities(values){
   const parts=values.map(value=>/^(-?)(\d+)(?:\.(\d+))?$/.exec(quantity(value??0).replace(/,/g,'').replace('−','-')));
   if(parts.some(part=>!part))return values.reduce((total,value)=>total+Number(value||0),0);
-  const scale=Math.max(0,...parts.map(part=>(part[3]||'').length));
+  const scale=parts.reduce((max,part)=>Math.max(max,(part[3]||'').length),0);
   const total=parts.reduce((total,part)=>total+(part[1]?-1n:1n)*BigInt(part[2]+(part[3]||'').padEnd(scale,'0')),0n);
   const digits=(total<0n?-total:total).toString().padStart(scale+1,'0');
   return Number((total<0n?'-':'')+(scale?digits.slice(0,-scale)+'.'+digits.slice(-scale):digits));
- };
- return {in:sum(rows.map(row=>row.inQty)),out:sum(rows.map(row=>row.outQty)),count:rows.length,reservedOut:sum(rows.filter(row=>materialMovementPresentation(row).isReservation).map(row=>row.outQty)),reservationReleased:sum(rows.filter(row=>row.kind==='transfer_cancelled').map(row=>row.inQty))};
+}
+export function materialVisibleTotals(rows){
+ return {in:sumMaterialQuantities(rows.map(row=>row.inQty)),out:sumMaterialQuantities(rows.map(row=>row.outQty)),count:rows.length,reservedOut:sumMaterialQuantities(rows.filter(row=>materialMovementPresentation(row).isReservation).map(row=>row.outQty)),reservationReleased:sumMaterialQuantities(rows.filter(row=>row.kind==='transfer_cancelled').map(row=>row.inQty))};
 }
 export function filterMaterialRows(rows,direction='all',query=''){
  const words=normalizeSearch(query).replace(/#/g,'').split(/\s+/).filter(Boolean);

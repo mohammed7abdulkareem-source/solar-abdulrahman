@@ -10,20 +10,40 @@ import SalesTrend from './sales-trend';
 import ProfitSettlements from './profit-settlements';
 import ProfitTransfer from './profit-transfer';
 import ProfitMovement from './profit-movement';
-import {money,escapeHtml as e} from './supplier-utils.mjs';
+import {dateKey,money} from './supplier-utils.mjs';
 import {cashOwner} from './access-utils.mjs';
-import {installationCost} from './review-utils.mjs';
+import {companyInvoiceCost,companyMovementTotals} from './company-profit-figures.mjs';
 import {cashReceiptBody} from './cash-utils.mjs';
-import {operatingExpenseAmount} from './expense-review.mjs';
 import PendingSystems from './pending-systems';
-import {profitBalanceReport,companySaleExpenses} from './profit-balance-report.mjs';
-const inPeriod=(row,from,to)=>{const date=new Date(row.date).toLocaleDateString('en-CA',{timeZone:'Asia/Baghdad'});return (!from||date>=from)&&(!to||date<=to);};
+import {profitBalanceReport,companySaleExpenses,profitSalesBreakdown} from './profit-balance-report.mjs';
+import './company-profit.css';
+
+const sections=[
+ ['overview','نظرة عامة','chart'],['sales','المبيعات والمنظومات','receipt'],
+ ['movements','المصاريف والحركات','wallet'],['settled','التسويات والتوزيع','exchange'],['export','تصدير التقرير','download']
+];
+const saleLabels={all:'الجملة والمنظومات المغلقة',sale:'بيع الجملة',system:'المنظومات المغلقة'};
+function ProfitAmount({value,id}){
+ return <b className={value!=null&&Number(value)<0?'profitNegative':undefined} data-testid={id}>
+  {value!=null?<><bdi dir="ltr">{money(value)}</bdi> <small>د.ع</small></>:'—'}
+ </b>;
+}
+function Figure({label,value,id}){
+ return <div className="companyFigure"><dt>{label}</dt><dd><ProfitAmount value={value} id={id}/></dd></div>;
+}
+function LedgerItems({rows,a4,empty}){
+ if(!rows.length)return <p className="companyProfitEmpty">{empty}</p>;
+ return <div className="companyLedgerList">{rows.slice().reverse().map(row=><ProfitMovement key={row.ownerId+':'+row.key}
+  row={row} ownerId={row.ownerId} a4={a4} meta={'أثر الحركة '+money(row.value)+' د.ع · غير المسوّى '+money(row.available)+' د.ع'}/>)}</div>;
+}
+
 export default function ProfitWorkspace(props){
  const [tab,setTab]=useState(props.profile.is_admin?(props.initialTab||'company'):'settlements'),[pendingCount,setPendingCount]=useState(0);
- return <>{props.profile.is_admin&&<nav className="profitWorkspaceTabs" aria-label="تقارير وتسوية الأرباح"><button className={tab==='company'?'active':''} onClick={()=>setTab('company')}>أرباح الشركة</button><button className={tab==='settlements'?'active':''} onClick={()=>setTab('settlements')}>تسويات المستخدمين {pendingCount>0?'· '+pendingCount:''}</button></nav>}{!props.profile.is_admin&&<PendingSystems a4={props.a4} ownerId={props.profile.id} revision={props.tx}/>}<ProfitSettlements {...props} hidden={tab!=='settlements'} onPending={setPendingCount}/>{props.profile.is_admin&&tab==='company'&&<CompanyProfitWorkspace {...props}/>}</>;
+ return <>{props.profile.is_admin&&<nav className="profitWorkspaceTabs" aria-label="تقارير وتسوية الأرباح"><button type="button" aria-pressed={tab==='company'} className={tab==='company'?'active':''} onClick={()=>setTab('company')}>أرباح الشركة</button><button type="button" aria-pressed={tab==='settlements'} className={tab==='settlements'?'active':''} onClick={()=>setTab('settlements')}>تسويات المستخدمين {pendingCount>0?'· '+pendingCount:''}</button></nav>}{!props.profile.is_admin&&<PendingSystems a4={props.a4} ownerId={props.profile.id} revision={props.tx}/>}<ProfitSettlements {...props} hidden={tab!=='settlements'} onPending={setPendingCount}/>{props.profile.is_admin&&tab==='company'&&<CompanyProfitWorkspace {...props}/>}</>;
 }
 function CompanyProfitWorkspace({tx,profile,staff=[],onChanged,a4}){
- const admin=!!profile.is_admin,[owner,setOwner]=useState(admin?'all':profile.id),[from,setFrom]=useState(''),[to,setTo]=useState(''),[type,setType]=useState('all'),[distribution,setDistribution]=useState(''),[note,setNote]=useState(''),[cash,setCash]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[receipt,setReceipt]=useState(null),[refresh,setRefresh]=useState(0);
+ const [section,setSection]=useState('overview');
+ const admin=!!profile.is_admin,[owner,setOwner]=useState(admin?'all':profile.id),[from,setFrom]=useState(''),[to,setTo]=useState(''),[type,setType]=useState('all'),[distribution,setDistribution]=useState(''),[note,setNote]=useState(''),[cashSnapshot,setCashSnapshot]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState(''),[receipt,setReceipt]=useState(null),[refresh,setRefresh]=useState(0);
  const [assignments,setAssignments]=useState([]),[transferOpen,setTransferOpen]=useState(false),[selectedProfit,setSelectedProfit]=useState([]),[transferLocked,setTransferLocked]=useState(false),[transferMessage,setTransferMessage]=useState('');
  const [balanceLoaded,setBalanceLoaded]=useState(null),[balanceError,setBalanceError]=useState(null);
  const balanceKey=JSON.stringify([profile.id,admin,owner,from,to,type]);
@@ -32,33 +52,137 @@ function CompanyProfitWorkspace({tx,profile,staff=[],onChanged,a4}){
  const pending=useRef(null);
  useEffect(()=>{let live=true;supabase.rpc('solar_profit_transfer',{action:'list'}).then(({data,error})=>{if(!live)return;if(error){setError(error.message);return;}setAssignments(data.assignments||[]);});return()=>{live=false;};},[tx,refresh]);
  const profitOwners=new Map(assignments.map(r=>[Number(r.invoiceId),r.ownerId]));
- useEffect(()=>{let live=true;setCash(null);if(admin&&owner!=='all')supabase.rpc('solar_cash_workspace',{payload:{ownerId:owner,limit:1}}).then(({data,error})=>{if(error)throw error;if(live)setCash(data);}).catch(err=>live&&setError(err.message));return()=>{live=false;};},[owner,admin,tx,refresh]);
+ useEffect(()=>{let live=true;setCashSnapshot(null);if(admin&&owner!=='all')supabase.rpc('solar_cash_workspace',{payload:{ownerId:owner,limit:1}}).then(({data,error})=>{if(error)throw error;if(live)setCashSnapshot({owner,tx,refresh,data});}).catch(err=>live&&setError(err.message));return()=>{live=false;};},[owner,admin,tx,refresh]);
+ const cash=cashSnapshot?.owner===owner&&cashSnapshot.tx===tx&&cashSnapshot.refresh===refresh?cashSnapshot.data:null;
  const sourceRows=new Map((balance?.rows||[]).map(r=>[r.key,r]));
- const scoped=tx.filter(t=>owner==='all'||(['sale','system'].includes(t.kind)?sourceRows.get('tx:'+t.id)?.ownerId||profitOwners.get(Number(t.id))||cashOwner(t):t.profitSupplierOwnerId||cashOwner(t))===owner),period=scoped.filter(t=>inPeriod(t,from,to));
- const rows=period.filter(t=>(t.kind==='sale'||t.kind==='system'&&t.installationStatus==='closed')&&(type==='all'||t.kind===type)).map(t=>{
-  const sales=Number(t.kind==='system'?t.total:t.subtotal??t.total??0),cost=t.kind==='system'?installationCost(t):(t.items||[]).reduce((s,i)=>s+Number(i.qty||0)*Number(i.cost||0),0);
+ // The confirmed ledger has already applied Baghdad dates, beneficiary, sale type and system closure.
+ const rows=tx.filter(t=>['sale','system'].includes(t.kind)&&sourceRows.get('tx:'+t.id)?.kind===t.kind).map(t=>{
+  const sales=Number(t.kind==='system'?t.total:t.subtotal??t.total??0),cost=companyInvoiceCost(t);
   const source=sourceRows.get('tx:'+t.id);
-  return {...t,sales,cost,earned:source?Number(source.value):Number(t.kind==='system'||t.fxPricing?t.profit??sales-cost:sales-cost),settled:source?Number(source.settled):null,available:source?Number(source.available):null,profitOwnerId:source?.ownerId};
+  return {...t,sales,cost,earned:Number(source.value),settled:Number(source.settled),available:Number(source.available),profitOwnerId:source.ownerId};
  });
  const totals=rows.reduce((s,t)=>({sales:s.sales+t.sales,cost:s.cost+t.cost,profit:s.profit+t.earned}),{sales:0,cost:0,profit:0});
  const companyExpenses=companySaleExpenses(rows);
- const externalRows=period.filter(t=>t.cashPurpose==='external_profit'),externalProfit=externalRows.reduce((sum,t)=>sum+Number(t.total||0),0);
- const expenses=period.reduce((sum,t)=>sum+(t.profitSettlementId?0:operatingExpenseAmount(t)),0),fx=period.filter(t=>t.kind==='fx_gain').reduce((s,t)=>s+Number(t.total||0),0),net=balance?.period.earned,unallocated=balance?.remaining;
+ const ledger=balance?.rows||[];
+ const {expenses,fx,externalProfit}=companyMovementTotals(ledger);
+ const net=balance?.period.earned,unallocated=balance?.remaining;
  const available=Math.max(0,Number(cash?.retainedProfit||0)),amount=Number(distribution),valid=!!cash&&amount>0&&amount<=available&&amount<=Number(cash.summary.IQD)&&amount<=1e12;
  async function save(event){event.preventDefault();if(busy||!valid)return;setBusy(true);setError('');const payload={ownerId:owner,mode:'distribution',currency:'IQD',amount,note:note.trim()||'توزيع أرباح'},signature=JSON.stringify(payload);
   try{if(pending.current&&pending.current.signature!==signature)throw new Error('أعد تأكيد الطلب السابق بنفس البيانات.');if(!pending.current)pending.current={id:crypto.randomUUID(),signature};const {data,error}=await supabase.rpc('solar_cash_save',{request_id:pending.current.id,payload});if(error)throw error;pending.current=null;setReceipt(data);setDistribution('');setNote('');setRefresh(n=>n+1);try{await onChanged?.();}catch{setError('تم التوزيع؛ حدّث البيانات لإظهاره.');}}
   catch(err){if(err.code)pending.current=null;setError(err.code?err.message:'لم يتأكد رد الحفظ؛ أعد تأكيده بنفس البيانات ولن تتكرر الحركة.');}finally{setBusy(false);}
  }
- const reportBody=profitBalanceReport({balance,ownerName:owner==='all'?'جميع المستخدمين':userDisplayName(staff.find(u=>u.id===owner)||profile),from,to,rows,expenses,fx,externalProfit,type});
+ const ownerName=owner==='all'?'جميع المستخدمين':userDisplayName(staff.find(u=>u.id===owner)||profile);
+ const reportBody=section==='export'&&balance?profitBalanceReport({balance,ownerName,from,to,rows,expenses,fx,externalProfit,type}):'';
  const reportError=balanceError?.key===balanceKey&&balanceError.tx===tx&&balanceError.refresh===refresh?balanceError.message:'';
- return <section className="profitWorkspace"><header className="workspaceHead"><div><span className="sectionKicker">التقارير / النتائج المالية</span><h1>الأرباح</h1><p>أرباح المبيعات والمصاريف الفعلية وفروق الصرف المحققة، بالدينار العراقي.</p></div></header>
-  <section className="uiPanel"><div className="formGrid profitFilters"><label>من<input aria-label="بداية فترة الأرباح" type="date" value={from} max={to||undefined} onChange={e=>setFrom(e.target.value)}/></label><label>إلى<input type="date" aria-label="نهاية فترة الأرباح" value={to} min={from||undefined} onChange={e=>setTo(e.target.value)}/></label>{admin&&<label>المستخدم<select aria-label="مستخدم تقرير الأرباح" value={owner} disabled={busy||!!pending.current} onChange={e=>{setOwner(e.target.value);setReceipt(null);setError('');}}><option value="all">جميع المستخدمين</option>{staff.filter(u=>!['installer','warehouse'].includes(u.user_type)).map(u=><option value={u.id} key={u.id}>{userDisplayName(u)}</option>)}</select></label>}<label>المبيعات<select value={type} onChange={e=>setType(e.target.value)}><option value="all">الجملة والمنظومات المغلقة</option><option value="sale">بيع الجملة</option><option value="system">المنظومات المغلقة</option></select></label></div></section>
-  <div className="reportScopeStrip" aria-label="نطاق تقرير الأرباح"><strong>{owner==='all'?'جميع المستخدمين':userDisplayName(staff.find(u=>u.id===owner)||profile)}</strong><span>{from||'البداية'} — {to||'اليوم'}</span><span>الدينار العراقي · IQD</span><span>{type==='sale'?'بيع الجملة':type==='system'?'المنظومات المغلقة':'الجملة والمنظومات المغلقة'}</span></div>
-  <div className="financeMetrics">{[['إجمالي المبيعات',totals.sales,'receipt'],['الكلفة المثبتة',totals.cost,'package'],['المصاريف الفعلية',expenses,'wallet'],['الأرباح المتبقية بعد التسوية',unallocated,'chart']].map(([label,value,icon],i)=><article key={label} className={i===3?'highlight':''}><span>{label}<i className={'metricIcon '+icon}><AppIcon name={icon} size={19}/></i></span><b data-testid={i===3?'profit-current-balance':undefined}>{value!=null?money(value):'…'} <small>د.ع</small></b>{i===3&&<small className="profitCurrentHint">الرصيد الحالي · جميع الفترات</small>}</article>)}</div><p className="profitBalanceNotice">{owner==='all'?'إجمالي أرباح الشركة المتبقية لجميع الفترات بعد التوزيعات المعتمدة.':'رصيد هذا المستخدم لجميع الفترات بعد توزيعات الأرباح والتسويات الخارجية.'}</p>{reportError&&<div role="alert" className="accountAlert error">{reportError}<button type="button" className="uiButton" onClick={()=>setRefresh(n=>n+1)}>إعادة تحميل الأرباح</button></div>}
-  <PendingSystems a4={a4} ownerId={owner==='all'?null:owner} from={from} to={to} revision={tx}/>{balance&&externalRows.length>0&&<section className="uiPanel"><div className="panelTitle"><h2>الأرباح الخارجية</h2><strong>{money(externalProfit)} د.ع</strong></div>{externalRows.map(t=><ProfitMovement key={t.id} row={{key:'tx:'+t.id,date:t.date,label:'أرباح خارجية · '+(t.notes||''),kind:'external_profit',receiptNo:t.receiptNo,value:Number(t.total),available:sourceRows.get('tx:'+t.id)?.available,settled:sourceRows.get('tx:'+t.id)?.settled}} ownerId={cashOwner(t)} a4={a4}/>)}</section>}
-  <div className="profitChartGrid"><SalesTrend rows={rows} from={from} to={to} title="المبيعات والكلفة" subtitle={from||to?'الفترة المختارة':'آخر 14 يومًا'}/><section className="profitResultSummary"><h2>نتائج الفترة المختارة</h2>{[['ربح المبيعات',totals.profit],['الأرباح الخارجية',externalProfit],['المصاريف الفعلية',-expenses],['فرق الصرف المحقّق',fx],['ربح الفترة قبل التسويات',net],...(owner!=='all'&&balance?.period.adjustments?[['أثر التسويات الخارجية على الرصيد',balance.period.adjustments]]:[]),['المسوّى من أرباح الفترة',balance?.period.settled],['غير المسوّى من أرباح الفترة',balance?.period.available],['الرصيد الحالي بعد التسوية · كل الفترات',unallocated]].map(([label,value])=><div key={label}><span>{label}</span><b className={label==='فرق الصرف المحقّق'?'positive':''}><bdi>{value!=null?money(value):'…'}</bdi> د.ع</b></div>)}{companyExpenses>0&&<p className="profitCurrentHint">مصاريف وصولات الجملة على الشركة: <bdi>{money(companyExpenses)} د.ع</bdi> · مخصومة ضمن ربح المبيعات المعروض، ولا تُطرح مرة أخرى.</p>}</section></div>
-  <section className="uiPanel"><div className="panelTitle"><h2>تقرير الأرباح</h2><span className="formHint">ربح الفترة محفوظ؛ المتاح الآن يظهر بعد التسويات والتوزيعات.</span></div><ReportActions enabled={!!balance} html={balance?a4('تقرير الأرباح',reportBody,money(unallocated)+' د.ع · المتبقي الحالي'):''} filename="تقرير-الأرباح"/><div className="profitTransferTools"><button type="button" className="uiButton" disabled={transferLocked} onClick={()=>{setTransferOpen(v=>!v);setSelectedProfit([]);setTransferMessage('');}}>تحويل الأرباح لمستخدم آخر</button></div><details className="profitTransactions" open={transferOpen||!!transferMessage||undefined}><summary>تفاصيل العمليات · {rows.length} عملية</summary>{transferMessage&&<p role="status" className="accountAlert">{transferMessage}</p>}{transferOpen&&<ProfitTransfer rows={rows.filter(r=>selectedProfit.includes(r.id))} staff={staff} onLocked={setTransferLocked} onClose={()=>{setTransferOpen(false);setSelectedProfit([]);}} onSaved={r=>{setTransferOpen(false);setSelectedProfit([]);setTransferMessage('تم حفظ تغيير الأرباح: '+money(r.total)+' د.ع إلى '+r.ownerName+'.');setRefresh(n=>n+1);window.dispatchEvent(new Event('solar-notification'));Promise.resolve().then(()=>onChanged?.()).catch(()=>setError('تم الحفظ؛ حدّث البيانات لإظهار بقية الأقسام.'));}}/>}<div className="profitList">{!balance?<p role="status">جاري تأكيد رصيد الأرباح والتسويات…</p>:rows.length?rows.slice().reverse().map(t=><article className="profitRow profitCompanyRow" key={t.id}>{transferOpen&&<label className="profitTransferCheck"><input type="checkbox" aria-label={'تحويل ربح الفاتورة '+(t.receiptNo||t.id)} disabled={transferLocked} checked={selectedProfit.includes(t.id)} onChange={ev=>setSelectedProfit(ids=>ev.target.checked?[...ids,t.id]:ids.filter(id=>id!==t.id))}/></label>}<ProfitMovement row={{key:'tx:'+t.id,date:t.date,label:(t.kind==='system'?'منظومة':'بيع جملة')+' · '+(t.party||'نقدي'),receiptNo:t.receiptNo,value:t.earned,available:t.available,settled:t.settled}} ownerId={t.profitOwnerId||profitOwners.get(Number(t.id))||cashOwner(t)} a4={a4} meta={'الكلفة: '+money(t.cost)+' د.ع'+(profitOwners.has(Number(t.id))?' · الربح: '+(staff.find(u=>u.id===profitOwners.get(Number(t.id)))?.display_name||'مستخدم'):'')}/></article>):<div className="uiEmpty">لا توجد مبيعات ضمن الاختيارات.</div>}</div></details></section>
-  {admin&&<details className="distributionDetails" key={owner} open={owner!=='all'||undefined}><summary>سحب أرباح الإدارة</summary><form className="uiPanel distributionForm" onSubmit={save}><div className="panelTitle"><div><h2>سحب أرباح الإدارة</h2><p>لحصة الموظف استخدم «تسويات المستخدمين». هذا سحب أرباح ولا يُسجّل مصروف عمل.</p></div></div>{owner==='all'?<div className="fxNotice">اختر مستخدمًا لعرض أرباحه المتاحة وقاصته قبل التوزيع.</div>:cash?<><div className="financeMetrics"><article><span>الربح المتاح للتوزيع · كل الفترات</span><b>{money(available)} د.ع</b></article><article><span>دينار قاصة {cash.ownerName}</span><b>{money(cash.summary.IQD)} د.ع</b></article></div><fieldset disabled={busy||!!pending.current}><div className="formGrid"><label>المبلغ الموزع · د.ع<MoneyInput value={distribution} onChange={setDistribution} aria-label="مبلغ توزيع الأرباح" required/></label><label>بيان التوزيع<input value={note} onChange={e=>setNote(e.target.value)} maxLength={2000} placeholder="المستلم / سبب التوزيع"/></label></div></fieldset><button className="uiButton primary" type="submit" disabled={busy||!valid}>{busy?'جاري الحفظ…':pending.current?'إعادة تأكيد الحفظ':'حفظ التوزيع وخصمه من القاصة'}</button></>:<p role="status">جاري تحميل القاصة والأرباح المتاحة…</p>}</form></details>}
-  {error&&<div role="alert" className="accountAlert error">{error}</div>}{receipt&&<section className="uiPanel"><h2>تم حفظ توزيع الأرباح #{receipt.receiptNo}</h2><ReportActions enabled html={a4('وصل توزيع الأرباح',cashReceiptBody(receipt),money(receipt.amount)+' د.ع')} filename={'توزيع-أرباح-'+receipt.receiptNo}/></section>}
+ const today=dateKey(new Date()),currentPeriod=(from||'البداية')+' — '+(to||'اليوم');
+ const scopeLocked=busy||!!pending.current||transferLocked;
+ const movements=ledger.filter(r=>!['sale','system','personal_distribution','external_adjustment'].includes(r.kind));
+ const settledMovements=ledger.filter(r=>Number(r.settled)!==0||['personal_distribution','external_adjustment'].includes(r.kind));
+ const subtotalByKind=balance?profitSalesBreakdown(rows).filter(group=>type==='all'||type===group.kind):[];
+
+ function clearTransfer(){
+  setTransferOpen(false);setSelectedProfit([]);setTransferMessage('');
+ }
+ function selectOwner(value){
+  clearTransfer();setOwner(value);setReceipt(null);setError('');setCashSnapshot(null);setDistribution('');setNote('');
+ }
+ function selectSection(value){
+  if(scopeLocked)return;
+  setSection(value);
+ }
+ function transferSaved(result){
+  setTransferOpen(false);setSelectedProfit([]);
+  setTransferMessage('تم حفظ تغيير الأرباح: '+money(result.total)+' د.ع إلى '+result.ownerName+'.');
+  setRefresh(n=>n+1);window.dispatchEvent(new Event('solar-notification'));
+  Promise.resolve().then(()=>onChanged?.()).catch(()=>setError('تم الحفظ؛ حدّث البيانات لإظهار بقية الأقسام.'));
+ }
+ const distributionForm=<details className="distributionDetails companyDistribution" key={owner} open={owner!=='all'||undefined}>
+  <summary>سحب أرباح الإدارة</summary><form className="uiPanel distributionForm" onSubmit={save}>
+   <p>يُخصم المبلغ من الأرباح المتاحة ومن قاصة المستخدم المختار. لتحديد حصة الموظف افتح «تسويات المستخدمين».</p>
+   {owner==='all'?<p className="fxNotice">اختر مستخدمًا من تصفية التقرير لعرض أرباحه المتاحة وقاصته قبل التوزيع.</p>:cash?<>
+    <dl className="companyFigures"><Figure label="الربح المتاح للتوزيع · كل الفترات" value={available}/>
+     <Figure label={'دينار قاصة '+cash.ownerName} value={cash.summary.IQD}/></dl>
+    <fieldset disabled={busy||!!pending.current}><div className="formGrid"><label>المبلغ الموزع · د.ع<MoneyInput value={distribution} onChange={setDistribution} aria-label="مبلغ توزيع الأرباح" required/></label>
+     <label>بيان التوزيع<input value={note} onChange={e=>setNote(e.target.value)} maxLength={2000} placeholder="المستلم أو سبب التوزيع"/></label></div></fieldset>
+    <button className="uiButton primary" type="submit" disabled={busy||!valid}>{busy?'جاري الحفظ…':pending.current?'إعادة تأكيد الحفظ':'حفظ التوزيع وخصمه من القاصة'}</button>
+   </>:<p role="status">جاري تحميل القاصة والأرباح المتاحة…</p>}
+  </form>
+ </details>;
+ return <section className="profitWorkspace companyProfit" dir="rtl" aria-label="تقرير أرباح الشركة">
+  <header className="companyProfitHead"><div><span className="companyProfitIcon"><AppIcon name="chart" size={24}/></span><h1>أرباح الشركة</h1></div>
+   <button type="button" disabled={scopeLocked} className="companyProfitRefresh" onClick={()=>setRefresh(n=>n+1)}><AppIcon name="refresh" size={16}/>تحديث</button>
+  </header>
+  <div className="companyProfitTotals">
+   <article className="companyProfitPeriod"><span><AppIcon name="chart" size={18}/>ربح الفترة قبل التسويات</span>
+    <ProfitAmount value={net} id="profit-period-earned"/><small>{currentPeriod} · {ownerName}</small></article>
+   <article className="companyProfitCurrent"><span><AppIcon name="wallet" size={18}/>الأرباح المتبقية بعد التسوية</span>
+    <ProfitAmount value={unallocated} id="profit-current-balance"/><small>الرصيد الحالي · جميع الفترات</small></article>
+  </div>
+  <nav className="companyProfitNav" aria-label="أقسام تقرير أرباح الشركة">{sections.map(([key,label,icon])=>
+   <button key={key} type="button" aria-pressed={section===key} disabled={scopeLocked&&section!==key} onClick={()=>selectSection(key)}>
+    <AppIcon name={icon} size={18}/><span>{label}</span></button>)}</nav>
+  <details className="companyProfitFilters" open><summary><span><AppIcon name="filter" size={17}/>تصفية التقرير</span>
+   <small aria-label="نطاق تقرير الأرباح">{ownerName} · {saleLabels[type]}</small></summary>
+   <fieldset disabled={scopeLocked} className="companyFilterFields">
+    <label>صاحب الربح<select aria-label="مستخدم تقرير الأرباح" value={owner} onChange={e=>selectOwner(e.target.value)}><option value="all">جميع المستخدمين</option>
+     {staff.filter(u=>!['installer','warehouse'].includes(u.user_type)).map(u=><option value={u.id} key={u.id}>{userDisplayName(u)}</option>)}</select></label>
+    <label>نوع المبيعات<select aria-label="نوع مبيعات تقرير الأرباح" value={type} onChange={e=>{clearTransfer();setType(e.target.value);}}>{Object.entries(saleLabels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>
+    <label>من تاريخ<input aria-label="بداية فترة الأرباح" type="date" value={from} max={to||today} onChange={e=>{clearTransfer();setFrom(e.target.value);}}/></label>
+    <label>إلى تاريخ<input aria-label="نهاية فترة الأرباح" type="date" value={to} min={from||undefined} max={today} onChange={e=>{clearTransfer();setTo(e.target.value);}}/></label>
+    {(from||to)&&<button type="button" className="companyClearPeriod" onClick={()=>{clearTransfer();setFrom('');setTo('');}}>كل الفترات</button>}
+   </fieldset>
+  </details>
+  {reportError?<div role="alert" className="accountAlert error">{reportError}<button type="button" className="uiButton" onClick={()=>setRefresh(n=>n+1)}>إعادة تحميل الأرباح</button></div>
+   :!balance&&<p className="companyReportStatus" role="status">جاري تأكيد رصيد الأرباح والتسويات…</p>}
+  {section==='overview'&&<div className="companyProfitView" aria-label="نظرة عامة">
+   <section className="uiPanel profitResultSummary"><h2>نتائج الفترة المختارة</h2>
+    <dl className="companyFigures">
+     <Figure label="إجمالي المبيعات" value={balance?totals.sales:null}/><Figure label="الكلفة المثبتة" value={balance?totals.cost:null}/>
+     <Figure label="ربح المبيعات" value={balance?totals.profit:null}/><Figure label="المصاريف الفعلية" value={balance?-expenses:null}/>
+     <Figure label="الأرباح الخارجية" value={balance?externalProfit:null}/><Figure label="فرق الصرف المحقّق" value={balance?fx:null}/>
+    </dl>
+    {companyExpenses>0&&balance&&<p className="companyAccountingNote">يتضمن ربح المبيعات مصاريف وصولات جملة تحمّلتها الشركة بمبلغ <ProfitAmount value={companyExpenses}/>.</p>}
+   </section>
+   {balance&&<SalesTrend rows={rows} from={from} to={to} title="المبيعات والكلفة" subtitle={from?'من '+from+' إلى '+(to||today):to?'آخر 14 يومًا حتى '+to:'آخر 14 يومًا'}/>}
+  </div>}
+  {section==='sales'&&<div className="companyProfitView" aria-label="المبيعات والمنظومات">
+   <section className="uiPanel"><h2>الأرباح حسب نوع البيع</h2>
+    <div className="companySaleGroups">{subtotalByKind.map(group=>
+     <article key={group.kind} data-profit-sale-kind={group.kind}><header><h3>{group.label}</h3><small>{group.count} فاتورة</small></header>
+      <dl className="companyFigures"><Figure label="المبيعات" value={group.sales}/><Figure label="الكلفة" value={group.cost}/>
+       <Figure label="ربح الفواتير" value={group.profit}/><div className="companyFigure"><dt>هامش الربح</dt><dd>{group.marginPercent==null?'غير محتسب':<bdi dir="ltr">{money(group.marginPercent)}%</bdi>}</dd></div></dl>
+     </article>)}</div>
+   </section>
+   <section className="uiPanel"><div className="companySectionHeading"><h2>تفاصيل فواتير البيع</h2>{balance&&<small>{rows.length} فاتورة</small>}</div>
+    <div className="profitTransferTools"><button type="button" className="uiButton" disabled={transferLocked||!balance||!rows.length} onClick={()=>{setTransferOpen(v=>!v);setSelectedProfit([]);setTransferMessage('');}}>تحويل الأرباح لمستخدم آخر</button></div>
+    {transferMessage&&<p role="status" className="accountAlert">{transferMessage}</p>}
+    {transferOpen&&<ProfitTransfer rows={rows.filter(r=>selectedProfit.includes(r.id))} staff={staff} onLocked={setTransferLocked} onClose={clearTransfer} onSaved={transferSaved}/>}
+    {balance&&<div className="profitList">{rows.length?rows.slice().reverse().map(t=><article className="profitRow profitCompanyRow" key={t.id}>
+     {transferOpen&&<label className="profitTransferCheck"><input type="checkbox" aria-label={'تحويل ربح الفاتورة '+(t.receiptNo||t.id)} disabled={transferLocked} checked={selectedProfit.includes(t.id)} onChange={ev=>setSelectedProfit(ids=>ev.target.checked?[...ids,t.id]:ids.filter(id=>id!==t.id))}/></label>}
+     <ProfitMovement row={{key:'tx:'+t.id,date:t.date,label:(t.kind==='system'?'منظومة':'بيع جملة')+' · '+(t.party||'نقدي'),receiptNo:t.receiptNo,value:t.earned,available:t.available,settled:t.settled}}
+      ownerId={t.profitOwnerId||profitOwners.get(Number(t.id))||cashOwner(t)} a4={a4}
+      meta={'الربح '+money(t.earned)+' د.ع · الكلفة '+money(t.cost)+' د.ع'+(profitOwners.has(Number(t.id))?' · صاحب الربح '+(staff.find(u=>u.id===profitOwners.get(Number(t.id)))?.display_name||'مستخدم'):'')}/>
+    </article>):<p className="companyProfitEmpty">لا توجد مبيعات ضمن الاختيارات.</p>}</div>}
+   </section>
+   {type!=='sale'&&<PendingSystems a4={a4} ownerId={owner==='all'?null:owner} from={from} to={to} revision={tx}/>}
+  </div>}
+  {section==='movements'&&<section className="uiPanel companyProfitView" aria-label="المصاريف والحركات"><h2>المصاريف والحركات الأخرى</h2>
+   <dl className="companyFigures"><Figure label="المصاريف التشغيلية" value={balance?expenses:null}/><Figure label="فرق الصرف المحقّق" value={balance?fx:null}/><Figure label="الأرباح الخارجية" value={balance?externalProfit:null}/></dl>
+   {companyExpenses>0&&balance&&<p className="companyAccountingNote">مصاريف وصولات الجملة على الشركة <ProfitAmount value={companyExpenses}/>، وهي مخصومة ضمن ربح الفواتير.</p>}
+   <h3>حركات الفترة</h3>{balance&&<LedgerItems rows={movements} a4={a4} empty="لا توجد مصاريف أو حركات أخرى ضمن الفترة."/>}
+  </section>}
+  {section==='settled'&&<div className="companyProfitView" aria-label="التسويات والتوزيع"><section className="uiPanel"><h2>تسوية أرباح الفترة</h2>
+   <dl className="companyFigures"><Figure label="المسوّى من أرباح الفترة" value={balance?.period.settled}/><Figure label="غير المسوّى من أرباح الفترة" value={balance?.period.available}/>
+    {owner!=='all'&&<Figure label="أثر التسويات الخارجية على الرصيد" value={balance?.period.adjustments}/>}</dl>
+   <p className="companyAccountingNote">{owner==='all'?'الرصيد الحالي يجمع الأرباح المتبقية للشركة بعد التوزيعات المعتمدة عبر جميع الفترات.':'الرصيد الحالي يجمع أرباح هذا المستخدم وتوزيعاته وتسوياته الخارجية عبر جميع الفترات.'}</p>
+   <h3>الحركات التي شملتها التسوية</h3>{balance&&<LedgerItems rows={settledMovements} a4={a4} empty="لا توجد حركات مسوّاة ضمن الفترة."/>}
+  </section>{distributionForm}
+  {receipt&&<section className="uiPanel"><h2>تم حفظ توزيع الأرباح #{receipt.receiptNo}</h2><ReportActions enabled html={a4('وصل توزيع الأرباح',cashReceiptBody(receipt),money(receipt.amount)+' د.ع')} filename={'توزيع-أرباح-'+receipt.receiptNo}/></section>}
+  </div>}
+  {section==='export'&&<section className="uiPanel companyProfitView companyReportExport" aria-label="تصدير التقرير"><h2>تقرير الأرباح</h2>
+   <dl className="companyExportScope"><div><dt>صاحب الربح</dt><dd>{ownerName}</dd></div><div><dt>الفترة</dt><dd>{currentPeriod}</dd></div><div><dt>المبيعات</dt><dd>{saleLabels[type]}</dd></div></dl>
+   <ReportActions enabled={!!balance} html={balance?a4('تقرير الأرباح',reportBody,money(unallocated)+' د.ع · المتبقي الحالي'):''} filename="تقرير-الأرباح" disabledNotice="يتاح التصدير بعد اكتمال بيانات التقرير."/>
+  </section>}
+  {error&&<p role="alert" className="accountAlert error">{error}</p>}
  </section>;
 }

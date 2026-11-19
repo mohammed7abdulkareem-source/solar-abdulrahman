@@ -1,5 +1,5 @@
 'use client';
-import {useCallback,useEffect,useRef,useState} from 'react';
+import {useCallback,useEffect,useId,useMemo,useRef,useState} from 'react';
 import AppIcon from './app-icons';
 import ReportActions from './report-actions';
 import {StockReconciliation} from './reconciliation-workspace';
@@ -7,6 +7,9 @@ import {inventoryCall,useInventoryRequest,useWarehouseInventory,WarehouseField} 
 import {filteredStock,quantity,escapeHtml as e,warehouseDate} from './warehouse-utils.mjs';
 import {formatMoney} from './money-format.mjs';
 import {a4 as documentA4} from './document-template.mjs';
+import {inventoryBalanceDocument,inventoryBalanceView,stockValue} from './inventory-balance-report.mjs';
+import {materialQuantity} from './material-movement-utils.mjs';
+import './inventory-balance.css';
 
 export const transferStatus=status=>({pending:'بانتظار التجهيز',posted:'تم التجهيز ✓',cancelled:'ملغى قبل التجهيز',reversed:'ملغى ومعكوس'}[status]||status);
 const routeAllowed=(inventory,source,destination)=>{if(String(source)===String(destination))return false;const from=inventory.warehouses.find(w=>String(w.id)===String(source)),to=inventory.warehouses.find(w=>String(w.id)===String(destination));return !!from?.active&&!!to?.active&&!!inventory.transferDirections?.[from.primary?'fromPrimary':to.primary?'toPrimary':'other'];};
@@ -15,22 +18,63 @@ export function transferDocument(t,priced=false){
  const table='<table data-pdf-paginate><thead><tr><th>ت</th><th>المادة / البراند</th><th>الكمية</th>'+(priced?'<th>كلفة الوحدة د.ع</th><th>الكلفة د.ع</th>':'')+'</tr></thead><tbody>'+t.items.map((i,n)=>'<tr><td>'+(n+1)+'</td><td>'+e(i.name)+'<br><small>'+e([i.code,i.brand,i.category].filter(Boolean).join(' • '))+'</small></td><td>'+quantity(i.qty)+'</td>'+(priced?'<td>'+formatMoney(i.unitCost)+'</td><td>'+formatMoney(i.unitCost*i.qty)+'</td>':'')+'</tr>').join('')+'</tbody></table>';
  return '<section class="inventoryTransferReport">'+meta+'<div class="documentCounts"><span>عدد المواد: '+quantity(t.items.length)+'</span><span>الكمية الإجمالية: '+quantity(t.items.reduce((sum,i)=>sum+Number(i.qty||0),0))+'</span><span>'+ (priced?'الكلف المثبتة · دينار عراقي IQD':'كشف كميات بدون أسعار')+'</span></div>'+(t.preparedBy?'<div class="meta"><div>جهّزها: '+e(t.preparedBy)+'</div><div>تاريخ التجهيز: '+e(warehouseDate(t.preparedAt))+'</div></div>':'')+table+'<p>نقل داخلي بالكلفة المثبّتة عند النقل. لا يغيّر الأرباح أو القاصات.</p>'+(t.note?'<div class="notes"><b>ملاحظات النقل</b><br>'+e(t.note)+'</div>':'')+'</section>';
 }
+function StockRows({rows,priced}){
+ return <div className="inventoryRows">{rows.length?rows.map(p=><article key={p.id} data-stock-product={p.id}>
+  <div className="inventoryMaterial"><b dir="auto">{p.name}</b>
+   <small><bdi>{p.code}</bdi>{[p.brand,p.category].filter(Boolean).map((mark,i)=><span key={i}> · {mark}</span>)}</small>
+   {priced&&<small>كلفة الوحدة <bdi>{formatMoney(p.cost)}</bdi> د.ع</small>}</div>
+  <div className="inventoryQty"><small>متاح</small><strong><bdi dir="ltr">{materialQuantity(p.qty)}</bdi></strong>
+   {Number(p.reservedQty)!==0&&p.reservedQty!=null&&<small className="inventoryReserved">محجوز للنقل <bdi>{materialQuantity(p.reservedQty)}</bdi></small>}
+   {priced&&<small>القيمة <bdi>{formatMoney(stockValue(p))}</bdi> د.ع</small>}</div>
+ </article>):<p className="inventoryEmpty">لا توجد مواد ضمن البحث في المخزن المحدد.</p>}</div>;
+}
+function StockMetrics({totals,priced}){
+ const fields=[['products','عدد المواد','package'],['available','مجموع الكميات المتاحة','warehouse'],['reserved','محجوز لطلبات النقل','exchange']];
+ if(priced)fields.push(['value','قيمة المخزون مع المحجوز','banknote']);
+ return <dl className="inventoryBalanceMetrics" aria-label="ملخص نتائج المخزون">{fields.map(([key,label,icon])=><div key={key}>
+  <dt><AppIcon name={icon} size={16}/>{label}</dt><dd data-stock-metric={key}><bdi dir="ltr">{key==='value'?formatMoney(totals[key]):materialQuantity(totals[key])}</bdi>{key==='value'&&<small> د.ع</small>}</dd>
+ </div>)}</dl>;
+}
 export default function InventoryWorkspace({profile,a4=documentA4,onChanged,initialTransferId=''}){
- const inventory=useWarehouseInventory({aggregate:true}),[tab,setTab]=useState(initialTransferId?'transfers':'balances'),[query,setQuery]=useState(''),[available,setAvailable]=useState(true),[cost,setCost]=useState(false);
- const rows=filteredStock(inventory.products,query,'','',false).filter(p=>!available||Number(p.qty)>0||Number(p.reservedQty)>0).sort((a,b)=>Number(b.qty>0)-Number(a.qty>0)),total=rows.reduce((s,p)=>s+Number(p.qty),0),value=rows.reduce((s,p)=>s+(p.bookQty??p.qty)*(p.cost||0),0),reserved=rows.reduce((s,p)=>s+Number(p.reservedQty||0),0);
- const priced=inventory.showCost&&cost,title='أرصدة '+(inventory.warehouseName||'المخازن المسموحة');
- const html=a4(title,'<div class="meta"><div><b>المخزن:</b> '+e(inventory.warehouseName||'جميع المخازن المسموحة')+'</div><div><b>نوع الكشف:</b> أرصدة المواد الحالية</div><div><b>الأسعار:</b> '+(priced?'كلفة الوحدة وقيمة المخزون · دينار عراقي IQD':'بدون أسعار')+'</div><div><b>التصفية:</b> '+(available?'إخفاء الأرصدة الصفرية':'جميع الأرصدة')+(query?' · البحث: '+e(query):'')+'</div></div><div class="documentCounts"><span>عدد المواد: '+quantity(rows.length)+'</span><span>الكمية المتاحة: '+quantity(total)+'</span><span>المحجوز للنقل: '+quantity(reserved)+'</span></div><table data-pdf-paginate><thead><tr><th>الكود</th><th>المادة / البراند</th><th>المتاح</th>'+(reserved>0?'<th>محجوز للنقل</th>':'')+(priced?'<th>كلفة الوحدة د.ع</th><th>القيمة مع المحجوز د.ع</th>':'')+'</tr></thead><tbody>'+rows.map(p=>'<tr><td>'+e(p.code)+'</td><td>'+e(p.name)+'<br><small>'+e([p.brand,p.category].filter(Boolean).join(' • '))+'</small></td><td>'+quantity(p.qty)+'</td>'+(reserved>0?'<td>'+quantity(p.reservedQty)+'</td>':'')+(priced?'<td>'+formatMoney(p.cost)+'</td><td>'+formatMoney((p.bookQty??p.qty)*p.cost)+'</td>':'')+'</tr>').join('')+'</tbody></table><p>المتاح هو الكمية القابلة للتجهيز الآن، والمحجوز يخص طلبات النقل. '+(priced?'القيمة تشمل المتاح والمحجوز بالكلفة المعروضة.':'الكشف لا يعرض كلف المواد.')+' جميع النتائج تخص المخزن والبحث المختارين.</p>',priced?formatMoney(value)+' د.ع':'',quantity(total)+' كمية متاحة · '+rows.length+' مادة');
+ const [tab,setTab]=useState(initialTransferId?'transfers':'balances'),[mode,setMode]=useState('total');
+ const [query,setQuery]=useState(''),[hideZero,setHideZero]=useState(true),[cost,setCost]=useState(false);
+ const radioName=useId(),split=mode==='warehouses';
+ const inventory=useWarehouseInventory({aggregate:true,byWarehouse:tab==='balances'&&split});
+ const warehouseName=inventory.warehouseName||'جميع المخازن المسموحة';
+ const priced=inventory.ready&&inventory.showCost&&cost;
+ const view=useMemo(()=>inventory.ready&&tab==='balances'?inventoryBalanceView({
+  products:inventory.products,warehouses:inventory.warehouses,warehouseBalances:inventory.warehouseBalances,
+  warehouseId:inventory.warehouseId,byWarehouse:split,query,hideZero
+ }):null,[inventory.ready,inventory.products,inventory.warehouses,inventory.warehouseBalances,inventory.warehouseId,split,tab,query,hideZero]);
+ const doc=view?inventoryBalanceDocument(view,{warehouseName,byWarehouse:split,priced,hideZero,query}):null;
  function changed(){inventory.refresh();onChanged?.();}
- return <section className="inventoryWorkspace"><header className="inventoryHeading"><div className="inventoryHeadingIcon"><AppIcon name="warehouse" size={25}/></div><div><h2>المخزون والمخازن</h2><p>رصيد مستقل لكل مخزن، ونقل واضح بين المواقع.</p></div><button type="button" className="inventoryRefresh" aria-label="تحديث أرصدة المخازن" onClick={inventory.refresh}><AppIcon name="refresh" size={18}/></button></header>
-  <nav className="inventoryTabs" aria-label="إدارة المخزون">{[['balances','الأرصدة','stock'],...(inventory.canTransfer?[['new','نقل مواد','exchange']]:[]),['transfers','وصولات النقل','receipt'],...(inventory.canManage?[['manage','إدارة المخازن','warehouse']]:[])].map(([key,label,icon])=><button type="button" key={key} aria-pressed={tab===key} onClick={()=>setTab(key)}><AppIcon name={icon} size={18}/>{label}</button>)}</nav>
-  {tab==='balances'&&<><div className="inventoryCard"><WarehouseField inventory={inventory} allowAll label="عرض رصيد المخزن"/><div className="inventorySearch"><AppIcon name="search" size={20}/><input aria-label="بحث أرصدة المخازن" placeholder="اسم المادة أو الكود أو البراند…" value={query} onChange={ev=>setQuery(ev.target.value)}/></div><div className="inventoryChecks"><label><input type="checkbox" checked={available} onChange={ev=>setAvailable(ev.target.checked)}/>إخفاء الأرصدة الصفرية</label>{inventory.showCost&&<label><input type="checkbox" checked={cost} onChange={ev=>setCost(ev.target.checked)}/>إظهار الكلفة</label>}</div></div>
-   <div className="inventoryMetrics"><div><span>مواد متوفرة ضمن البحث</span><b>{rows.filter(p=>p.qty>0).length}</b></div><div><span>مجموع الكميات المتاحة</span><b>{quantity(total)}</b></div>{reserved>0&&<div><span>محجوز لطلبات النقل</span><b>{quantity(reserved)}</b></div>}{priced&&<div><span>قيمة المخزون مع المحجوز</span><b>{formatMoney(value)} <small>د.ع</small></b></div>}</div>
-   <p className="inventoryHint">تُحجز مواد الفاتورة من مخزنها عند حفظها؛ تأكيد التجهيز لا يخصمها مرة ثانية.</p>
-   {inventory.error&&<p role="alert" className="workflowError">{inventory.error}</p>}{inventory.loading?<p role="status" className="inventoryEmpty">جاري تحميل الرصيد…</p>:<div className="inventoryRows">{rows.map(p=><article key={p.id}><div className="inventoryMaterial"><b>{p.name}</b><small>{p.code} · {[p.brand,p.category].filter(Boolean).join(' · ')}</small>{priced&&<small>كلفة الوحدة: {formatMoney(p.cost)} د.ع</small>}</div><div className="inventoryQty"><small>متاح</small><strong>{quantity(p.qty)}</strong>{Number(p.reservedQty)>0&&<small className="inventoryReserved">محجوز للنقل: {quantity(p.reservedQty)}</small>}{priced&&<small>{formatMoney((p.bookQty??p.qty)*p.cost)} د.ع</small>}</div></article>)}{!rows.length&&<p className="inventoryEmpty">لا توجد مواد ضمن البحث في المخزن المحدد.</p>}</div>}
-   <ReportActions showPrint enabled={inventory.ready} html={html} filename={'أرصدة-'+(inventory.warehouseName||'المخازن')}/>
+ return <section className="inventoryWorkspace inventoryDashboard" dir="rtl">
+  <header className="inventoryHeading"><span className="inventoryHeadingIcon"><AppIcon name="warehouse" size={25}/></span>
+   <div><h2>المخزون والمخازن</h2><p>{warehouseName}</p></div><button type="button" className="inventoryRefresh" aria-label="تحديث أرصدة المخازن" onClick={inventory.refresh}><AppIcon name="refresh" size={17}/>تحديث</button></header>
+  <nav className="inventoryTabs" aria-label="إدارة المخزون">{[['balances','الأرصدة','stock'],...(inventory.canTransfer?[['new','نقل مواد','exchange']]:[]),['transfers','وصولات النقل','receipt'],...(inventory.canManage?[['manage','إدارة المخازن','warehouse']]:[])].map(([key,label,icon])=><button type="button" key={key} aria-pressed={tab===key} onClick={()=>setTab(key)}><AppIcon name={icon} size={17}/>{label}</button>)}</nav>
+  {tab==='balances'&&<section className="inventoryBalancePanel" aria-label="أرصدة المواد">
+   <div className="inventoryCard inventoryBalanceTools">
+    <div className="inventoryFilterPair"><WarehouseField inventory={inventory} allowAll label="عرض رصيد المخزن"/>
+     <label className="inventoryFilterSearch">بحث المواد<span className="inventorySearch"><AppIcon name="search" size={18}/><input type="search" aria-label="بحث أرصدة المخازن" placeholder="اسم المادة أو الكود أو البراند" value={query} onChange={ev=>setQuery(ev.target.value)}/></span></label>
+    </div>
+    <div className="inventoryPresentationControls">
+     <fieldset className="stockModes"><legend>طريقة عرض الأرصدة</legend><div>{[['total','المجموع','grid'],['warehouses','حسب المخزن','warehouse']].map(([key,label,icon])=>
+      <label key={key}><input type="radio" name={radioName} value={key} checked={mode===key} onChange={()=>setMode(key)}/><span><AppIcon name={icon} size={16}/>{label}</span></label>)}</div></fieldset>
+     <div className="stockToggles">{inventory.showCost&&<label><input type="checkbox" checked={cost} onChange={ev=>setCost(ev.target.checked)}/>إظهار الكلفة</label>}
+      <label><input type="checkbox" checked={hideZero} onChange={ev=>setHideZero(ev.target.checked)}/>إخفاء الأرصدة الصفرية</label></div>
+    </div>
+   </div>
+   {view&&<><StockMetrics totals={view.totals} priced={priced}/>
+    <section className="inventoryStockList" aria-label={split?'تفصيل الأرصدة حسب المخزن':'مجموع أرصدة المواد'}>
+     <div className="inventoryBalanceListHead"><h3>{split?'الأرصدة حسب المخزن':'أرصدة المواد'}</h3><span>{warehouseName}</span></div>
+     {split?view.groups.length?view.groups.map(w=><section key={w.id} data-stock-warehouse={w.id} aria-label={w.name} className="inventoryStockGroup"><header><div><AppIcon name="warehouse" size={18}/><h4>{w.name}</h4>{w.active===false&&<small>موقوف</small>}</div>
+      <small>{materialQuantity(w.rows.length)} مادة · <bdi>{materialQuantity(w.available)}</bdi> متاح</small></header><StockRows rows={w.rows} priced={priced}/></section>):<p className="inventoryEmpty">لا توجد مخازن مسموحة لعرض أرصدتها.</p>:<StockRows rows={view.rows} priced={priced}/>}
+    </section></>}
+   {inventory.loading&&<p role="status" className="inventoryEmpty">جاري تحميل أرصدة المواد…</p>}
+   <section className="inventoryBalanceExport" aria-label="تصدير أرصدة المخزون"><h3>كشف أرصدة المخزون</h3><ReportActions showPrint enabled={!!view} html={doc?a4(doc.title,doc.body,doc.total,doc.subtitle):''} filename={(split?'أرصدة-حسب-المخزن-':'مجموع-الأرصدة-')+warehouseName}/></section>
    {inventory.canAdjust&&inventory.warehouseId&&inventory.ready&&<StockReconciliation key={inventory.warehouseId} warehouseId={inventory.warehouseId} products={inventory.products} onChanged={changed}/>}
    {inventory.canAdjust&&!inventory.warehouseId&&<p className="inventoryHint">اختر مخزناً محدداً لإجراء تسوية الجرد عليه.</p>}
-  </>}
+  </section>}
   {tab==='new'&&inventory.canTransfer&&<TransferForm onSaved={()=>{changed();setTab('transfers');}}/>}
   {tab==='transfers'&&<TransferHistory initialTransferId={initialTransferId} showCost={inventory.showCost} admin={inventory.canManage} a4={a4} onChanged={changed}/>}
   {tab==='manage'&&inventory.canManage&&<WarehouseManagement onChanged={changed}/>}

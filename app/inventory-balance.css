@@ -1,0 +1,62 @@
+.inventoryDashboard {--stock-ink:#123b46;--stock-muted:#526e78;--stock-border:#cfdddd;min-width:0}
+.inventoryDashboard .inventoryHeading {padding:17px 18px;margin:0 0 10px;border:1px solid #a7cbc7;border-radius:14px;background:linear-gradient(110deg,#edf6f4,#e3f0f2);color:var(--stock-ink)}
+.inventoryDashboard .inventoryHeading .inventoryHeadingIcon {background:#d2e9e3;border-radius:11px}
+.inventoryDashboard .inventoryHeading .inventoryRefresh {display:flex;align-items:center;justify-content:center;gap:6px;min-width:68px;height:40px;padding:7px;background:#fff;color:#17605a;border:1px solid #b8d4cf;border-radius:10px}
+.inventoryDashboard .inventoryHeading h2 {font-size:clamp(20px,3vw,27px)}
+.inventoryDashboard .inventoryTabs {margin:0 0 13px}
+.inventoryBalancePanel {display:grid;min-width:0;gap:13px}
+.inventoryBalancePanel * {box-sizing:border-box}
+.inventoryBalancePanel .inventoryBalanceTools,.inventoryBalanceExport,.inventoryStockList {margin:0;background:#fff;padding:16px;border:1px solid var(--stock-border);border-radius:14px;min-width:0}
+.inventoryFilterPair {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:12px;align-items:start}
+.inventoryFilterPair .warehouseLocationField,.inventoryFilterSearch {margin:0;min-width:0;display:grid;gap:6px;font-size:12px;color:var(--stock-muted)}
+.inventoryFilterPair .inventorySearch {display:flex;align-items:center;gap:8px;position:relative;border:1px solid #c8d9dd;border-radius:9px;background:#f7fafb;padding:0 10px;margin:0}
+.inventoryFilterPair .inventorySearch svg {flex:0 0 auto;position:static;color:#53717c}
+.inventoryFilterPair .inventorySearch input {padding:7px 0!important;background:transparent!important;min-width:0;width:100%;min-height:42px;border:0!important;font:inherit;font-size:15px;color:var(--stock-ink)}
+.inventoryFilterPair .warehouseLocationField select {min-height:44px;margin:0}
+.inventoryPresentationControls {margin-top:13px;padding-top:11px;border-top:1px solid #e0e9ea;display:flex;gap:14px;align-items:center;justify-content:flex-start;flex-wrap:wrap}
+.inventoryPresentationControls .stockModes {margin:0;padding:0;border:0;min-width:0}
+.stockModes legend {font-size:12px;color:var(--stock-muted);margin:0 0 5px}
+.stockModes>div {display:flex;padding:3px;gap:3px;border-radius:10px;border:1px solid #ccdedb;background:#f0f6f5}
+.stockModes label {display:block;position:relative;margin:0;cursor:pointer}
+.stockModes label input {position:absolute!important;inset:0;opacity:0;margin:0;width:100%;height:100%;cursor:pointer}
+.stockModes label span {display:flex;align-items:center;justify-content:center;gap:6px;padding:8px 13px;min-height:38px;border-radius:7px;font-size:13px;font-weight:700;line-height:1.4;color:#355d62}
+.stockModes label input:checked+span {color:#fff;background:#09685e}
+.stockModes label input:focus-visible+span,.inventoryBalancePanel input:focus-visible,.inventoryBalancePanel select:focus-visible {outline:3px solid #34a291;outline-offset:1px}
+.stockToggles {display:flex;flex-wrap:wrap;align-items:center;gap:8px 15px}
+.inventoryBalanceTools .stockToggles label {display:flex;flex-direction:row;align-items:center;gap:6px;font-size:13px;color:#305961;min-height:40px;cursor:pointer}
+.stockToggles input {width:18px!important;height:18px!important;accent-color:#087265;margin:0}
+.inventoryBalanceMetrics {margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,150px),1fr));gap:9px}
+.inventoryBalanceMetrics>div {min-width:0;padding:12px 14px;background:#fff;border:1px solid var(--stock-border);border-radius:11px}
+.inventoryBalanceMetrics>div:nth-child(2) {background:#eaf7f0;border-color:#c2dfcc}
+.inventoryBalanceMetrics dt,.inventoryStockGroup header>div,.inventoryBalanceListHead,.inventoryStockGroup header {display:flex;align-items:center;gap:7px}
+.inventoryBalanceMetrics dt {color:#456570;font-size:12px}
+.inventoryBalanceMetrics dd {margin:5px 0 0;color:var(--stock-ink);font-size:clamp(18px,2.5vw,26px);line-height:1.45;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.inventoryBalanceMetrics dd small {font-size:11px}
+.inventoryBalanceListHead,.inventoryStockGroup header {justify-content:space-between;flex-wrap:wrap}
+.inventoryBalanceListHead h3,.inventoryBalanceExport h3,.inventoryStockGroup h4 {margin:0;color:var(--stock-ink);font-size:17px}
+.inventoryBalanceListHead>span,.inventoryStockGroup header>small,.inventoryStockGroup header>div>small {font-size:12px;color:var(--stock-muted)}
+.inventoryStockGroup {margin-top:14px;min-width:0;border:1px solid #c5dada;border-radius:10px;overflow:hidden}
+.inventoryStockGroup header {padding:10px 12px;background:#edf5f4;color:#28605b}
+.inventoryStockGroup h4 {font-size:14px;overflow-wrap:anywhere}.inventoryStockGroup header>div {min-width:0}
+.inventoryStockList .inventoryRows {margin:10px 0 0;border-radius:8px}
+.inventoryStockGroup .inventoryRows {margin:0;border:0;border-radius:0}
+.inventoryStockList .inventoryRows article {display:flex;justify-content:space-between;padding:10px 13px;min-height:61px;border-bottom:1px solid #e4ecec}
+.inventoryStockList .inventoryRows article:last-child {border-bottom:0}
+.inventoryStockList .inventoryMaterial small,.inventoryStockList .inventoryQty small {color:#526973}
+.inventoryStockList .inventoryQty {max-width:50%;min-width:0;text-align:end;overflow-wrap:anywhere}
+.inventoryStockList .inventoryQty strong {font-variant-numeric:tabular-nums;font-size:19px}
+.inventoryBalanceExport h3 {margin-bottom:10px}
+@media(max-width:690px){
+ .inventoryDashboard .inventoryHeading {padding:11px}
+ .inventoryBalancePanel {gap:9px}
+ .inventoryBalancePanel .inventoryBalanceTools,.inventoryBalanceExport,.inventoryStockList {padding:11px}
+ .inventoryFilterPair {grid-template-columns:minmax(0,1fr);gap:8px}
+ .inventoryPresentationControls {align-items:flex-end;gap:6px 12px}
+ .stockModes label span {padding:7px 11px}
+ .stockToggles {gap:3px 10px}
+ .stockToggles label {font-size:12px;min-height:36px}
+ .inventoryBalanceMetrics {grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+ .inventoryBalanceMetrics>div {padding:10px}
+ .inventoryBalanceMetrics>div:last-child:nth-child(odd) {grid-column:1/-1}
+ .inventoryStockList .inventoryRows article {padding:9px}
+}

@@ -1,0 +1,366 @@
+.movementReportWorkspace {
+  --movement-accent: #14705e;
+  --movement-tint: #e9f5ee;
+  --movement-ink: #173f4a;
+  --movement-muted: #496474;
+  --movement-line: #cedde3;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+}
+.movementReportWorkspace[data-active-movement-mode="customer"],
+.movementReportChoice[data-movement-mode="customer"] {
+  --movement-accent: #365992;
+  --movement-tint: #edf2fb;
+}
+.movementReportWorkspace[data-active-movement-mode="materials"],
+.movementReportChoice[data-movement-mode="materials"] {
+  --movement-accent: #8a5617;
+  --movement-tint: #fff5e4;
+}
+.movementReportWorkspace .movementReportHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 2px 0 12px;
+  margin: 0;
+  border: 0;
+  border-block-end: 1px solid var(--movement-line);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.movementReportHeader h1 {
+  color: var(--movement-ink);
+  font-size: clamp(1.3rem, 2vw, 1.75rem);
+  line-height: 1.45;
+  margin: 0;
+}
+.movementReportHeader p {
+  color: var(--movement-muted);
+  font-size: .875rem;
+  margin: 3px 0 0;
+}
+.movementReportWorkspace .movementReportBack,
+.movementReportWorkspace .movementReportEdit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 42px;
+  padding: 7px 12px;
+  color: var(--movement-accent);
+  background: white;
+  border: 1px solid var(--movement-line);
+  border-radius: 8px;
+  font-size: .8125rem;
+  line-height: 1.5;
+  font-weight: 650;
+  white-space: normal;
+}
+.movementReportWorkspace .movementReportBack:hover,
+.movementReportWorkspace .movementReportEdit:hover {
+  border-color: var(--movement-accent);
+  background: var(--movement-tint);
+}
+.movementReportChoices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 12px;
+}
+.movementReportWorkspace .movementReportChoice {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  justify-items: start;
+  gap: 14px 12px;
+  padding: clamp(15px, 2vw, 22px);
+  min-width: 0;
+  border: 1px solid var(--movement-line);
+  border-block-start: 3px solid var(--movement-accent);
+  border-radius: 14px;
+  background: white;
+  color: var(--movement-ink);
+  text-align: start;
+  box-shadow: 0 2px 7px #15364509;
+}
+.movementReportWorkspace .movementReportChoice:hover {
+  border-color: var(--movement-accent);
+  box-shadow: 0 4px 14px #15364512;
+}
+.movementReportWorkspace :is(button, summary, input, select, [tabindex="0"]):focus-visible {
+  outline: 3px solid #2469a1;
+  outline-offset: 2px;
+}
+.movementChoiceIcon {
+  display: grid;
+  grid-column: 1;
+  grid-row: 1;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  color: var(--movement-accent);
+  background: var(--movement-tint);
+}
+.movementChoiceText {
+  display: grid;
+  grid-column: 1 / -1;
+  gap: 4px;
+  line-height: 1.6;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.movementChoiceText strong { font-size: 1.0625rem; }
+.movementChoiceText small { color: var(--movement-muted); font-size: .8125rem; font-weight: 450; }
+.movementReportChoice > svg {
+  grid-column: 2;
+  grid-row: 1;
+  color: var(--movement-accent);
+  transform: rotate(90deg);
+}
+.movementReportWorkspace .movementReportCriteria {
+  display: grid;
+  min-width: 0;
+  gap: 15px;
+  padding: clamp(14px, 2vw, 22px);
+  border: 1px solid var(--movement-line);
+  border-radius: 12px;
+  background: white;
+  margin: 0;
+}
+.movementReportWorkspace .movementReportCriteria :is(label, .mmPickerLabel > label) {
+  color: var(--movement-ink);
+  font-size: .8125rem;
+  line-height: 1.6;
+  font-weight: 650;
+}
+.movementReportWorkspace .movementReportCriteria :is(select, input:not([type="checkbox"])) {
+  min-height: 44px;
+  min-width: 0;
+  max-width: 100%;
+  font-size: .875rem;
+}
+.movementReportWorkspace .movementReportCriteria .mmPickerSearch { padding-block: 3px; }
+.movementReportWorkspace .movementReportCriteria .mmPickerSearch:focus-within {
+  border-color: var(--movement-accent);
+  outline: 2px solid var(--movement-accent);
+}
+.movementReportWorkspace .mmMaterialIdentity,
+.movementReportWorkspace .mmMaterialIdentity :is(b, small) { overflow-wrap: anywhere; }
+.movementReportWorkspace .mlFilterGrid { grid-template-columns: minmax(0, 1.4fr) repeat(2, minmax(0, 1fr)); }
+.movementReportWorkspace .mlFilterFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+  border-block-start: 1px solid var(--movement-line);
+  padding-block-start: 12px;
+}
+.movementReportWorkspace .mlPriceSwitch { min-height: 44px; }
+.movementReportWorkspace .mlPriceSwitch input { flex: none; }
+.movementReportWorkspace .mlPrimary,
+.movementReportWorkspace .movementSubmit {
+  min-height: 44px;
+  color: white;
+  background: var(--movement-accent);
+  border-color: var(--movement-accent);
+}
+.movementReportWorkspace .movementReportResults,
+.movementReportWorkspace .mlReportResults {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 13px;
+  min-width: 0;
+}
+.movementReportWorkspace .movementReportSummary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--movement-line);
+  border-inline-start: 4px solid var(--movement-accent);
+  border-radius: 11px;
+  color: var(--movement-ink);
+  background: white;
+}
+.movementReportSummary > :first-child { flex: 1 1 160px; min-width: 0; overflow-wrap: anywhere; }
+.movementReportSummary h2 { color: var(--movement-ink); margin: 0; font-size: 1.0625rem; line-height: 1.55; }
+.movementReportSummary :is(p, small) { color: var(--movement-muted); line-height: 1.65; }
+.movementReportSummary .mlCurrentMetric {
+  min-width: 84px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--movement-tint);
+  text-align: center;
+}
+.movementReportSummary .mlCurrentMetric small { color: var(--movement-accent); font-size: .75rem; }
+.movementReportSummary .mlCurrentMetric strong { color: var(--movement-accent); font-size: 1.45rem; }
+.movementReportWorkspace .mlRowDetailButton { min-height: 40px; }
+.movementReportWorkspace .mlTableNote,
+.movementReportWorkspace .mlTableCaption,
+.movementReportWorkspace .mlScrollHint { color: var(--movement-muted); }
+.movementReportWorkspace :is(.mlCellBalance, .mlSignedQuantity, .mlCurrentMetric, .movementAmount, .movementTotals b) {
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.movementReportWorkspace .movementBalance { color: #174e74; background: #eaf3fa; }
+
+@media (min-width: 850px) {
+  .movementReportWorkspace .mlScrollHint { display: none; }
+}
+@media (max-width: 700px) {
+  .movementReportWorkspace .movementReportHeader { gap: 7px 10px; padding-block-end: 8px; }
+  .movementReportChoices { grid-template-columns: minmax(0, 1fr); gap: 9px; }
+  .movementReportWorkspace .movementReportChoice {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 14px 12px;
+    border-block-start: 1px solid var(--movement-line);
+    border-inline-start: 3px solid var(--movement-accent);
+    border-radius: 11px;
+  }
+  .movementChoiceText, .movementReportChoice > svg { grid-column: auto; grid-row: 1; }
+  .movementChoiceText strong { font-size: 1rem; }
+  .movementReportWorkspace .mlFilterGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .movementReportWorkspace .mlFilterGrid > label:first-child { grid-column: 1 / -1; }
+  .movementReportWorkspace .mlFilterFooter { flex-wrap: wrap; gap: 8px; }
+  .movementReportWorkspace .mlFilterFooter > label { flex-basis: 170px; }
+  .movementReportWorkspace .mlCompactWorkspace .mlFilterFooter > .mlPrimary { flex: 1 1 130px; }
+  .movementReportWorkspace .movementReportSummary { padding: 11px 12px; gap: 9px; }
+  .movementReportSummary .movementReportEdit { margin-inline-start: auto; }
+  .movementReportWorkspace .mlCellBalance { font-size: .9375rem; }
+  .movementReportWorkspace .mlDirection button { min-height: 40px; }
+  .movementReportWorkspace .mlCompactTable .mlColBalance { width: 99px; }
+}
+
+.movementReportFilterGrid,
+.movementReportDates .movementDates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 10px 14px;
+}
+.movementReportFilterGrid > :only-child { grid-column: 1 / -1; }
+.movementReportDates {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) auto;
+  grid-template-areas: "dates periods";
+  align-items: end;
+  gap: 12px 16px;
+}
+.movementReportDates .movementDates { grid-area: dates; }
+.movementReportDates .movementPeriods {
+  grid-area: periods;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 5px;
+}
+.movementReportWorkspace .movementPeriods button {
+  min-height: 42px;
+  padding: 5px 10px;
+  color: var(--movement-muted);
+  font-size: .75rem;
+}
+.movementReportWorkspace .movementPeriods button[aria-pressed="true"] {
+  color: var(--movement-accent);
+  background: var(--movement-tint);
+  border-color: var(--movement-accent);
+  font-weight: 700;
+}
+.movementReportWorkspace .movementReportCriteria > .movementSubmit {
+  min-width: min(100%, 160px);
+  justify-self: end;
+}
+.movementReportWorkspace .movementReportCustomer {
+  min-width: 0;
+  padding: 12px 14px;
+  border-inline-start: 3px solid var(--movement-accent);
+  border-radius: 9px;
+  background: var(--movement-tint);
+}
+.movementReportCustomer > :is([role="alert"], [role="status"]) {
+  margin: 0;
+  line-height: 1.7;
+  color: var(--movement-ink);
+}
+.movementReportWorkspace .accountPickerInput { background: white; }
+.movementReportWorkspace .accountPickerResults { z-index: 4; }
+.movementReportWorkspace .accountPickerResults button { text-align: start; justify-content: flex-start; }
+.movementReportWorkspace .accountPickerResults button > span { min-width: 0; overflow-wrap: anywhere; }
+
+@media (max-width: 900px) {
+  .movementReportDates {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "periods" "dates";
+  }
+  .movementReportDates .movementPeriods { justify-content: flex-start; }
+}
+@media (max-width: 700px) {
+  .movementReportWorkspace .movementReportCriteria > .movementSubmit { justify-self: stretch; }
+}
+
+.movementReportWorkspace .movementResults.movementReportResults { gap: 0; }
+.movementResults .movementReportSummary {
+  margin: 0;
+  border: 0;
+  border-inline-start: 4px solid var(--movement-accent);
+  border-radius: 0;
+  background: var(--movement-tint);
+}
+.movementResults .movementReportSummary p { margin: 4px 0 0; }
+.movementResults .movementReportContext {
+  padding: 9px 15px;
+  gap: 6px;
+  border-block: 1px solid var(--movement-line);
+}
+.movementResults .movementReportContext:empty { display: none; }
+.movementResults .movementReportContext span { padding: 1px 0; border: 0; background: transparent; }
+.movementReportWorkspace .movementTotals > div { color: var(--movement-muted); }
+.movementReportWorkspace .movementTableHead { color: var(--movement-muted); }
+.movementReportWorkspace .movementMaterial > b { font-size: .9375rem; }
+.movementReportWorkspace .movementMaterial > small,
+.movementReportWorkspace .movementDoc time { color: var(--movement-muted); }
+.movementReportFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 15px;
+  border-block-start: 1px solid var(--movement-line);
+}
+.movementReportFooter p {
+  flex: 1 1 220px;
+  color: var(--movement-muted);
+  margin: 0;
+  font-size: .75rem;
+  line-height: 1.7;
+}
+.movementReportWorkspace .movementReportFooter button { min-height: 42px; font-size: .8125rem; }
+@media (max-width: 700px) {
+  .movementReportWorkspace .movementDoc time { white-space: normal; text-align: end; }
+  .movementReportWorkspace .movementAmount small { line-height: 1.5; }
+  .movementReportWorkspace .movementReportActions { padding: 10px 12px; }
+}
+
+@media (max-width: 700px) {
+  /* Keep date, operation, signed quantity and its saved balance together
+     in the first mobile viewport. The wider detail columns remain scrollable. */
+  .movementReportWorkspace .mlCompactTable { min-width: 576px; }
+  .movementReportWorkspace .mlCompactTable.withPrices { min-width: 678px; }
+  .movementReportWorkspace .mlCompactTable .mlColDate { width: 78px; }
+  .movementReportWorkspace .mlCompactTable .mlColType { width: 70px; }
+  .movementReportWorkspace .mlCompactTable .mlColQuantity { width: 65px; }
+  .movementReportWorkspace .mlCompactTable .mlColBalance { width: 79px; }
+  .movementReportWorkspace .mlCompactTable .mlColPrice { width: 102px; }
+  .movementReportWorkspace .mlCompactTable .mlColParty { width: 188px; }
+  .movementReportWorkspace .mlCompactTable .mlColReceipt { width: 96px; }
+  .movementReportWorkspace .mlCompactTable :is(th, td):not(.mlCellParty) { padding-inline: 4px; }
+}

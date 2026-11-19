@@ -1,35 +1,60 @@
 'use client';
-import {Fragment,useEffect,useMemo,useState} from 'react';
+import {Fragment,useEffect,useMemo,useRef,useState} from 'react';
 import {inventoryCall} from './warehouse-data';
 import AppIcon from './app-icons';
 import ReportActions from './report-actions';
 import MaterialMovementPicker from './material-movement-picker';
 import {salesAuthorizationKey} from './sales-read-scope.mjs';
 import {filterMaterialRows,materialMovementDocument,materialPrice,movementTime,materialReportPeriod,materialReportMatchesSelection,materialMovementPresentation,materialVisibleTotals,materialSignedQuantity,materialLastVisibleBalances,materialQuantity as quantity} from './material-movement-utils.mjs';
+import {escapeHtml} from './document-format.mjs';
 
 const empty={productId:'',warehouseId:'',from:'',to:'',withPrices:false};
 export default function MaterialMovementLedger({inventory,profile,a4}){
  const [draft,setDraft]=useState(empty),[applied,setApplied]=useState(empty),[search,setSearch]=useState(''),[loaded,setLoaded]=useState(null),[error,setError]=useState(null),[refresh,setRefresh]=useState(0),[direction,setDirection]=useState('all'),[query,setQuery]=useState(''),[page,setPage]=useState(0),[expandedRow,setExpandedRow]=useState(null);
+ const formRef=useRef(null),summaryRef=useRef(null),focusTransition=useRef(false);
  const authorizationKey=salesAuthorizationKey(profile),key=JSON.stringify([authorizationKey,applied]),data=applied.productId&&draft.productId&&loaded?.key===key&&loaded.refresh===refresh?loaded.data:null,failed=error?.key===key&&error.refresh===refresh?error.message:'',loading=!!applied.productId&&!data&&!failed;
  const canPrice=profile&&!['warehouse','installer'].includes(profile.user_type)&&(profile.is_admin||['sale','system','purchase','salesHistory'].some(k=>profile.permissions?.[k]===true));
  useEffect(()=>{let live=true;setError(null);if(!applied.productId)return()=>{live=false;};const filters={...applied,withPrices:!!canPrice&&applied.withPrices};inventoryCall('material_report',{...filters,productId:Number(filters.productId),warehouseId:filters.warehouseId?Number(filters.warehouseId):null}).then(result=>{if(!live)return;if(!materialReportMatchesSelection(result,filters))throw new Error('تغيّر نطاق الكشف. أعد اختيار المادة وتحديث حركتها.');setLoaded({key,refresh,data:result});}).catch(err=>{if(live)setError({key,refresh,message:err.message||'تعذر تحميل حركة المادة. أعد المحاولة.'});});return()=>{live=false;};},[key,applied,refresh,canPrice]);
  const rows=useMemo(()=>filterMaterialRows(data?.rows||[],direction,query),[data,direction,query]),pages=Math.max(1,Math.ceil(rows.length/30)),currentPage=Math.min(page,pages-1),visible=rows.slice(currentPage*30,currentPage*30+30);
  const totals=materialVisibleTotals(rows),lastBalances=materialLastVisibleBalances(rows);
- const body=useMemo(()=>materialMovementDocument(data,rows,{direction,query}),[data,rows,direction,query]),html=data?a4('كشف حركة مادة',body,'الرصيد المتاح حاليًا: '+quantity(data.currentQty),data.product.name):'';
+ const html=useMemo(()=>data?a4('كشف حركة مادة',materialMovementDocument(data,rows,{direction,query}),'الرصيد المتاح حاليًا: '+quantity(data.currentQty),escapeHtml(data.product.name)):'',[data,rows,direction,query,a4]);
  const invalid=!!(draft.from&&draft.to&&draft.from>draft.to);
+ const showingReport=!!applied.productId;
+ const product=data?.product||inventory.products.find(item=>String(item.id)===applied.productId);
+ const warehouseName=applied.warehouseId?inventory.warehouses.find(item=>String(item.id)===applied.warehouseId)?.name:'جميع المخازن المسموحة';
+ useEffect(()=>{
+  if(!focusTransition.current)return;
+  focusTransition.current=false;
+  (showingReport?summaryRef:formRef).current?.focus();
+ },[showingReport]);
  function clearSelection(value=''){setSearch(value);setDraft(filters=>({...filters,productId:''}));setApplied(filters=>({...filters,productId:''}));setLoaded(null);setError(null);setQuery('');setPage(0);setExpandedRow(null);}
- function choose(product){if(!inventory.ready)return;const filters={...draft,productId:String(product.id),withPrices:!!canPrice&&draft.withPrices};setDraft(filters);setSearch('');setLoaded(null);setError(null);setQuery('');setPage(0);setExpandedRow(null);if(!invalid){setApplied(filters);setRefresh(n=>n+1);}else setApplied(current=>({...current,productId:''}));}
+ function apply(filters){
+  if(invalid||!filters.productId||!inventory.ready)return;
+  focusTransition.current=true;
+  setApplied({...filters,withPrices:!!canPrice&&filters.withPrices});setRefresh(n=>n+1);
+  setPage(0);setExpandedRow(null);setQuery('');setDirection('all');
+ }
+ function choose(product){
+  if(!inventory.ready)return;
+  const filters={...draft,productId:String(product.id)};
+  setDraft(filters);setSearch('');apply(filters);
+ }
+ function editCriteria(){focusTransition.current=true;setApplied(empty);setLoaded(null);setError(null);}
  function change(k,v){setDraft(x=>({...x,[k]:v}));}
  return <section className="mlWorkspace mlCompactWorkspace" aria-label="كشف حركة مادة مفصل">
-  <form className="mlFilters" onSubmit={e=>{e.preventDefault();if(!invalid&&draft.productId&&inventory.ready){setApplied({...draft});setRefresh(n=>n+1);setPage(0);setExpandedRow(null);}}}>
-   <div className="mlIntro"><span><AppIcon name="package" size={19}/></span><div><h2>حركة مادة محددة</h2><p>ابحث عن المادة واخترها لعرض دخولها وخروجها ورصيدها.</p></div></div>
+  {!showingReport?<form className="mlFilters movementReportCriteria" aria-label="معايير كشف المادة" ref={formRef} tabIndex={-1} onSubmit={e=>{e.preventDefault();apply(draft);}}>
    <MaterialMovementPicker products={inventory.products} selectedId={draft.productId} query={search} onQuery={clearSelection} onSelect={choose} onClear={()=>clearSelection()} loading={inventory.loading}/>
    <div className="mlFilterGrid"><label>المخزن<select aria-label="مخزن كشف المادة" value={draft.warehouseId} onChange={e=>change('warehouseId',e.target.value)}><option value="">جميع المخازن المسموحة</option>{inventory.warehouses.map(w=><option key={w.id} value={w.id}>{w.name}</option>)}</select></label><label>من تاريخ<input aria-label="بداية حركة المادة" type="date" value={draft.from} max={draft.to||undefined} onChange={e=>change('from',e.target.value)}/></label><label>إلى تاريخ<input aria-label="نهاية حركة المادة" type="date" value={draft.to} min={draft.from||undefined} onChange={e=>change('to',e.target.value)}/></label></div>
-   <div className="mlFilterFooter">{canPrice?<label className="mlPriceSwitch"><input type="checkbox" checked={draft.withPrices} onChange={e=>{const filters={...draft,withPrices:e.target.checked};setDraft(filters);if(filters.productId&&!invalid){setApplied(filters);setPage(0);setExpandedRow(null);}}}/>عرض الأسعار المثبتة بالمستند</label>:<span className="mlHint">كشف كميات بدون أسعار · حسب صلاحياتك</span>}<button type="submit" className="mlPrimary" disabled={!draft.productId||invalid||loading||!inventory.ready}><AppIcon name="search" size={17}/>{loading?'جاري تحميل الكشف…':'عرض حركة المادة'}</button></div>
+   <div className="mlFilterFooter">{canPrice?<label className="mlPriceSwitch"><input type="checkbox" checked={draft.withPrices} onChange={e=>change('withPrices',e.target.checked)}/>عرض الأسعار المثبتة بالمستند</label>:<span className="mlHint">كشف كميات بدون أسعار · حسب صلاحياتك</span>}<button type="submit" className="mlPrimary" disabled={!draft.productId||invalid||!inventory.ready}><AppIcon name="search" size={17}/>عرض حركة المادة</button></div>
    {invalid&&<p role="alert" className="mlError">اختر فترة صحيحة.</p>}{inventory.error&&<p role="alert" className="mlError">{inventory.error}</p>}
-  </form>
-  {!applied.productId?<div className="mlEmpty"><AppIcon name="package" size={32}/><h2>اختر نتيجة البحث لعرض كشفها</h2><p>جدول واحد يوضح كل حركة والرصيد المتاح بعدها.</p></div>:failed?<div className="mlError" role="alert">{failed}<button type="button" onClick={()=>setRefresh(n=>n+1)}>إعادة المحاولة</button></div>:loading?<div role="status" className="mlEmpty">جاري تأكيد حركة المادة وأرصدتها…</div>:data&&<>
-   <header className="mlCompactProduct"><div><h2 dir="auto">{data.product.name}</h2><p dir="auto">{[data.product.brand,data.product.category,data.product.code&&'كود '+data.product.code].filter(Boolean).join(' · ')}</p><small>{materialReportPeriod(data.from,data.to)} · {data.withPrices?'بالأسعار · IQD':'بدون أسعار'}</small></div><div className="mlCurrentMetric"><small>المتاح حاليًا</small><strong data-testid="material-current-qty">{quantity(data.currentQty)}</strong></div></header>
+  </form>:<div className="movementReportResults mlReportResults">
+   <header className="mlCompactProduct movementReportSummary" ref={summaryRef} tabIndex={-1}>
+    <div className="mlSelectedSummary"><h2 dir="auto">{product?.name||'المادة المحددة'}</h2><p dir="auto">{[product?.brand,product?.category,product?.code&&'كود '+product.code].filter(Boolean).join(' · ')}</p>
+     <small>{[warehouseName,materialReportPeriod(applied.from,applied.to),applied.withPrices&&canPrice?'بالأسعار · IQD':'بدون أسعار'].filter(Boolean).join(' · ')}</small></div>
+    {data&&<div className="mlCurrentMetric"><small>المتاح حاليًا</small><strong data-testid="material-current-qty"><bdi>{quantity(data.currentQty)}</bdi></strong></div>}
+    <button type="button" className="movementReportEdit" onClick={editCriteria}><AppIcon name="edit" size={16}/>تعديل معايير الكشف</button>
+   </header>
+   {failed?<div className="mlError" role="alert">{failed}<button type="button" onClick={()=>setRefresh(n=>n+1)}>إعادة المحاولة</button></div>:loading?<div role="status" className="mlEmpty">جاري تحميل حركة المادة…</div>:data&&<>
    <section className="mlTableSection" aria-label="حركات المادة">
     <div className="mlResultTools"><div className="mlDirection" role="group" aria-label="اتجاه حركة المادة">{[['all','الكل'],['in','دخول'],['out','خروج']].map(([k,v])=><button type="button" key={k} aria-pressed={direction===k} onClick={()=>{setDirection(k);setPage(0);setExpandedRow(null);}}>{v}</button>)}</div><input aria-label="بحث تفاصيل حركة المادة" value={query} onChange={e=>{setQuery(e.target.value);setPage(0);setExpandedRow(null);}} placeholder="وصل، عميل، مورد أو بيان…"/></div>
     <div className="mlTableCaption"><span><b>{quantity(rows.length)}</b> حركة{rows.length!==data.rows.length&&<> من {quantity(data.rows.length)}</>}</span><span>+ دخول <i>·</i> − خروج</span><small className="mlScrollHint">اسحب الجدول لعرض بقية الأعمدة</small></div>
@@ -70,6 +95,6 @@ export default function MaterialMovementLedger({inventory,profile,a4}){
     {(totals.reservedOut>0||totals.reservationReleased>0)&&<p className="mlReservationSummary">الحجز ضمن الخروج الظاهر: <bdi>{quantity(totals.reservedOut)}</bdi> · إلغاء الحجز ضمن الدخول: <bdi>{quantity(totals.reservationReleased)}</bdi>. هذه تغييرات في المتاح، وقد تسبق التسليم الفعلي.</p>}
     <p className="mlHint">{data.withPrices?'الأسعار بالدينار كما ثُبّتت في المستند. سعر مادة المنظومة لا يُخمّن من السعر الإجمالي.':'الكشف الحالي بدون أسعار.'} ملف PDF يشمل جميع نتائج البحث. حجز النقل يقلل المتاح من المصدر؛ الدخول للوجهة يُسجّل بعد اعتماد التجهيز.</p>
    </div></details>
-  </>}
+  </>}</div>}
  </section>;
 }

@@ -1,40 +1,80 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import AppIcon from './app-icons';
+import {materialQuantity} from './material-movement-utils.mjs';
 import ReportActions from './report-actions';
 import {inventoryCall,useInventoryRequest,WarehouseField} from './warehouse-data';
+import WarehouseQueueRow,{QueueStates} from './warehouse-queue-row';
 import {quantity,warehouseDate} from './warehouse-utils.mjs';
+import {normalizeSearch} from './party-search-utils.mjs';
 import {transferDocument,transferStatus} from './inventory-workspace';
 
+const states=[['pending','بانتظار التجهيز'],['resolved','محسومة'],['','كل الطلبات']];
+const outcomes=[['posted','مجهّزة'],['cancelled','ملغاة قبل التجهيز'],['reversed','ملغاة بعد التجهيز']];
+
 export default function TransferPreparation({inventory,a4,onChanged,selectedTransfer='',onClearSelection}){
- const [query,setQuery]=useState(''),[search,setSearch]=useState(''),[state,setState]=useState(selectedTransfer?'':'pending'),[offset,setOffset]=useState(0),[result,setResult]=useState({rows:[],count:0}),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[error,setError]=useState(''),[message,setMessage]=useState('');
- const send=useInventoryRequest(),generation=useRef(0);
- useEffect(()=>{if(selectedTransfer){inventory.setWarehouse('');setState('');setOffset(0);setSearch('');}},[selectedTransfer,inventory.setWarehouse]);
+ const [query,setQuery]=useState(''),[search,setSearch]=useState(''),[state,setState]=useState(selectedTransfer?'':'pending'),[offset,setOffset]=useState(0);
+ const [loaded,setLoaded]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[message,setMessage]=useState(''),[working,setWorking]=useState(false);
+ const send=useInventoryRequest(),generation=useRef(0),actionLock=useRef(false);
+ const scope=JSON.stringify([inventory.warehouseId,search,state,offset,selectedTransfer]);
+ const result=loaded?.scope===scope?loaded.result:null;
+ useEffect(()=>{if(selectedTransfer){inventory.setWarehouse('');setQuery('');setState('');setOffset(0);setSearch('');}},[selectedTransfer,inventory.setWarehouse]);
  useEffect(()=>setOffset(0),[inventory.warehouseId]);
- const load=useCallback(async()=>{const id=++generation.current;setLoading(true);try{
-  const data=await inventoryCall('transfer_queue',{warehouseId:inventory.warehouseId?Number(inventory.warehouseId):null,search,state,offset,...(selectedTransfer?{id:selectedTransfer}:{})});
-  if(id!==generation.current)return;setResult(data);setError('');
- }catch(e){if(id===generation.current){setResult({rows:[],count:0});setError(e.message||'تعذر تحميل طلبات النقل');}}finally{if(id===generation.current)setLoading(false);}},[inventory.warehouseId,search,state,offset,selectedTransfer]);
- useEffect(()=>{load();const refresh=()=>{if(document.visibilityState==='visible')load();};const timer=setInterval(refresh,10000);window.addEventListener('solar-notification',refresh);window.addEventListener('focus',refresh);return()=>{generation.current++;clearInterval(timer);window.removeEventListener('solar-notification',refresh);window.removeEventListener('focus',refresh);};},[load]);
- async function prepare(t){if(busy||!confirm('تأكيد تجهيز جميع مواد طلب النقل #'+t.receiptNo+' من '+t.fromName+' إلى '+t.toName+'؟'))return;setBusy(true);setError('');setMessage('');try{
-  await send('prepare_transfer',{id:t.id,expectedRevision:t.revision});
-  setMessage('تم تجهيز النقل وإضافة الكميات إلى مخزن الاستلام وإشعار صاحب الطلب.');await load();onChanged?.();
- }catch(e){setError(e.message||'تعذر تأكيد التجهيز. أعد المحاولة بنفس البيانات.');}finally{setBusy(false);}}
- return <section className="warehouseTransferQueue"><form className="inventoryCard" onSubmit={e=>{e.preventDefault();setOffset(0);if(search===query.trim())load();else setSearch(query.trim());}}>
-  <div className="inventorySectionTitle"><AppIcon name="exchange" size={22}/><h3>طلبات نقل المخازن</h3></div>
-  {selectedTransfer?<button type="button" className="warehouseClearSearch" onClick={()=>{setQuery('');setSearch('');setState('pending');setOffset(0);onClearSelection?.();}}>عرض طلبات النقل كاملة</button>:<>
-   <p className="inventoryHint">الطلبات الخارجة من مخزنك فقط. أكد التجهيز بعد تسليم المواد.</p>
-   {inventory.warehouses.length===1?<div className="sourceWarehouseChip"><AppIcon name="warehouse" size={17}/><b>المصدر: {inventory.warehouses[0].name}</b></div>:<WarehouseField inventory={inventory} allowAll label="مخزن المصدر المطلوب تجهيزه"/>}
-   <div className="sourceTransferSearch"><input aria-label="بحث طلبات النقل" placeholder="رقم الطلب أو اسم المخزن أو المستخدم" value={query} onChange={e=>setQuery(e.target.value)}/><button type="submit" disabled={loading} className="inventoryPrimary">بحث / تحديث</button></div>
-   <nav className="warehouseQueueTabs" aria-label="حالات تجهيز النقل">{[['pending','بانتظار التجهيز'],['posted','تم التجهيز'],['','كل الطلبات']].map(([value,label])=><button type="button" key={label} aria-pressed={state===value} onClick={()=>{setState(value);setOffset(0);}}><span>{label}</span><b>{quantity(result.statusCounts?.[value||'all']||0)}</b></button>)}</nav>
+ const load=useCallback(async()=>{
+  const id=++generation.current;setLoading(true);
+  try{
+   const data=await inventoryCall('transfer_queue',{warehouseId:inventory.warehouseId?Number(inventory.warehouseId):null,search,state,offset,...(selectedTransfer?{id:selectedTransfer}:{})});
+   if(id!==generation.current)return;
+   if(!Array.isArray(data?.rows))throw new Error('تعذّر قراءة طلبات النقل.');
+   setLoaded({scope,result:data});setError('');
+  }catch(e){if(id===generation.current){setLoaded(null);setError(e.message||'تعذر تحميل طلبات النقل.');}}
+  finally{if(id===generation.current)setLoading(false);}
+ },[inventory.warehouseId,search,state,offset,selectedTransfer,scope]);
+ useEffect(()=>{
+  load();const refresh=()=>{if(document.visibilityState==='visible'&&!actionLock.current)load();};
+  const timer=setInterval(refresh,10000);window.addEventListener('solar-notification',refresh);window.addEventListener('focus',refresh);
+  return()=>{++generation.current;clearInterval(timer);window.removeEventListener('solar-notification',refresh);window.removeEventListener('focus',refresh);};
+ },[load]);
+ async function prepare(t){
+  if(actionLock.current||t.status!=='pending'||!t.canPrepare||!confirm('تأكيد تجهيز جميع مواد طلب النقل #'+t.receiptNo+' من '+t.fromName+' إلى '+t.toName+'؟'))return;
+  actionLock.current=true;setWorking(true);setError('');setMessage('');
+  try{
+   await send('prepare_transfer',{id:t.id,expectedRevision:t.revision});
+   setMessage('تم تجهيز النقل وإضافة الكميات إلى مخزن الاستلام وإشعار صاحب الطلب.');
+   await Promise.allSettled([load(),Promise.resolve().then(onChanged)]);
+  }catch(e){setError(e.message||'تعذر تأكيد التجهيز. أعد المحاولة بنفس البيانات.');}
+  finally{actionLock.current=false;setWorking(false);}
+ }
+ function changeState(value){setState(value);setOffset(0);}
+ function find(event){
+  event.preventDefault();const term=normalizeSearch(query).replace(/^#/,'');setOffset(0);setSearch(term);
+  if(offset===0&&term===search)load();
+ }
+ return <section className="warehouseTransferQueue" aria-label="قائمة نقل المخازن">
+  {selectedTransfer?<button type="button" className="warehouseClearSearch" onClick={()=>{setQuery('');setSearch('');changeState('pending');onClearSelection?.();}}>عرض طلبات النقل كاملة</button>:<>
+   <QueueStates label="حالات تجهيز النقل" choices={states} counts={result?.statusCounts} value={state} onChange={changeState}/>
+   <form className="warehouseFilters warehouseDailySearch" onSubmit={find}>
+    <div className="warehouseSearchBox"><AppIcon name="search" size={18}/><input aria-label="بحث طلبات النقل" placeholder="رقم الطلب أو المخزن أو المستخدم" value={query} onChange={e=>setQuery(e.target.value)}/></div>
+    <button type="submit" disabled={loading}>بحث / تحديث</button>
+    {inventory.warehouses.length===1?<span className="warehouseSingleSource"><AppIcon name="warehouse" size={17}/>المصدر: {inventory.warehouses[0].name}</span>:<WarehouseField inventory={inventory} allowAll label="مخزن المصدر المطلوب تجهيزه"/>}
+   </form>
   </>}
- </form>
-  {message&&<p role="status" className="workflowSuccess">{message}</p>}{error&&<p role="alert" className="workflowError">{error}</p>}
-  {loading&&!result.rows.length?<p role="status" className="inventoryEmpty">جاري تحميل طلبات النقل…</p>:result.rows.map(t=><article key={t.id} className={'inventoryCard sourceTransferOrder'+(t.id===selectedTransfer?' highlighted':'')}><header><div><small>طلب نقل #{t.receiptNo}</small><h3>{t.fromName}</h3><p>إلى {t.toName}</p><small>{warehouseDate(t.date)} · طلبه: {t.actor}</small></div><span className={'inventoryStatus '+t.status}>{transferStatus(t.status)}</span></header>
-   <div className="sourceTransferItems">{t.items.map((i,n)=><div key={n}><span><b>{i.name}</b><small>{[i.code,i.brand,i.category].filter(Boolean).join(' · ')}</small></span><strong>{quantity(i.qty)}</strong></div>)}</div>{t.note&&<p className="inventoryHint">{t.note}</p>}{t.preparedBy&&<p className="sourceTransferPrepared">✓ جهّزها {t.preparedBy} · {warehouseDate(t.preparedAt)}</p>}
-   {t.canPrepare&&<button className="inventoryPrimary sourceTransferConfirm" disabled={busy} onClick={()=>prepare(t)}><AppIcon name="check" size={18}/>{busy?'جاري تأكيد التجهيز…':'تأكيد تجهيز النقل'}</button>}
-   <ReportActions enabled html={a4(t.status==='pending'?'طلب تجهيز نقل مخزني':'وصل نقل مخزني',transferDocument(t,false),'','طلب نقل #'+t.receiptNo)} filename={'نقل-مخزني-'+t.receiptNo}/>
-  </article>)}{!loading&&!result.rows.length&&<div className="inventoryEmpty">{state==='pending'?'لا توجد طلبات نقل خارجة من مخزنك بانتظار التجهيز.':'لا توجد طلبات ضمن الاختيار.'}</div>}
-  <nav className="archivePagination"><button disabled={offset===0||loading} onClick={()=>setOffset(v=>Math.max(0,v-30))}>السابق</button><span>{Math.floor(offset/30)+1} / {Math.max(1,Math.ceil(result.count/30))}</span><button disabled={offset+30>=result.count||loading} onClick={()=>setOffset(v=>v+30)}>التالي</button></nav>
+  {message&&<p role="status" className="workflowSuccess">{message}</p>}
+  {error&&<p role="alert" className="workflowError">{error} <button type="button" onClick={load}>إعادة المحاولة</button></p>}
+  {result&&<div className="warehouseListHead"><h2>{state==='pending'?'طلبات بانتظار التجهيز':state==='resolved'?'طلبات النقل المحسومة':'طلبات نقل المخازن'} <small>({quantity(result.count)})</small></h2></div>}
+  {state==='resolved'&&result&&<dl className="warehouseOutcomes" aria-label="تفاصيل الطلبات المحسومة">{outcomes.map(([key,label])=>
+   <div key={key} data-outcome={key}><dt>{label}</dt><dd>{result.statusCounts?.[key]==null?'—':quantity(result.statusCounts[key])}</dd></div>)}</dl>}
+  {loading&&!result&&<p role="status" className="warehouseEmpty">جاري تحميل طلبات النقل…</p>}
+  {result?.rows.map(t=><WarehouseQueueRow key={t.id} className="sourceTransferOrder" detailsClass="sourceTransferDetails" transfer selected={String(t.id)===String(selectedTransfer)}
+   state={t.status} status={transferStatus(t.status)} label={'تفاصيل طلب النقل #'+t.receiptNo} items={t.items} quantityLabel={t.status==='posted'?'المجهّز':t.status==='pending'?'المطلوب':'كمية الطلب'}
+   identity={<>طلب نقل <bdi>#{t.receiptNo}</bdi> · {warehouseDate(t.date)}</>} title={<>{t.fromName} <span className="warehouseRouteArrow">إلى</span> {t.toName}</>} context={'طلبه: '+(t.actor||'غير محدد')}>
+   {()=><><div className="warehouseRowItems sourceTransferItems"><h3>مواد طلب النقل</h3>{t.items.map((i,n)=><div key={n} className="warehouseOrderLine"><span><b dir="auto">{i.name}</b><small>{[i.code,i.brand,i.category].filter(Boolean).join(' · ')}</small></span><strong>{materialQuantity(i.qty)}</strong></div>)}</div>
+    {t.note&&<p>{t.note}</p>}{t.preparedBy&&<p className="sourceTransferPrepared">جهّزها {t.preparedBy} · {warehouseDate(t.preparedAt)}</p>}
+    {t.status==='pending'&&t.canPrepare&&<button type="button" className="inventoryPrimary sourceTransferConfirm" disabled={working} onClick={()=>prepare(t)}><AppIcon name="check" size={17}/>{working?'جاري تأكيد التجهيز…':'تأكيد تجهيز النقل'}</button>}
+    <ReportActions enabled html={a4(t.status==='pending'?'طلب تجهيز نقل مخزني':'وصل نقل مخزني',transferDocument(t,false),'','طلب نقل #'+t.receiptNo)} filename={'نقل-مخزني-'+t.receiptNo}/>
+   </>}
+  </WarehouseQueueRow>)}
+  {result&&!result.rows.length&&<p className="warehouseEmpty">{state==='pending'?'لا توجد طلبات نقل خارجة من مخزنك بانتظار التجهيز.':state==='resolved'?'لا توجد طلبات نقل محسومة ضمن الاختيار.':'لا توجد طلبات ضمن الاختيار.'}</p>}
+  {result&&(result.count>30||offset>0)&&<nav className="archivePagination" aria-label="صفحات طلبات النقل"><button disabled={offset===0||loading} onClick={()=>setOffset(v=>Math.max(0,v-30))}>السابق</button><span>{Math.floor(offset/30)+1} / {Math.max(1,Math.ceil(result.count/30))}</span><button disabled={offset+30>=result.count||loading} onClick={()=>setOffset(v=>v+30)}>التالي</button></nav>}
  </section>;
 }

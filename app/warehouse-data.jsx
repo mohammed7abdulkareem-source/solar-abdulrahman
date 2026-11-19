@@ -1,7 +1,9 @@
 'use client';
-import {useCallback,useEffect,useRef,useState} from 'react';
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {supabase} from './supabase';
 import {VALUATION_EVENT} from './valuation-events.mjs';
+
+const emptyRows=[];
 
 export async function inventoryCall(action,payload={},requestId=null){
  const {data,error}=await supabase.rpc('solar_inventory',{action,payload,request_id:requestId});
@@ -17,23 +19,25 @@ export function useInventoryRequest(){
   catch(error){if(error.code)attempt.current=null;throw error;}
  };
 }
-export function useWarehouseInventory({aggregate=false,versionKey,initialWarehouseId}={}){
+export function useWarehouseInventory({aggregate=false,versionKey,initialWarehouseId,byWarehouse=false}={}){
  const [warehouseId,setWarehouse]=useState(()=>initialWarehouseId?String(initialWarehouseId):''),[version,setVersion]=useState(0),[data,setData]=useState(null),[loaded,setLoaded]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
+ const scope=JSON.stringify([warehouseId,byWarehouse,versionKey??null]);
  const generation=useRef(0);
  const refresh=useCallback(()=>setVersion(v=>v+1),[]);
  useEffect(()=>{window.addEventListener(VALUATION_EVENT,refresh);return()=>window.removeEventListener(VALUATION_EVENT,refresh);},[refresh]);
  useEffect(()=>{const id=++generation.current;let live=true;setLoading(true);setError('');
-  inventoryCall('stock',{warehouseId:warehouseId?Number(warehouseId):null}).then(result=>{
+  inventoryCall('stock',{warehouseId:warehouseId?Number(warehouseId):null,...(byWarehouse?{byWarehouse:true}:{})}).then(result=>{
    if(!live||id!==generation.current)return;
+   if(byWarehouse&&!Array.isArray(result.warehouseBalances))throw new Error('تعذّر تحميل تفصيل الأرصدة حسب المخزن.');
    setData(result);
    if(!aggregate&&!warehouseId){const first=result.warehouses.find(w=>w.active);if(first){setWarehouse(String(first.id));return;}}
-   setLoaded(warehouseId);setLoading(false);
+   setLoaded(scope);setLoading(false);
   }).catch(e=>{if(live&&id===generation.current){setError(e.message||'تعذر تحميل المخازن');setLoading(false);setLoaded(null);}});
   return()=>{live=false;};
- },[warehouseId,version,aggregate,versionKey]);
- const ready=!loading&&loaded===warehouseId&&!error;
- const products=loaded===warehouseId&&!error?(data?.products||[]).map(p=>({...p,brand:p.brand||p.brands?.name||'',brandId:p.brand_id,costBasis:p.cost_basis||{},costingRevision:p.costing_revision||0})):[];
- return {...data,products,warehouses:data?.warehouses||[],warehouseId,warehouseName:data?.warehouses.find(w=>String(w.id)===warehouseId)?.name||'',setWarehouse,loading:loading||(!error&&loaded!==warehouseId),error,ready,refresh};
+ },[warehouseId,version,aggregate,byWarehouse,scope]);
+ const ready=!loading&&loaded===scope&&!error;
+ const products=useMemo(()=>loaded===scope&&!error?(data?.products||emptyRows).map(p=>({...p,brand:p.brand||p.brands?.name||'',brandId:p.brand_id,costBasis:p.cost_basis||{},costingRevision:p.costing_revision||0})):emptyRows,[scope,loaded,data,error]);
+ return {...data,products,warehouseBalances:ready&&byWarehouse?data.warehouseBalances:emptyRows,warehouses:data?.warehouses||emptyRows,warehouseId,warehouseName:data?.warehouses.find(w=>String(w.id)===warehouseId)?.name||'',setWarehouse,loading:loading||(!error&&loaded!==scope),error,ready,refresh};
 }
 export function WarehouseField({inventory,disabled=false,label='مخزن الفاتورة',allowAll=false}){
  return <label className="warehouseLocationField">{label}<select aria-label={label} disabled={disabled||(!inventory.warehouses.length&&inventory.loading)} value={inventory.warehouseId} onChange={e=>inventory.setWarehouse(e.target.value)}>
