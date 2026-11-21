@@ -24,16 +24,25 @@ function previewHost(){
 }
 
 // Both the preview images and the downloaded PDF use the same rendered pages.
-export async function previewPdf(html,name,prepared,{autoPrint=false}={}){
+export async function previewPdf(html,name,prepared,{autoPrint=false,variant}={}){
  const host=previewHost(),popup=host.view;
  const urls=[];const cleanup=()=>{for(const url of urls)URL.revokeObjectURL(url);urls.length=0};
- popup.document.write(previewMarkup(window.location.origin));
+ popup.document.write(previewMarkup(window.location.origin,variant));
  popup.document.close();popup.addEventListener('pagehide',cleanup,{once:true});
  const doc=popup.document,title=name||new DOMParser().parseFromString(html,'text/html').title||'مستند';
- doc.title=title+' — معاينة PDF';doc.getElementById('pdfTitle').textContent=title;
+ const displayTitle=variant==='warehouse'?title.replace(/-/g,' '):title;
+ doc.title=displayTitle+' — معاينة PDF';doc.getElementById('pdfTitle').textContent=displayTitle;
  doc.getElementById('pdfClose').onclick=()=>{cleanup();host.close()};
  doc.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();cleanup();host.close()}});
- doc.getElementById('pdfZoom').onchange=e=>{const host=doc.querySelector('.pdfPages'),scale=Number(e.target.value),base=Math.min(794,host.clientWidth-48);for(const page of host.querySelectorAll('.pdfPage')){page.style.width=base*scale+'px';page.style.maxWidth=scale>1?'none':'100%';}};
+ const zoom=doc.getElementById('pdfZoom');
+ function applyZoom(){
+  const scale=Number(zoom.value);
+  for(const page of doc.querySelectorAll('.pdfPage')){
+   page.style.width='min('+794*scale+'px, '+100*scale+'%)';
+   page.style.maxWidth=scale>1?'none':'100%';
+  }
+ }
+ zoom.onchange=applyZoom;
  try{
   const result=prepared||await createPdfDocument(html);if(host.closed())return;
   const fileUrl=URL.createObjectURL(result.blob);urls.push(fileUrl);
@@ -44,6 +53,7 @@ export async function previewPdf(html,name,prepared,{autoPrint=false}={}){
    const figure=doc.createElement('figure');figure.className='pdfPage';const img=doc.createElement('img');img.src=url;img.width=page.width;img.height=page.height;img.alt='صفحة '+(index+1)+' من '+result.pages.length;images.push(img);
    const caption=doc.createElement('figcaption');caption.textContent=img.alt;figure.append(img,caption);doc.querySelector('.pdfPages').appendChild(figure);
   });
+  applyZoom();
   await Promise.all(images.map(img=>img.decode()));if(host.closed()){cleanup();return;}
   doc.querySelector('.pdfStatus').remove();doc.getElementById('pdfCount').textContent=result.pages.length+' صفحة';
   const download=doc.getElementById('pdfDownload');download.disabled=false;download.onclick=()=>{const link=doc.createElement('a');link.href=fileUrl;link.download=filename;doc.body.appendChild(link);link.click();link.remove()};
@@ -59,7 +69,12 @@ export async function previewPdf(html,name,prepared,{autoPrint=false}={}){
      download.onclick();notice.textContent='تم تنزيل ملف PDF. يمكنك مشاركته من الملفات أو التنزيلات.';notice.hidden=false;
     }
    }catch(error){
-    if(error?.name!=='AbortError'){notice.textContent='تعذرت المشاركة. حاول مرة أخرى أو احفظ PDF وشاركه من الملفات.';notice.hidden=false;}
+    if(error?.name!=='AbortError'){
+     if(variant==='warehouse'){
+      download.onclick();notice.textContent='تم تنزيل الوصل. تقدر ترسله كمرفق من التنزيلات.';
+     }else notice.textContent='تعذرت المشاركة. حاول مرة أخرى أو احفظ PDF وشاركه من الملفات.';
+     notice.hidden=false;
+    }
    }finally{share.disabled=false;}
   };
   const print=doc.getElementById('pdfPrint');print.disabled=false;print.onclick=()=>{popup.focus();popup.print()};
@@ -73,6 +88,6 @@ export async function previewPdf(html,name,prepared,{autoPrint=false}={}){
   frame.onload=()=>{try{const original=frame.contentDocument;original.querySelectorAll('.previewNav,.actions').forEach(n=>n.remove());frame.style.height=Math.max(1123,original.documentElement.scrollHeight)+'px';const print=doc.getElementById('pdfPrint');print.disabled=false;print.onclick=()=>{frame.contentWindow.focus();frame.contentWindow.print()};if(autoPrint)print.click();}catch{}};
   frame.srcdoc=html;
   const notice=doc.getElementById('pdfNotice');notice.textContent='يمكنك معاينة المستند وطباعته مباشرة. تعذر تجهيز PDF؛ أعد المحاولة للحفظ والمشاركة.';notice.hidden=false;
-  const retry=doc.createElement('button');retry.type='button';retry.id='pdfRetry';retry.textContent='إعادة تجهيز PDF';retry.onclick=()=>{cleanup();host.close();void previewPdf(html,name)};doc.querySelector('.pdfSideActions').append(retry);doc.getElementById('pdfClose').focus();
+  const retry=doc.createElement('button');retry.type='button';retry.id='pdfRetry';retry.textContent='إعادة تجهيز PDF';retry.onclick=()=>{cleanup();host.close();void previewPdf(html,name,undefined,{autoPrint,variant})};doc.querySelector('.pdfSideActions').append(retry);doc.getElementById('pdfClose').focus();
  }
 }

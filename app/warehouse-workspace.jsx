@@ -4,6 +4,7 @@ import AppIcon from './app-icons';
 import {materialQuantity} from './material-movement-utils.mjs';
 import {salesAuthorizationKey} from './sales-read-scope.mjs';
 import WarehouseQueueRow,{QueueStates} from './warehouse-queue-row';
+import WarehouseReceiptActions from './warehouse-receipt-actions';
 import './warehouse-queue.css';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {inventoryCall,useWarehouseInventory,WarehouseField} from './warehouse-data';
@@ -14,7 +15,7 @@ import {WarehouseAlerts} from './notification-center';
 import {supabase} from './supabase';
 import {downloadPdf} from './pdf-share.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
-import {quantity,filteredStock,warehouseDate,quantityDocument,warehouseDocument} from './warehouse-utils.mjs';
+import {quantity,filteredStock,warehouseDate,quantityDocument} from './warehouse-utils.mjs';
 
 function useStock(){const [rows,setRows]=useState([]),[error,setError]=useState(''),[loading,setLoading]=useState(true);const refresh=useCallback(async()=>{setLoading(true);const {data,error}=await supabase.rpc('solar_stock_quantities');setError(error?'تعذر تحميل أرصدة المواد. أعد المحاولة.':'');if(!error)setRows(data||[]);setLoading(false)},[]);useEffect(()=>{refresh()},[refresh]);return {rows,error,loading,refresh};}
 function DocumentActions({title,html,openA4,shareA4,disabled=false}){const [busy,setBusy]=useState(false),[error,setError]=useState('');async function run(fn){if(busy)return;setBusy(true);setError('');try{await fn()}catch{setError('تعذر تجهيز الملف. حاول مرة أخرى.')}finally{setBusy(false)}}return <><div className="warehouseActions"><button disabled={busy||disabled} onClick={()=>openA4(html())}>معاينة</button><button disabled={busy||disabled} onClick={()=>run(()=>downloadPdf(title,html()))}>{busy?'تجهيز الملف…':'حفظ PDF'}</button><button disabled={busy||disabled} onClick={()=>run(()=>shareA4(title,'',html()))}>مشاركة PDF</button></div>{error&&<p role="alert" className="workflowError">{error}</p>}</>;}
@@ -31,11 +32,12 @@ export {default as StockMovements} from './stock-movements';
 export default function WarehouseWorkspace(props){
  return <DailyWarehouseWorkspace key={salesAuthorizationKey(props.profile)} {...props}/>;
 }
-function DailyWarehouseWorkspace({profile,a4,openA4,shareA4,onChanged,selectedInvoice='',onClearSelection,selectedTransfer='',onClearTransfer}){
+function DailyWarehouseWorkspace({profile,a4,openA4,shareA4,onChanged,onBack,selectedInvoice='',onClearSelection,selectedTransfer='',onClearTransfer}){
  const stock=useWarehouseInventory({aggregate:true}),[query,setQuery]=useState(''),[search,setSearch]=useState(selectedInvoice?'@id:'+selectedInvoice:''),[state,setState]=useState(selectedInvoice?'':'pending'),[offset,setOffset]=useState(0),[result,setResult]=useState({rows:[],count:0}),[loading,setLoading]=useState(true),[error,setError]=useState(''),[message,setMessage]=useState(''),[busy,setBusy]=useState(false),[editing,setEditing]=useState(null);
  useEffect(()=>{if(selectedInvoice){stock.setWarehouse('');setState('');setQuery('');setSearch('@id:'+selectedInvoice);setOffset(0)}},[selectedInvoice]);
  const canPrepare=profile?.user_type==='warehouse'||profile?.is_admin;
  const [pane,setPane]=useState(selectedTransfer?'transfers':'invoices');
+ const [transferRefresh,setTransferRefresh]=useState(0);
  const queueSeeded=useRef(!!selectedTransfer||!!selectedInvoice),actionLock=useRef(false);
  const [loadedScope,setLoadedScope]=useState(null);
  const scope=JSON.stringify([stock.warehouseId,search,state,offset]);
@@ -90,15 +92,19 @@ function DailyWarehouseWorkspace({profile,a4,openA4,shareA4,onChanged,selectedIn
   card?.focus({preventScroll:true});card?.scrollIntoView({block:'start',behavior:'smooth'});
  }
  const first=rows.find(row=>row.status==='pending'&&!row.pricingPending);
- const refresh=()=>{void load();void stock.refresh();};
+ const refresh=()=>{
+  if(pane==='transfers'&&canPrepare)setTransferRefresh(value=>value+1);
+  else void load();
+  stock.refresh();
+ };
  return <section className="dailyWarehouse" aria-label="تجهيز المخزن" data-testid="warehouse-daily-queue">
-  <header className="warehouseDayHead"><span className="warehouseQueueMark"><AppIcon name="warehouse" size={22}/></span><div><h1>قائمة تجهيز المخزن</h1><small>{new Intl.DateTimeFormat('ar-IQ',{timeZone:'Asia/Baghdad',weekday:'long',day:'numeric',month:'long'}).format(new Date())}</small></div>
-   <button type="button" className="warehouseDayRefresh" disabled={busy||loading} aria-label="تحديث قائمة التجهيز" onClick={refresh}><AppIcon name="refresh" size={18}/>تحديث</button></header>
+  <header className="warehouseDayHead"><button className="warehouseQueueBack" type="button" onClick={onBack} aria-label="الرجوع إلى الشاشة السابقة" title="رجوع"><AppIcon name="arrow" size={20}/></button><div><h1>قائمة تجهيز المخزن</h1><small><AppIcon name="calendar" size={14}/>{new Intl.DateTimeFormat('ar-IQ',{timeZone:'Asia/Baghdad',weekday:'long',day:'numeric',month:'long'}).format(new Date())}</small></div>
+   <button type="button" className="warehouseDayRefresh" disabled={busy||(pane==='invoices'&&loading)} aria-label="تحديث قائمة التجهيز" onClick={refresh}><AppIcon name="refresh" size={17}/>تحديث</button></header>
   {canPrepare&&<nav className="warehouseWorkTabs" aria-label="نوع تجهيز المخزن">
    <button type="button" aria-pressed={pane==='invoices'} onClick={()=>choosePane('invoices')}><AppIcon name="receipt" size={17}/>فواتير البيع</button>
    <button type="button" aria-pressed={pane==='transfers'} onClick={()=>choosePane('transfers')}><AppIcon name="truck" size={17}/>طلبات نقل المخازن {Number(stock.pendingTransferCount)>0&&<b>{stock.pendingTransferCount}</b>}</button>
   </nav>}
-  {pane==='transfers'&&canPrepare?<TransferPreparation inventory={stock} a4={a4} selectedTransfer={selectedTransfer} onClearSelection={onClearTransfer} onChanged={()=>{stock.refresh();onChanged?.();}}/>:
+  {pane==='transfers'&&canPrepare?<TransferPreparation inventory={stock} a4={a4} refreshVersion={transferRefresh} selectedTransfer={selectedTransfer} onClearSelection={onClearTransfer} onChanged={()=>{stock.refresh();onChanged?.();}}/>:
   <section className="warehouseWorkspace warehouseDailyOrders">
    <QueueStates label="قوائم التجهيز" choices={[[ 'pending','بانتظار التجهيز'],['ready','تم التجهيز'],['','كل الفواتير']]} counts={showRows?result.statusCounts:null} value={state} onChange={chooseState}/>
    <form className="card warehouseFilters warehouseDailySearch" onSubmit={event=>{
@@ -113,7 +119,7 @@ function DailyWarehouseWorkspace({profile,a4,openA4,shareA4,onChanged,selectedIn
    {message&&<p role="status" className="workflowSuccess">{message}</p>}
    {error&&<p role="alert" className="workflowError">{error}</p>}
    {showRows&&<div className="warehouseListHead"><h2>{state==='ready'?'الوصولات المجهّزة':state==='pending'?'وصولات بانتظار التجهيز':'وصولات التجهيز'} <small>({quantity(result.count)})</small></h2>
-    {first&&state==='pending'&&<button type="button" onClick={()=>reviewFirst(first)}>مراجعة وصل <bdi>#{first.receiptNo}</bdi></button>}</div>}
+    {first&&state==='pending'&&<button type="button" onClick={()=>reviewFirst(first)}>مراجعة وصل <bdi>#{first.receiptNo}</bdi><AppIcon name="eye" size={15}/></button>}</div>}
    {loading&&!showRows&&<p role="status" className="empty">جاري تحميل الفواتير…</p>}
    {rows.map(row=>{
     const ready=row.status==='ready', pricing=!!row.pricingPending;
@@ -121,10 +127,10 @@ function DailyWarehouseWorkspace({profile,a4,openA4,shareA4,onChanged,selectedIn
     return <WarehouseQueueRow key={row.id} id={'warehouse-order-'+row.id} className="warehouseOrder" detailsClass="warehousePickList" selected={selected}
      state={ready?'ready':pricing?'pricing':'pending'} status={ready?'تم التجهيز':pricing?'بانتظار التسعير':'بانتظار التجهيز'}
      label={'تفاصيل وصل #'+row.receiptNo} identity={<>{row.kind==='system'?'منظومة':'جملة'} · وصل <bdi>#{row.receiptNo}</bdi></>}
-     title={row.party||'زبون نقدي'} context={<>مخزن التجهيز: {row.warehouseName||'غير محدد'} · {warehouseDate(row.date)}</>}
+     title={row.party||'زبون نقدي'} context={<><span title="مخزن التجهيز"><AppIcon name="warehouse" size={14}/>{row.warehouseName||'مخزن غير محدد'}</span><span><AppIcon name="calendar" size={14}/>{warehouseDate(row.date)}</span></>}
      items={row.items} quantityLabel={ready?'المجهّز':'المطلوب'} quantityTestId={ready?'warehouse-prepared-quantity':'warehouse-required-quantity'}>
-     {()=><><div className="warehouseRowItems"><h3>مواد الوصل</h3>
-      {row.items.map(item=><div className="warehouseOrderLine" key={item.lineId??'pending-'+item.productId}><span><b dir="auto">{item.name}</b><small>{[item.brand,item.category].filter(Boolean).join(' · ')}</small></span><strong>{materialQuantity(item.qty)}</strong></div>)}
+     {()=><><div className="warehouseRowItems"><header className="warehouseMaterialsHeading"><h3>مواد الوصل</h3><span>الكمية</span></header>
+      {row.items.map(item=><div className="warehouseOrderLine" key={item.lineId??'pending-'+item.productId}><span><b dir="auto">{item.name}</b><small>{[item.code,item.brand,item.category].filter(Boolean).join(' · ')}</small></span><strong dir="ltr">{materialQuantity(item.qty)}</strong></div>)}
      </div><PhoneActions phone={row.phone} label={row.party||'الزبون'}/>{row.address&&<p>{row.address}</p>}
      {pricing&&<p className="warehousePricingBadge">تعديلات المواد بانتظار تسعير الإدارة</p>}
      {row.preparedBy&&<p>جهّزها: {row.preparedBy} • {warehouseDate(row.preparedAt)}</p>}{row.note&&<p>{row.note}</p>}
@@ -138,7 +144,7 @@ function DailyWarehouseWorkspace({profile,a4,openA4,shareA4,onChanged,selectedIn
       {ready&&<button type="button" disabled={busy||!row.canEdit} onClick={()=>action(row,'reopen')}>إعادة للتجهيز</button>}
      </div>}
      {!row.canEdit&&<small>ملف التنصيب قيد التنفيذ أو مكتمل؛ تعديل المواد مقفل.</small>}
-     <DocumentActions title={'وصل-مخزني-'+row.receiptNo} html={()=>a4('وصل تجهيز مخزني',warehouseDocument(row),'',warehouseDate(row.date))} openA4={openA4} shareA4={shareA4}/>
+     <WarehouseReceiptActions row={row} a4={a4}/>
      </>}
     </WarehouseQueueRow>;
    })}

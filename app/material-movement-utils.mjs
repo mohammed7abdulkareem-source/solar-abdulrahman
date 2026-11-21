@@ -2,21 +2,8 @@ import {movementLabel,escapeHtml as e} from './warehouse-utils.mjs';
 import {formatMoney} from './money-format.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 export const movementTime=value=>new Date(value).toLocaleString('en-GB',{timeZone:'Asia/Baghdad',hour12:false});
-// Quantities are not money: a saved nonzero fraction must never display as 0.
-// Format the decimal representation directly, retaining numeric-string precision.
-export function materialQuantity(value){
- if(value==null||String(value).trim()==='')return '—';
- const text=String(value).trim(),match=/^([+-]?)(\d+)(?:\.(\d*))?(?:[eE]([+-]?\d+))?$/.exec(text);
- if(!match)return '—';
- const exponent=Number(match[4]||0);
- if(!Number.isFinite(exponent)||Math.abs(exponent)>100)return text;
- const digits=match[2]+(match[3]||''),point=match[2].length+exponent;
- let integer=point<=0?'0':point>=digits.length?digits+'0'.repeat(point-digits.length):digits.slice(0,point);
- let fraction=point<=0?'0'.repeat(-point)+digits:point>=digits.length?'':digits.slice(point);
- integer=integer.replace(/^0+(?=\d)/,'');fraction=fraction.replace(/0+$/,'');
- const sign=match[1]==='-'&&(integer!=='0'||fraction)?'−':'';
- return sign+integer.replace(/\B(?=(\d{3})+(?!\d))/g,',')+(fraction?'.'+fraction:'');
-}
+import {materialQuantity} from './material-quantity.mjs';
+export {materialQuantity} from './material-quantity.mjs';
 const quantity=materialQuantity;
 export function materialSignedQuantity(row){
  const inQty=Number(row.inQty||0),outQty=Number(row.outQty||0);

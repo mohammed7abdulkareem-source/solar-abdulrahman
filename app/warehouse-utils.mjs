@@ -1,4 +1,4 @@
-import {salesDocument} from './sales-document.mjs';
+export {warehouseReceiptDocument as warehouseDocument} from './warehouse-receipt-document.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 export const quantity=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:3});
 export const escapeHtml=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -6,10 +6,6 @@ export const movementLabel={purchase:'شراء / دخول',sale:'جملة / خر
 export const warehouseDate=s=>new Date(s).toLocaleDateString('ar-IQ',{timeZone:'Asia/Baghdad'});
 export function filteredStock(rows,query='',brand='',category='',available=false){const q=normalizeSearch(query);return rows.filter(p=>(!available||Number(p.qty)>0)&&(!brand||p.brand===brand)&&(!category||p.category===category)&&normalizeSearch([p.name,p.code,p.brand,p.category].join(' ')).includes(q));}
 export function quantityDocument(rows){return '<table><thead><tr><th>الكود</th><th>المادة / البراند / الصنف</th><th>الرصيد</th></tr></thead><tbody>'+rows.map(p=>'<tr><td>'+escapeHtml(p.code)+'</td><td>'+escapeHtml(p.name)+'<br><small>'+escapeHtml([p.brand,p.category].filter(Boolean).join(' • '))+'</small></td><td>'+quantity(p.qty)+'</td></tr>').join('')+'</tbody></table>';}
-export function warehouseDocument(row){
- const invoice={...row,party_name:row.party,created_at:row.date,warehouse_status:row.status,customer_phone:row.phone,customer_address:row.address,items:row.items.map(i=>({...i,product_id:i.productId,product_name:i.name,brand_name:i.brand}))};
- return salesDocument(invoice,false).body;
-}
 export function movementDocument(rows,{formatQuantity=quantity,totals:providedTotals,countMovements=false}={}){
  const splitNotes=value=>{const chars=Array.from(String(value||''));return Array.from({length:Math.ceil(chars.length/260)},(_,i)=>chars.slice(i*260,(i+1)*260).join(''));};
  const totals=providedTotals??rows.reduce((sum,r)=>({in:sum.in+Number(r.inQty||0),out:sum.out+Number(r.outQty||0)}),{in:0,out:0});
