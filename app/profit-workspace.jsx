@@ -31,10 +31,10 @@ function ProfitAmount({value,id}){
 function Figure({label,value,id}){
  return <div className="companyFigure"><dt>{label}</dt><dd><ProfitAmount value={value} id={id}/></dd></div>;
 }
-function LedgerItems({rows,a4,empty}){
+function LedgerItems({rows,a4,empty,companyBasis}){
  if(!rows.length)return <p className="companyProfitEmpty">{empty}</p>;
  return <div className="companyLedgerList">{rows.slice().reverse().map(row=><ProfitMovement key={row.ownerId+':'+row.key}
-  row={row} ownerId={row.ownerId} a4={a4} meta={'أثر الحركة '+money(row.value)+' د.ع · غير المسوّى '+money(row.available)+' د.ع'}/>)}</div>;
+  row={row} ownerId={row.ownerId} a4={a4} companyBasis={companyBasis} meta={'أثر الحركة '+money(row.value)+' د.ع · غير المسوّى '+money(row.available)+' د.ع'}/>)}</div>;
 }
 
 export default function ProfitWorkspace(props){
@@ -57,8 +57,9 @@ function CompanyProfitWorkspace({tx,profile,staff=[],onChanged,a4}){
  const sourceRows=new Map((balance?.rows||[]).map(r=>[r.key,r]));
  // The confirmed ledger has already applied Baghdad dates, beneficiary, sale type and system closure.
  const rows=tx.filter(t=>['sale','system'].includes(t.kind)&&sourceRows.get('tx:'+t.id)?.kind===t.kind).map(t=>{
-  const sales=Number(t.kind==='system'?t.total:t.subtotal??t.total??0),cost=companyInvoiceCost(t);
+  const sales=Number(t.kind==='system'?t.total:t.subtotal??t.total??0);
   const source=sourceRows.get('tx:'+t.id);
+  const cost=companyInvoiceCost(t,source.personalMaterialCost);
   return {...t,sales,cost,earned:Number(source.value),settled:Number(source.settled),available:Number(source.available),profitOwnerId:source.ownerId};
  });
  const totals=rows.reduce((s,t)=>({sales:s.sales+t.sales,cost:s.cost+t.cost,profit:s.profit+t.earned}),{sales:0,cost:0,profit:0});
@@ -137,6 +138,8 @@ function CompanyProfitWorkspace({tx,profile,staff=[],onChanged,a4}){
   {section==='overview'&&<div className="companyProfitView" aria-label="نظرة عامة">
    <section className="uiPanel profitResultSummary"><h2>نتائج الفترة المختارة</h2>
     <dl className="companyFigures">
+     {balance?.comparison&&<><Figure label="الربح على كلفة الشركة" value={balance.comparison.companyEarned}/>
+      <Figure label="ربح المستخدم المعتمد للتقسيم" value={balance.comparison.personalEarned}/></>}
      <Figure label="إجمالي المبيعات" value={balance?totals.sales:null}/><Figure label="الكلفة المثبتة" value={balance?totals.cost:null}/>
      <Figure label="ربح المبيعات" value={balance?totals.profit:null}/><Figure label="المصاريف الفعلية" value={balance?-expenses:null}/>
      <Figure label="الأرباح الخارجية" value={balance?externalProfit:null}/><Figure label="فرق الصرف المحقّق" value={balance?fx:null}/>
@@ -160,7 +163,7 @@ function CompanyProfitWorkspace({tx,profile,staff=[],onChanged,a4}){
     {balance&&<div className="profitList">{rows.length?rows.slice().reverse().map(t=><article className="profitRow profitCompanyRow" key={t.id}>
      {transferOpen&&<label className="profitTransferCheck"><input type="checkbox" aria-label={'تحويل ربح الفاتورة '+(t.receiptNo||t.id)} disabled={transferLocked} checked={selectedProfit.includes(t.id)} onChange={ev=>setSelectedProfit(ids=>ev.target.checked?[...ids,t.id]:ids.filter(id=>id!==t.id))}/></label>}
      <ProfitMovement row={{key:'tx:'+t.id,date:t.date,label:(t.kind==='system'?'منظومة':'بيع جملة')+' · '+(t.party||'نقدي'),receiptNo:t.receiptNo,value:t.earned,available:t.available,settled:t.settled}}
-      ownerId={t.profitOwnerId||profitOwners.get(Number(t.id))||cashOwner(t)} a4={a4}
+      companyBasis={owner==='all'} ownerId={t.profitOwnerId||profitOwners.get(Number(t.id))||cashOwner(t)} a4={a4}
       meta={'الربح '+money(t.earned)+' د.ع · الكلفة '+money(t.cost)+' د.ع'+(profitOwners.has(Number(t.id))?' · صاحب الربح '+(staff.find(u=>u.id===profitOwners.get(Number(t.id)))?.display_name||'مستخدم'):'')}/>
     </article>):<p className="companyProfitEmpty">لا توجد مبيعات ضمن الاختيارات.</p>}</div>}
    </section>
@@ -169,13 +172,13 @@ function CompanyProfitWorkspace({tx,profile,staff=[],onChanged,a4}){
   {section==='movements'&&<section className="uiPanel companyProfitView" aria-label="المصاريف والحركات"><h2>المصاريف والحركات الأخرى</h2>
    <dl className="companyFigures"><Figure label="المصاريف التشغيلية" value={balance?expenses:null}/><Figure label="فرق الصرف المحقّق" value={balance?fx:null}/><Figure label="الأرباح الخارجية" value={balance?externalProfit:null}/></dl>
    {companyExpenses>0&&balance&&<p className="companyAccountingNote">مصاريف وصولات الجملة على الشركة <ProfitAmount value={companyExpenses}/>، وهي مخصومة ضمن ربح الفواتير.</p>}
-   <h3>حركات الفترة</h3>{balance&&<LedgerItems rows={movements} a4={a4} empty="لا توجد مصاريف أو حركات أخرى ضمن الفترة."/>}
+   <h3>حركات الفترة</h3>{balance&&<LedgerItems rows={movements} a4={a4} companyBasis={owner==='all'} empty="لا توجد مصاريف أو حركات أخرى ضمن الفترة."/>}
   </section>}
   {section==='settled'&&<div className="companyProfitView" aria-label="التسويات والتوزيع"><section className="uiPanel"><h2>تسوية أرباح الفترة</h2>
    <dl className="companyFigures"><Figure label="المسوّى من أرباح الفترة" value={balance?.period.settled}/><Figure label="غير المسوّى من أرباح الفترة" value={balance?.period.available}/>
     {owner!=='all'&&<Figure label="أثر التسويات الخارجية على الرصيد" value={balance?.period.adjustments}/>}</dl>
    <p className="companyAccountingNote">{owner==='all'?'الرصيد الحالي يجمع الأرباح المتبقية للشركة بعد التوزيعات المعتمدة عبر جميع الفترات.':'الرصيد الحالي يجمع أرباح هذا المستخدم وتوزيعاته وتسوياته الخارجية عبر جميع الفترات.'}</p>
-   <h3>الحركات التي شملتها التسوية</h3>{balance&&<LedgerItems rows={settledMovements} a4={a4} empty="لا توجد حركات مسوّاة ضمن الفترة."/>}
+   <h3>الحركات التي شملتها التسوية</h3>{balance&&<LedgerItems rows={settledMovements} a4={a4} companyBasis={owner==='all'} empty="لا توجد حركات مسوّاة ضمن الفترة."/>}
   </section>{distributionForm}
   {receipt&&<section className="uiPanel"><h2>تم حفظ توزيع الأرباح #{receipt.receiptNo}</h2><ReportActions enabled html={a4('وصل توزيع الأرباح',cashReceiptBody(receipt),money(receipt.amount)+' د.ع')} filename={'توزيع-أرباح-'+receipt.receiptNo}/></section>}
   </div>}

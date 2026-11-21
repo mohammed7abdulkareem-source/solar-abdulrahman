@@ -112,17 +112,23 @@ function ReturnReport({busy,onSend}){
   </form></details>;
 }
 function installationFinancials(job){
- if(!job.canManage||job.total==null||job.cost==null||job.expenses===undefined||job.installationExpenses===undefined)return null;
+ if(!job.canManage||job.total==null||job.expenses===undefined||job.installationExpenses===undefined)return null;
+ if(job.cost==null){
+  if(!job.personalPriceBasis||job.profit==null)return null;
+  const netProfit=Number(job.profit),installationExpenses=Number(job.installationExpenses);
+  return {kind:'system',personalBasis:true,costHidden:true,sales:Number(job.total),invoiceExpenses:Number(job.expenses),
+   installationExpenses,netProfit,beforeInstallation:netProfit+installationExpenses};
+ }
  const [sales,materialsCost,invoiceExpenses,installationExpenses]=[job.total,job.cost,job.expenses,job.installationExpenses].map(Number);
  if(![sales,materialsCost,invoiceExpenses,installationExpenses].every(Number.isFinite))return null;
  const grossProfit=sales-materialsCost,totalCost=installationCost(job);
- return {kind:'system',sales,materialsCost,invoiceExpenses,installationExpenses,grossProfit,
+ return {kind:'system',personalBasis:job.personalPriceBasis===true,sales,materialsCost,invoiceExpenses,installationExpenses,grossProfit,
   beforeInstallation:grossProfit-invoiceExpenses,totalCost,netProfit:sales-totalCost};
 }
 function InstallationFinancials({amounts,closed,expanded}){
  const figures=receiptProfitFigures(amounts,{provisional:!closed,showInvoiceExpenses:true});
  const [,saleLabel,sale]=figures[0];
- const rows=[...figures.slice(1,-1),['totalCost','إجمالي الكلفة والمصاريف',amounts.totalCost],figures.at(-1)];
+ const rows=[...figures.slice(1,-1),...(amounts.costHidden?[]:[['totalCost','إجمالي الكلفة والمصاريف',amounts.totalCost]]),figures.at(-1)];
  return <details className="installationFinancials" open={expanded}>
   <summary><span className="installationFinancialsTitle">تفاصيل ربح المنظومة</span><span className="jobSalePrice"><span>{saleLabel}</span><strong><bdi dir="ltr">{fmt(sale)}</bdi> <small>د.ع</small></strong></span></summary>
   <dl>{rows.map(([key,label,value])=><div key={key} className={key==='net'?'installationNet'+(value<0?' loss':''):undefined}><dt>{label}</dt><dd><bdi dir="ltr">{fmt(value)}</bdi> <small>د.ع</small></dd></div>)}</dl>

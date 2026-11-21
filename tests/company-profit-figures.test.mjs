@@ -18,3 +18,10 @@ test('posted period movements retain signed corrections and exclude payouts and 
   ['sale',75],['system',-25],['external_adjustment',50],['personal_distribution',0]];
  assert.deepEqual(companyMovementTotals(values.map(([kind,value])=>({kind,value}))),{expenses:19,fx:-6,externalProfit:30});
 });
+
+test('admin-filtered sales use the personal material basis for wholesale and add posted system expenses exactly once',()=>{
+ const sale={kind:'sale',fxPricing:false,cost:30,items:[{qty:1,cost:30}]};
+ assert.equal(companyInvoiceCost(sale,36),36);
+ assert.equal(companyInvoiceCost({...sale,kind:'system',expenses:2,installationExpenses:4},36),42);
+ assert.equal(companyInvoiceCost(sale),30);
+});

@@ -81,3 +81,42 @@ test('snapshot fetches only shared data consumed by the granted office workspace
  const receiver=cloudSnapshotAccess(office({financeReceive:true}));assert.equal(receiver.cashBalances,true);assert.equal(receiver.transactions,false);assert.equal(receiver.fxHistory,false);
  const admin=cloudSnapshotAccess(office({}, {is_admin:true}));assert.equal(admin.transactionKinds,null);assert.equal(admin.cashEntries,true);assert.equal(admin.fxHistory,true);assert.equal(admin.staff,true);
 });
+
+test('personal pricing paginates receipts through their protected projection and preserves hidden costs',async t=>{
+ const profile=office({sale:true,profitUsesWholesalePrice:true}),queries=[],pages=[];
+ t.mock.method(supabase.auth,'getSession',async()=>({data:{session:{user:{id:profile.id}}}}));
+ t.mock.method(supabase,'from',table=>{
+  queries.push(table);
+  return {select(){return this},eq(){return this},single:async()=>({data:profile}),in(){return this},order(){return this},range:async()=>({data:[]})};
+ });
+ t.mock.method(supabase,'rpc',async(name,params)=>{
+  if(name==='solar_inventory')return {data:[{...product,cost:null,personalPriceBasis:true}]};
+  if(name!=='solar_personal_receipt_snapshot')return {data:[]};
+  pages.push(params);
+  const receipt=id=>({header:{id,kind:'sale',total:150,profit:10,cost:null,personalCostHidden:true},
+   items:[{id,transaction_id:id,product_id:3,qty:1,price:150,cost:null,personalCostHidden:true}]});
+  return {data:params.after_id==null?Array.from({length:200},(_,n)=>receipt(n+1)):[receipt(201)]};
+ });
+ const data=await loadCloud({fresh:true});
+ assert.equal(queries.includes('transaction_items'),false);
+ assert.deepEqual(pages,[{after_id:null,kinds:['sale']},{after_id:200,kinds:['sale']}]);
+ assert.equal(data.products[0].cost,null);assert.equal(data.products[0].personalPriceBasis,true);
+ assert.equal(data.tx.length,201);assert.equal(data.tx[200].profit,10);
+ assert.equal(data.tx[200].cost,null);assert.equal(data.tx[200].items[0].cost,null);
+});
+
+test('a former participant reads frozen sales alongside new ordinary receipts',async t=>{
+ const profile=office({sale:true});
+ t.mock.method(supabase.auth,'getSession',async()=>({data:{session:{user:{id:profile.id}}}}));
+ t.mock.method(supabase,'from',table=>({
+  select(){return this},eq(){return this},single:async()=>({data:profile}),in(){return this},order(){return this},
+  range:async()=>({data:table==='transactions'?[{id:2,kind:'sale',cost:300,profit:200}]:[]})
+ }));
+ t.mock.method(supabase,'rpc',async name=>{
+  if(name==='solar_receipt_contacts')return {data:[{id:profile.id,hasPersonalReceipts:true}]};
+  if(name==='solar_personal_receipt_snapshot')return {data:[{header:{id:1,kind:'sale',cost:400,profit:100},items:[]}]};
+  return {data:[]};
+ });
+ const result=await loadCloud({fresh:true});
+ assert.deepEqual(result.tx.map(x=>[x.id,x.profit]).sort(),[[1,100],[2,200]]);
+});

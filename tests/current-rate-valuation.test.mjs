@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {currentSaleItems,invoiceAttemptSignature} from '../app/inventory-valuation.mjs';
+import {currentSaleItems,hasHiddenSaleCost,invoiceAttemptSignature} from '../app/inventory-valuation.mjs';
 import {invoicePayload} from '../app/currency-utils.mjs';
 
 test('new sale quotes follow catalog FX without losing entered quantities/prices',()=>{
@@ -19,4 +19,16 @@ test('pending exact retry survives FX change but detects changed business input'
  assert.notEqual(invoiceAttemptSignature(first),invoiceAttemptSignature({...first,items:[{id:1,qty:3,price:250000}]}));
  assert.equal(first.valuationRevision,2);
  assert.equal(invoicePayload('purchase',{valuationRevision:2},[]).valuationRevision,undefined);
+});
+
+test('personal sales show only projected unit prices and keep private fallback costs unknown',()=>{
+ const draft=[{id:1,cost:385,costBasis:{bookUnitCost:385}},{id:2,cost:127,bookCost:127}];
+ const catalog=[{id:1,cost:430,personalPriceBasis:true},{id:2,cost:null,personalPriceBasis:true}];
+ const rows=currentSaleItems(draft,catalog,[],true);
+ assert.deepEqual(rows.map(r=>r.cost),[430,null]);
+ assert.deepEqual(rows[0].costBasis,{});
+ assert.equal('bookCost' in rows[1],false);
+ assert.equal(hasHiddenSaleCost(rows),true);
+ assert.equal(currentSaleItems(draft,[{id:1,cost:385}],[],true)[0].cost,null);
+ assert.equal(currentSaleItems(draft,catalog,[{id:1,cost:399,personalPriceBasis:true}],true)[0].cost,399);
 });

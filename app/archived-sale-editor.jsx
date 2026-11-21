@@ -8,7 +8,7 @@ import {supabase} from './supabase';
 
 export function ArchivedSaleEditor({original,profile,customers,staff,products,onUpdateInvoice,onSaved,onCancel,a4,openA4,saveA4,shareA4}){
  const [items,setItems]=useState([]),[search,setSearch]=useState('');
- if(original.kind==='system')return <SystemInvoiceEditor original={original} canEditExpenses={canEditInstallationExpenses(profile,original)} customers={customers} staff={staff} products={products} onUpdate={onUpdateInvoice} onSaved={onSaved} onCancel={onCancel} a4={a4}/>;
+ if(original.kind==='system')return <SystemInvoiceEditor profile={profile} original={original} canEditExpenses={canEditInstallationExpenses(profile,original)} customers={customers} staff={staff} products={products} onUpdate={onUpdateInvoice} onSaved={onSaved} onCancel={onCancel} a4={a4}/>;
  return <CurrencyInvoice kind="sale" contact={{...profile,display_name:original.creatorName,phone:original.creatorPhone}} products={products} parties={customers} initialInvoice={original} items={items} setItems={setItems} search={search} setSearch={setSearch} onUpdateInvoice={onUpdateInvoice} onEditSaved={onSaved} onCancel={onCancel} a4={a4} openA4={openA4} saveA4={saveA4} shareA4={shareA4}/>;
 }
 

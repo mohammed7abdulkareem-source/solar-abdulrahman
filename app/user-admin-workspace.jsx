@@ -66,6 +66,10 @@ function PermissionStep({role,value,onChange,onReset}){
   {role!=='admin'&&<label className="uaCheck"><input type="checkbox" data-permission="layoutCustomize" checked={value.layoutCustomize===true} onChange={e=>onChange({...value,layoutCustomize:e.target.checked})}/>تخصيص ترتيب وحجم أقسامه</label>}
  </div>;
  return <>
+  <fieldset className="uaProfitBasis"><legend>أساس ربح المستخدم</legend>
+   <label className="uaCheck"><input type="checkbox" data-permission="profitUsesWholesalePrice" checked={value.profitUsesWholesalePrice===true} onChange={e=>onChange({...value,profitUsesWholesalePrice:e.target.checked})}/>احتساب ربح الجملة والمنظومات على سعر الجملة المحدد</label>
+   <p>عند التفعيل تظهر للمستخدم أسعار المواد المفعّلة كأساس للربح. المادة بلا سعر مفعّل تُحسب بكلفتها داخلياً. عند إلغاء التحديد يُحسب الربح على الكلفة الفعلية.</p>
+  </fieldset>
   <div className="uaPermissionBar"><span>الصلاحيات المحددة <b>{selectedPermissionLabels(role,value).length}</b></span><button type="button" className="uaQuietDanger" onClick={onReset}>تصفير الصلاحيات</button></div>
   <div className="uaPermissionGroups">{permissionGroups.map(group=>{
    const selected=group.options.filter(([key])=>value[key]===true).length;
@@ -161,7 +165,7 @@ function Wizard({editing,warehouses,actorId,onExit,onSaved}){
    {error&&<p role="alert" className="uaError">{error}</p>}<div className="uaActions"><button type="submit" disabled={busy} className="uaPrimary">{busy?'جاري الحفظ…':'حفظ البيانات والمتابعة'}</button></div></form>}
    {stage===1&&<><div className="uaRoleSelect"><label>نوع المستخدم<select aria-label="نوع المستخدم" value={role} disabled={isSelf} onChange={e=>setRole(e.target.value)}>{Object.entries(roleLabels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label></div><PermissionStep role={role} value={perms} onChange={setPerms} onReset={()=>setConfirm('reset')}/></>}
    {stage===2&&<WarehouseStep role={role} value={warehouse} warehouses={warehouses} onChange={setWarehouse}/>}
-   {stage===3&&<><dl className="uaReview"><div><dt>اسم الدخول</dt><dd dir="auto">{target.username}</dd></div><div><dt>نوع المستخدم</dt><dd>{roleLabels[role]}</dd></div><div><dt>المخازن</dt><dd>{warehouseSummary(role,warehouse,warehouses)}</dd></div>
+   {stage===3&&<><dl className="uaReview"><div><dt>اسم الدخول</dt><dd dir="auto">{target.username}</dd></div><div><dt>نوع المستخدم</dt><dd>{roleLabels[role]}</dd></div>{role==='user'&&<div><dt>أساس ربح الوصولات الجديدة</dt><dd>{perms.profitUsesWholesalePrice?'سعر الجملة المحدد':'الكلفة الفعلية'}</dd></div>}<div><dt>المخازن</dt><dd>{warehouseSummary(role,warehouse,warehouses)}</dd></div>
     {warehouse&&!['admin','installer'].includes(role)&&<div><dt>اتجاهات النقل</dt><dd>{warehouseDirections.filter(([key])=>warehouse.transferDirections[key]).map(([,label])=>label).join('، ')||'لا يوجد نقل مسموح'}</dd></div>}
     </dl><details className="uaReviewPermissions"><summary>الصلاحيات المحددة ({currentLabels.length})</summary>{currentLabels.length?<ul>{currentLabels.map(label=><li key={label}>{label}</li>)}</ul>:<p>لم تُحدّد صلاحيات للأقسام.</p>}</details>
     <fieldset className="uaAccountStatus" disabled={isSelf||busy||uncertain}><legend>حالة الحساب بعد الحفظ</legend><label><input type="radio" name="ua-active" checked={active} onChange={()=>setActive(true)}/>فعّال</label><label><input type="radio" name="ua-active" checked={!active} onChange={()=>setActive(false)}/>موقوف</label></fieldset>

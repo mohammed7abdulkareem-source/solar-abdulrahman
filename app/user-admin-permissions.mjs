@@ -45,6 +45,7 @@ export function resetAccountPermissions(values={}){
  // legacy boolean grants while retaining the mandatory own-account isolation.
  for(const key of Object.keys(next))if(typeof next[key]==='boolean')next[key]=false;
  for(const key of keys)next[key]=false;
+ if(values.profitUsesWholesalePrice===true)next.profitUsesWholesalePrice=true;
  return ownUserPermissions(next);
 }
 export function changeAccountPermission(values,key,enabled){

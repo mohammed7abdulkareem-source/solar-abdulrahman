@@ -1,7 +1,8 @@
 import {installationCost} from './review-utils.mjs';
 
-export function companyInvoiceCost(invoice){
- if(invoice.kind==='system')return installationCost(invoice);
+export function companyInvoiceCost(invoice, materialBasis=null){
+ if(invoice.kind==='system')return installationCost({...invoice,cost:materialBasis??invoice.cost});
+ if(materialBasis!=null)return Number(materialBasis);
  if(invoice.fxPricing && invoice.cost!=null)return Number(invoice.cost);
  return (invoice.items||[]).reduce((sum,item)=>sum+Number(item.qty||0)*Number(item.cost||0),0);
 }

@@ -17,18 +17,18 @@ function PurchaseReceipt({row,onEdit,onDelete,renderExport}){
   <button className="purchaseHubSummary" type="button" onClick={()=>setOpen(v=>!v)} aria-expanded={open} aria-controls={'purchase-details-'+row.id}>
    <span className="purchaseHubMark"><AppIcon name="receipt" size={20}/></span>
    <span className="purchaseHubIdentity"><strong>فاتورة شراء رقم <bdi>{number}</bdi></strong><span>{row.party||'مورد غير محدد'}</span></span>
-   <span className="purchaseHubAmount"><strong><bdi>{money(value)}</bdi></strong><time dateTime={row.date}>{dateFormat.format(new Date(row.date))}</time></span>
+   <span className="purchaseHubAmount"><strong><bdi>{row.personalCostHidden?'الكلفة محجوبة':money(value)}</bdi></strong><time dateTime={row.date}>{dateFormat.format(new Date(row.date))}</time></span>
    <AppIcon className="purchaseHubChevron" name="chevron" size={16}/>
   </button>
   {open&&<div className="purchaseHubDetails" id={'purchase-details-'+row.id}>
    <div className="purchaseHubMeta"><span><AppIcon name="wallet" size={16}/>{row.cash?'شراء نقدي':'شراء آجل'}</span>{row.warehouseName&&<span><AppIcon name="warehouse" size={16}/>{row.warehouseName}</span>}</div>
-   {(row.items||[]).length>0&&<div className="purchaseHubItems"><table><thead><tr><th scope="col">المادة</th><th scope="col">العدد</th><th scope="col">سعر الوحدة</th><th scope="col">المجموع</th></tr></thead><tbody>{row.items.map((item,index)=>{
+   {(row.items||[]).length>0&&<div className="purchaseHubItems"><table><thead><tr><th scope="col">المادة</th><th scope="col">العدد</th>{!row.personalCostHidden&&<><th scope="col">سعر الوحدة</th><th scope="col">المجموع</th></>}</tr></thead><tbody>{row.items.map((item,index)=>{
     const unitPrice=purchaseUnitPrice(item,currency,row.exchangeRate);
-    return <tr key={item.id+':'+index}><th scope="row">{item.name}<small>{[item.brand,item.category].filter(Boolean).join(' · ')}</small></th><td>{preciseNumber(item.qty)}</td><td><bdi>{preciseNumber(unitPrice)} {currencyUnit(currency)}</bdi></td><td><bdi>{money(item.qty*unitPrice)}</bdi></td></tr>;
+    return <tr key={item.id+':'+index}><th scope="row">{item.name}<small>{[item.brand,item.category].filter(Boolean).join(' · ')}</small></th><td>{preciseNumber(item.qty)}</td>{!row.personalCostHidden&&<><td><bdi>{preciseNumber(unitPrice)} {currencyUnit(currency)}</bdi></td><td><bdi>{money(item.qty*unitPrice)}</bdi></td></>}</tr>;
    })}</tbody></table></div>}
    {row.expenses>0&&<p>مصاريف إضافية <bdi>{formatMoney(row.expenses)} د.ع</bdi></p>}
    {row.notes&&<p>{row.notes}</p>}
-   <div className="purchaseHubReceiptActions"><button type="button" aria-label={'تعديل الوصل رقم '+number} onClick={()=>onEdit(row)}><AppIcon name="edit" size={16}/>تعديل الوصل</button><button type="button" className="purchaseHubDelete" aria-label={'حذف الوصل رقم '+number} onClick={()=>onDelete(row)}><AppIcon name="trash" size={16}/>حذف الوصل</button>{renderExport(row)}</div>
+   <div className="purchaseHubReceiptActions">{!row.personalCostHidden&&<button type="button" aria-label={'تعديل الوصل رقم '+number} onClick={()=>onEdit(row)}><AppIcon name="edit" size={16}/>تعديل الوصل</button>}<button type="button" className="purchaseHubDelete" aria-label={'حذف الوصل رقم '+number} onClick={()=>onDelete(row)}><AppIcon name="trash" size={16}/>حذف الوصل</button>{renderExport(row)}</div>
   </div>}
  </article>;
 }

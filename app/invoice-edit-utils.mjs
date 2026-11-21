@@ -12,7 +12,7 @@ export function archiveInvoiceDraft(row){
   invoiceAccount:row.invoice_account||row.invoiceAccount,warehouseQrToken:row.warehouse_qr_token||row.warehouseQrToken,warrantyToken:row.warranty_token||row.warrantyToken,
   installerId:row.installer_id||row.installerId,installDate:row.install_date||row.installDate||'',installTime:row.install_time||row.installTime||'',customerAddress:row.customer_address||row.customerAddress||'',customerPhone:row.customer_phone||row.customerPhone||'',
   installationRevision:Number(row.installation_revision??row.installationRevision??0),installationStatus:row.installation_status||row.installationStatus,installationExpenses:Number(row.installation_expenses??row.installationExpenses??0),
-  items:(row.items||[]).map(i=>({...i,id:i.product_id??i.productId??i.id,name:i.product_name||i.name,brand:i.brand_name||i.brand||'',qty:Number(i.qty),price:Number(i.price||0),cost:Number(i.cost||0)}))};
+  items:(row.items||[]).map(i=>({...i,id:i.product_id??i.productId??i.id,name:i.product_name||i.name,brand:i.brand_name||i.brand||'',qty:Number(i.qty),price:Number(i.price||0),cost:i.personalPriceBasis&&i.cost==null?null:Number(i.cost||0)}))};
 }
 
 export function canEditInstallationExpenses(profile,row){return !!profile?.active&&!isEngineer(profile)&&!isWarehouse(profile)&&(isAdministrator(profile)||((row.operationalOwnerId??row.created_by??row.createdBy)===profile.id&&profile.permissions?.installations===true));}

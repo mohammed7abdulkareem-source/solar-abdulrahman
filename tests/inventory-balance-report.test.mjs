@@ -44,3 +44,14 @@ test('export escapes the warehouse label in both its HTML title and body',()=>{
  const doc=inventoryBalanceDocument(view,{...settings,byWarehouse:false,warehouseName:'مخزن <فرع>'});
  assert.ok(doc.title.includes('&lt;فرع&gt;'));assert.ok(!doc.body.includes('<فرع>'));
 });
+
+test('personal price list keeps the quantities of unpriced products and qualifies the visible total',()=>{
+ const products=[{id:1,name:'أ',qty:3,cost:40},{id:2,name:'ب',qty:5,cost:null}];
+ const view=inventoryBalanceView({...snapshot,products,byWarehouse:false});
+ const result=inventoryBalanceDocument(view,{...settings,byWarehouse:false,priced:true,personalPrices:true});
+ assert.equal(view.totals.available,8);
+ assert.equal(result.total,'120 د.ع');
+ assert.match(result.body,/أسعار الجملة المحددة فقط/);
+ assert.match(result.body,/غير محدد/);
+ assert.doesNotMatch(result.body,/كلفة الوحدة/);
+});

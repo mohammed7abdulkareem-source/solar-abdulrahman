@@ -24,6 +24,11 @@ export function supplierDocument(t){
  const accountUnit=t.accountCurrency==='USD'?'$':'د.ع',sourceUnit=t.sourceCurrency==='USD'?'$':'د.ع';
  const fxInfo=t.marketRate>1?'<div class="meta"><div>عملة حساب المورد: '+e(t.accountCurrency||'IQD')+'</div><div>الصرف المثبت: '+money(t.marketRate)+' د.ع لكل دولار</div><div>المبلغ بعملة الحساب: '+money(Math.abs(t.accountAmount??t.total),t.accountCurrency)+' '+accountUnit+'</div>'+(t.cash?'<div>المدفوع من القاصة: '+money(t.cashAmount??t.total,t.cashCurrency)+' '+(t.cashCurrency==='USD'?'$':'د.ع')+'</div>':'')+'</div>':'';
  const meta='<div class="meta"><div><b>'+(payment?'رقم الوصل':'رقم الفاتورة')+':</b> '+e(receiptNumber(t))+'</div><div><b>'+(payment?'المورد':'المجهّز')+':</b> '+e(t.party)+'</div><div><b>التاريخ:</b> '+e(new Date(t.date).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad'}))+'</div><div><b>الحركة:</b> '+(payment?(charge?'إضافة على حساب المورد — '+supplierChargeReason(t):'تسديد نقدي للمورد'):supplierLabel(t))+'</div></div>';
+ if(!payment&&t.personalCostHidden){
+  const rows=(t.items||[]).map(i=>'<tr><td>'+e(i.name)+'</td><td>'+e([i.brand,i.category].filter(Boolean).join(' · '))+'</td><td>'+preciseNumber(i.qty)+'</td></tr>');
+  return {title:'مواد فاتورة الشراء',subtitle:'وصل محفوظ #'+receiptNumber(t),body:meta+
+   '<table data-pdf-paginate><thead><tr><th>المادة</th><th>البراند والصنف</th><th>الكمية</th></tr></thead><tbody>'+rows.join('')+'</tbody></table>',total:''};
+ }
  const usd=!payment&&t.sourceCurrency==='USD',unit=usd?'$':'د.ع';
  const originalPrice=i=>purchaseUnitPrice(i,t.sourceCurrency,t.exchangeRate);
  const exchangeInfo=usd?'<div class="meta"><div><b>عملة الشراء:</b> الدولار الأمريكي</div><div><b>الصرف المثبت:</b> '+money(t.exchangeRate)+' د.ع لكل دولار</div><div><b>100 دولار:</b> '+money(Number(t.exchangeRate)*100)+' د.ع</div></div>':'';

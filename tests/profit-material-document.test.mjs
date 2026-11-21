@@ -35,3 +35,17 @@ test('individual open receipt keeps document profit distinct from its zero contr
  assert.equal(figures.find(([key])=>key==='contribution')[2],0);
  assert.equal(figures.find(([key])=>key==='beforeInstallation')[2],250);
 });
+
+test('a missing reference price hides fallback costs in closed and forecast reports while retaining signed profit',()=>{
+ const hidden={...b,personalBasis:true,costHidden:true,materialsCost:null,grossProfit:null,netProfit:37,
+  items:b.items.map(i=>({...i,unitCost:null,lineCost:null,lineProfit:null}))};
+ const components=receiptProfitFigures(hidden).map(([key])=>key);
+ assert.deepEqual(components,['sale','invoice','net']);
+ const report=profitMaterialDocument(hidden,{settled:0,available:37});
+ assert.match(report.body,/<td>—<\/td><td>—<\/td><td>—<\/td>/);
+ assert.match(report.body,/صافي الربح: 37 د\.ع/);
+ assert.doesNotMatch(report.body,/مجمل الربح قبل المصاريف|تعديلات ربح أخرى|كلفة المواد عند البيع/);
+ const forecast=pendingProfitFigures({costHidden:true,personalBasis:true,total:1000,materialCost:null,invoiceExpenses:50,approvedExpenses:70,provisionalProfit:-37});
+ assert.deepEqual(forecast.map(([key])=>key),['sale','invoice','installation','net']);
+ assert.equal(forecast.at(-1)[2],-37);
+});

@@ -41,3 +41,13 @@ test('the restricted quote account can be granted warranty separately from sales
   assert.equal(full.tahseelFull,true);
   assert.equal(changeAccountPermission(full,'tahseel',false).tahseelDefaults,false);
 });
+
+test('resetting module permissions preserves the configured material price basis and grants no access',()=>{
+ const reduced=resetAccountPermissions(accountPermissions({profitUsesWholesalePrice:true,profit:true,sale:true}));
+ assert.equal(reduced.profitUsesWholesalePrice,true);
+ assert.equal(canOpenPage(office(reduced),'profit'),false);
+ assert.equal(canOpenPage(office(reduced),'sale'),false);
+ const actual=changeAccountPermission(reduced,'profitUsesWholesalePrice',false);
+ assert.equal(actual.profitUsesWholesalePrice,false);
+ assert.equal(canOpenPage(office(actual),'sale'),false);
+});

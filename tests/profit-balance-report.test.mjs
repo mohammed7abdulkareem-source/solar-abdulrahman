@@ -44,3 +44,14 @@ test('company invoice expenses are disclosed as already deducted without reducin
  assert.match(html,/بعد التسوية: <bdi dir="ltr" class="reportNumber">-100,000/);
  assert.equal(JSON.stringify(balance),snapshot);
 });
+
+test('manager export compares both amounts for one person and employee export contains only the approved amount',()=>{
+ const balance={ownerId:'seller',remaining:14e6,period:{earned:14e6,settled:0,available:14e6}};
+ const data={balance,ownerName:'عبدالرحمن',rows:[],expenses:0,fx:0,externalProfit:0};
+ const staff=profitBalanceReport(data);
+ assert.doesNotMatch(staff,/الربح على كلفة الشركة|20,000,000/);
+ assert.match(staff,/14,000,000/);
+ const admin=profitBalanceReport({...data,balance:{...balance,comparison:{companyEarned:20e6,personalEarned:14e6}}});
+ assert.match(admin,/الربح على كلفة الشركة<\/span><strong><bdi dir="ltr" class="reportNumber">20,000,000/);
+ assert.match(admin,/ربح المستخدم المعتمد للتقسيم<\/span><strong><bdi dir="ltr" class="reportNumber">14,000,000/);
+});

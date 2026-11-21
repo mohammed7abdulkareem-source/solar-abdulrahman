@@ -24,3 +24,13 @@ test('sale edits submit the selected customer id, and clearing the customer remo
  }
  assert.equal(Object.hasOwn(invoicePayload('purchase',{party:'مورد',saleCustomerId:9},[],original),'saleCustomerId'),false);
 });
+
+test('archive editor retains the personal pricing flag and distinguishes hidden costs from zero',()=>{
+ const receipt=archiveInvoiceDraft({
+  kind:'system',personalBasisAtSale:true,
+  items:[{product_id:1,qty:1,personalPriceBasis:true,cost:null},{product_id:2,qty:1,personalPriceBasis:true,cost:420}]
+ });
+ assert.equal(receipt.personalBasisAtSale,true);
+ assert.equal(receipt.items[0].cost,null);
+ assert.equal(receipt.items[1].cost,420);
+});

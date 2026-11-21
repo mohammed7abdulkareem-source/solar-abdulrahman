@@ -8,6 +8,7 @@ import {previewPdf} from './pdf-preview.mjs';
 import {money} from './supplier-utils.mjs';
 import {capitalStockReport,capitalCashReport,capitalDebtReport} from './capital-reports.mjs';
 import {capitalSnapshotReport} from './capital-snapshot-report.mjs';
+import {usesPersonalSalePrices} from './inventory-valuation.mjs';
 import {salesAuthorizationKey} from './sales-read-scope.mjs';
 
 function Amount({value}){return <span className="capitalAmount"><bdi dir="ltr">{money(value)}</bdi><small>د.ع</small></span>;}
@@ -27,13 +28,14 @@ function ScopedCapitalWorkspace({profile,revision}){
    throw new Error('تعذر تأكيد نطاق القاصة. أعد التحديث.');
   setSnapshot(data);
  }).catch(err=>{if(live){setSnapshot(null);setError(err.message||'تعذر تحميل الحساب. أعد المحاولة.');}}).finally(()=>{if(live)setLoading(false);});return()=>{live=false;};},[profile.id,profile.is_admin,revision,refresh]);
- const report=snapshot?capitalSnapshotReport(snapshot):null;
+ const personalPrices=usesPersonalSalePrices(profile);
+ const report=snapshot?capitalSnapshotReport(snapshot,personalPrices):null;
  const document=r=>a4(r.title,r.body,money(r.total)+' د.ع',new Date(snapshot.asOf).toLocaleString('en-GB',{timeZone:'Asia/Baghdad'}));
  const preview=r=>previewPdf(document(r),r.title);
  const s=snapshot;
  const debt=(accounts,supplier=false,credit=false)=>{const total=credit?(supplier?accounts.prepayments:accounts.advances):(supplier?accounts.payable:accounts.receivable);const r=capitalDebtReport({rows:credit?accounts.rows.filter(r=>r.balance<0):accounts.rows,net:credit?-total:accounts.net,total},supplier);return credit?{...r,title:supplier?'كشف سلفنا لدى الموردين':'كشف أرصدة العملاء الدائنة'}:r;};
  const tiles=s?[
-  ['المخزون بالكلفة',s.stock.value,'package',()=>capitalStockReport(s.stock.rows)],
+  [personalPrices?'المخزون بأسعار الجملة المحددة':'المخزون بالكلفة',s.stock.value,'package',()=>capitalStockReport(s.stock.rows,personalPrices)],
   ['الصندوق بالدينار',s.cash.iqd,'wallet',()=>capitalCashReport(s)],
   ['ديون العملاء لنا',s.customers.receivable,'customers',()=>debt(s.customers)],
   ['ديون الموردين علينا',s.suppliers.payable,'suppliers',()=>debt(s.suppliers,true)],
@@ -46,7 +48,7 @@ function ScopedCapitalWorkspace({profile,revision}){
   {error&&<div className="accountAlert error" role="alert">{error}</div>}
   {!s&&loading&&<div className="uiPanel" role="status">جاري قراءة الأرصدة وحسابها…</div>}
   {s&&<>
-   {s.scope==='own'&&<p className="capitalScopeNote">هذا الملخص يشمل حركاتك وقاصتك والمخازن المسموحة لك. رأس مال الشركة الكامل يظهر للإدارة.</p>}
+   {s.scope==='own'&&<p className="capitalScopeNote">هذا الملخص يشمل حركاتك وقاصتك والمخازن المسموحة لك. {personalPrices?'تدخل في قيمة المخزون المواد التي لها سعر جملة محدد فقط.':'رأس مال الشركة الكامل يظهر للإدارة.'}</p>}
    <section className={'capitalSnapshotHero'+(s.net<0?' negative':'')}><span>{s.scope==='company'?'صافي قيمة النشاط الحالية':'صافي الأرصدة ضمن صلاحيتك'}</span><Amount value={s.net}/><small>الموجودات − المطلوبات · جميع القيم بالدينار</small></section>
    <div className="capitalTotals"><div><span>الموجودات</span><Amount value={s.assets}/></div><div><span>المطلوبات</span><Amount value={s.liabilities}/></div></div>
    <div className="capitalSnapshotGrid">{tiles.map(([label,value,icon,getReport])=><button className="capitalSnapshotTile" key={label} disabled={loading} onClick={()=>preview(getReport())} aria-label={'تفاصيل '+label}><span className="capitalTileLabel"><AppIcon name={icon} size={18}/>{label}<AppIcon name="chevron" size={15}/></span><Amount value={value}/><small>عرض الكشف</small></button>)}</div>

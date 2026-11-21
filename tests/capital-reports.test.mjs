@@ -66,3 +66,12 @@ test('supplier debt report labels source currency and IQD book value separately'
  assert.match(report.body,/عملة المجاميع والقيمة الدفترية: الدينار العراقي · IQD/);
  assert.match(report.body,/يعرض العملة الأصلية لكل حساب/);assert.match(report.body,/الموجب مستحق للموردين، والسالب سلف وأرصدة لنا عندهم/);
 });
+
+test('personal stock report includes quantities for unpriced materials without treating the missing price as zero',()=>{
+ const result=capitalStockReport([{name:'أ',qty:3,cost:40},{name:'ب',qty:5,cost:null}],true);
+ assert.equal(result.total,120);
+ assert.match(result.title,/بأسعار الجملة المحددة/);
+ assert.match(result.body,/غير محدد/);
+ assert.match(result.body,/مجموع الكميات: 8/);
+ assert.doesNotMatch(result.body,/كلفة الوحدة/);
+});
