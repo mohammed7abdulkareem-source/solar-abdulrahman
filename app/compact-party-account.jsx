@@ -5,6 +5,7 @@ import AppIcon from './app-icons';
 import ReportActions from './report-actions';
 import CustomerMovementDocument from './customer-movement-document';
 import CustomerPeriodDocuments from './customer-period-documents';
+import CustomerReceiptManager from './customer-receipt-manager';
 import PartyInvoiceLines,{useCustomerInvoiceLines} from './party-invoice-lines';
 import {groupedInvoicesBody} from './party-invoice-reports.mjs';
 import {formatMoney as money,currencyUnit as unit} from './money-format.mjs';
@@ -14,7 +15,7 @@ import {supplierDocument,escapeHtml} from './supplier-utils.mjs';
 import './customer-account-detail.css';
 import PartyStatementTable from './party-statement-table';
 
-function CustomerAccountHeader({account, status, showStatementBalance, identityActions}) {
+function CustomerAccountHeader({account, status, showStatementBalance}) {
  const raw = account.balance;
  const hasAmount = (typeof raw === 'number' || typeof raw === 'string' && raw.trim() !== '') && Number.isFinite(Number(raw));
  const available = status === 'ready' && hasAmount;
@@ -27,7 +28,6 @@ function CustomerAccountHeader({account, status, showStatementBalance, identityA
     <span className="customerIdentityAvatar" aria-hidden="true">{partyInitials(account.name)}</span>
     <div><h2>{account.name}</h2><small>{customerType}{account.ownerName && ' · ' + account.ownerName}</small></div>
    </div>
-   {identityActions}
    {account.phone && <PhoneActions phone={account.phone} label={account.name}/>}
   </div>
   <div className="customerBalanceAmount" aria-live="polite" aria-busy={status === 'loading'}>
@@ -41,7 +41,7 @@ function CustomerAccountHeader({account, status, showStatementBalance, identityA
 }
 
 
-export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,onPayment,onSale,onSettings,onMovementEdit,canEditMovement,canDeletePayment=false,renderMatch,initialView='overview',extraControls,backLabel,balanceStatus='ready',identityActions,renderReceiptActions,documentRevision=0}){
+export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,onPayment,onSale,onSettings,onMovementEdit,canEditMovement,canDeletePayment=false,renderMatch,initialView='overview',extraControls,backLabel,balanceStatus='ready',identityActions,receiptManagement,renderReceiptActions,documentRevision=0}){
  const [view,setView]=useState(initialView),[category,setCategory]=useState('all'),[from,setFrom]=useState(''),[to,setTo]=useState(''),[query,setQuery]=useState(''),[selected,setSelected]=useState(null),[days,setDays]=useState('all');
  const [detailOrigin,setDetailOrigin]=useState('movements');
  const [purchaseVersion,setPurchaseVersion]=useState('original');
@@ -49,7 +49,7 @@ export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,
  const supplier=account.type==='supplier',currency=account.currency,period=useMemo(()=>compactPeriod(account.rows,from,to,category,query),[account.rows,from,to,category,query]);
  const invalid=!!(from&&to&&from>to),invoiceView=view==='movements'&&category==='invoices',reportFilters={category,query},reportScope=partyReportScope(account,period,from,to,reportFilters);
  const invoiceData=useCustomerInvoiceLines(account,period.rows,!supplier&&invoiceView&&!invalid,documentRevision);
- const title=view==='detail'?'تفاصيل الحركة':view==='match'?'مطابقة الحساب':view==='report'?'كشف حساب مفصل':view==='movements'?(category==='invoices'?(supplier?'مشتريات المورد':'مبيعات العميل'):category==='payments'?'التسديدات':!supplier&&category==='other'?'حركات أخرى':'جميع الحركات'):(supplier?'كشف حساب مورد':'كشف حساب عميل');
+ const title=view==='manage'?'إدارة الوصولات':view==='detail'?'تفاصيل الحركة':view==='match'?'مطابقة الحساب':view==='report'?'كشف حساب مفصل':view==='movements'?(category==='invoices'?(supplier?'مشتريات المورد':'مبيعات العميل'):category==='payments'?'التسديدات':!supplier&&category==='other'?'حركات أخرى':'جميع الحركات'):(supplier?'كشف حساب مورد':'كشف حساب عميل');
  const supplierRevision=supplier?account.revision:undefined;
  useEffect(()=>{setSelected(null);setView(initialView);},[account.id,supplierRevision,initialView]);
  function changeView(next,tab=category){setView(next);setCategory(tab);window.scrollTo({top:0,behavior:'instant'});}
@@ -93,15 +93,22 @@ export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,
   {supplier&&view!=='detail'&&<div className="miniIdentity"><span className="miniAvatar">{partyInitials(account.name)}</span><div><h2>{account.name}</h2><small>{supplier?'عملة الحساب: '+currency:(account.customerType==='wholesale'?'جملة':'مفرد · منظومات')}{account.ownerName?' · '+account.ownerName:''}</small></div><span className="miniCurrency">{currency}</span></div>}
   {supplier&&account.phone&&<div className="miniIdentityPhone"><PhoneActions phone={account.phone} label={account.name}/></div>}
   {!supplier&&view!=='detail'&&<>
-   <CustomerAccountHeader identityActions={identityActions} account={account} status={balanceStatus} showStatementBalance={!showPeriodBalances && view==='overview'}/>
-   <nav className="customerAccountSections" aria-label="أقسام حساب العميل">
+   <CustomerAccountHeader account={account} status={balanceStatus} showStatementBalance={!showPeriodBalances && view==='overview'}/>
+   {view!=='manage'&&(identityActions||receiptManagement)&&<section className="statementManagement" aria-label="إجراءات الحساب">
+    <h2>إجراءات الحساب</h2><div className="customerIdentityActions">
+     {identityActions}
+     {receiptManagement&&<button type="button" className="statementReceiptTrigger" onClick={()=>changeView('manage','all')}><AppIcon name="receipt" size={18}/>{receiptManagement.label}</button>}
+    </div>
+   </section>}
+   {view!=='manage'&&<nav className="customerAccountSections" aria-label="أقسام حساب العميل">
     {reportActions.map(([icon,label,next,tab])=><button key={tab} type="button"
      aria-pressed={view===next&&(next==='report'||category===tab)} onClick={()=>changeView(next,tab)}>
      <AppIcon name={icon} size={19}/><span>{label}</span>
     </button>)}
-   </nav>
+   </nav>}
   </>}
-  {view!=='detail'&&view!=='match'&&(supplier?periodControls:<div className="customerAccountFilters">
+  {view==='manage'&&<CustomerReceiptManager rows={receiptManagement?.rows||[]} currency={currency} renderActions={renderReceiptActions}/>}
+  {view!=='detail'&&view!=='match'&&view!=='manage'&&(supplier?periodControls:<div className="customerAccountFilters">
    <button className="customerOverviewPeriod" type="button" aria-label="تصفية حركات الحساب" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen(open=>!open)}>
     <AppIcon name="filter" size={17}/><span>تصفية الحركات</span>
     <small>{[from||to?reportScope.periodLabel:'كل الفترة',query.trim()&&'بحث: '+query.trim(),view==='report'&&category!=='all'&&reportScope.filterLabel.split(' · ')[0]].filter(Boolean).join(' · ')}</small><AppIcon name="chevron" size={15}/>
@@ -113,7 +120,7 @@ export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,
    </div>}
   </div>)}
 
-  {invalid&&<p className="miniAlert" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية.</p>}
+  {view!=='manage'&&invalid&&<p className="miniAlert" role="alert">تاريخ البداية يجب أن يسبق تاريخ النهاية.</p>}
   {view==='overview'&&<>
    <div className={showPeriodBalances ? 'miniAccountStats' : 'miniAccountStats customerOverviewTotals'}><div className="blue"><AppIcon name={supplier?'truck':'receipt'} size={19}/><span>{account.rows.some(r=>r.receiptRestricted)?(supplier?'المشتريات المتاحة لك':'المبيعات المتاحة لك'):(supplier?'إجمالي المشتريات':'إجمالي المبيعات')}</span><b>{money(period.invoices,currency)} <small>{unit(currency)}</small></b></div><div className="green"><AppIcon name="banknote" size={19}/><span>{account.rows.some(r=>r.receiptRestricted)?'التسديدات المتاحة لك':'إجمالي التسديدات'}</span><b>{money(period.payments,currency)} <small>{unit(currency)}</small></b></div>{showPeriodBalances&&<><div><AppIcon name="wallet" size={19}/><span>{from?'رصيد أول المدة':'الرصيد الافتتاحي'}</span><b>{money(from?period.opening:period.originalOpening,currency)} <small>{unit(currency)}</small></b></div><div className="rose"><AppIcon name="calculator" size={19}/><span>{!supplier||to?'رصيد نهاية الفترة':'الرصيد الحالي'}</span><b data-testid={supplier?'supplier-statement-balance':'statement-balance'}>{money(period.balance,currency)} <small>{unit(currency)}</small></b></div></>}</div>
    {!showPeriodBalances && period.originalOpening !== 0 && <p className="customerOriginalBalance">الرصيد الافتتاحي <bdi>{money(period.originalOpening,currency)} {unit(currency)}</bdi></p>}
@@ -121,7 +128,7 @@ export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,
    <div className="miniAccountActions">{actions.map(([icon,label,action])=><button type="button" key={label} onClick={action}><AppIcon name={icon} size={19}/><span>{label}</span></button>)}</div>
    <div className="miniListTitle"><h2>آخر الحركات</h2><button type="button" onClick={()=>changeView('movements','all')}>عرض الكل</button></div>
   </>}
-  {account.rows.some(r=>r.receiptRestricted)&&<p className="miniAccountMeaning">الرصيد يشمل جميع حركات الحساب. تفاصيل الوصولات تظهر ضمن صلاحياتك فقط.</p>}{view==='match'&&renderMatch?.()}
+  {view!=='manage'&&account.rows.some(r=>r.receiptRestricted)&&<p className="miniAccountMeaning">الرصيد يشمل جميع حركات الحساب. تفاصيل الوصولات تظهر ضمن صلاحياتك فقط.</p>}{view==='match'&&renderMatch?.()}
   {supplier&&(view==='movements'||view==='report')&&<>{categoryTabs}{searchControl}</>}
   {(view==='movements'||view==='report')&&!invalid&&<section className="miniReportScope" aria-label="نطاق كشف الحساب"><div className="miniReportScopeHead"><b>{reportScope.filterLabel}</b><span>{reportScope.countLabel}</span></div><p>{reportScope.periodLabel} · {reportScope.currencyLabel}</p><div className="miniReportBalances"><div><span>رصيد أول المدة · كامل الفترة</span><strong><bdi>{money(period.opening,currency)} {unit(currency)}</bdi></strong><small>{partyBalanceMeaning(account.type,period.opening)}</small></div><div><span>رصيد نهاية الفترة · كل الحركات</span><strong><bdi>{money(period.balance,currency)} {unit(currency)}</bdi></strong><small>{partyBalanceMeaning(account.type,period.balance)}</small></div></div><p>{reportScope.balanceNote} {partyBalanceLegend(account.type)}</p>{reportScope.filtered&&<button type="button" onClick={()=>{setCategory('all');setQuery('');}}>عرض كل حركات الفترة</button>}</section>}
   {view==='movements'&&<div className="partyReportActions"><div className="partyReportActionsTitle"><b>{invoiceView?'تقرير الفواتير بالتفصيل':category==='payments'?'كشف التسديدات':'تقرير الحركات'}</b><span>{period.rows.length} حركة</span></div>{invoiceData.error&&<p className="miniAlert" role="alert">{invoiceData.error} <button type="button" onClick={invoiceData.retry}>إعادة المحاولة</button></p>}<ReportActions showPrint enabled={!invalid&&(!invoiceView||supplier||invoiceData.ready)} disabledNotice={invoiceData.loading?'جاري تحميل تفاصيل الفواتير…':'تعذر تجهيز تفاصيل الفواتير؛ حدّث الحساب أو أعد المحاولة.'} html={movementHtml} filename={exportTitle+'-'+account.name}/></div>}

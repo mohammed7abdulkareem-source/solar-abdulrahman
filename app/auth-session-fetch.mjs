@@ -1,9 +1,16 @@
+import {tokenSessionId} from './auth-lifecycle.mjs';
 // Bound the fresh session adopted after a password change. Treat logout of an
 // explicitly revoked session as complete so this SDK clears its local session.
 const guards=new Map();
 export async function guardSessionAdoption(token,signal,operation){
  const guard={signal};guards.set(token,guard);
  try{return await operation();}finally{if(guards.get(token)===guard)guards.delete(token);}
+}
+let localSignOut=null;
+export async function signOutDevice(auth,session,isCurrent){
+ if(localSignOut)throw new Error('يوجد تسجيل خروج قيد التنفيذ.');
+ localSignOut={token:session.access_token,sessionId:tokenSessionId(session.access_token),isCurrent};
+ try{return await auth.signOut({scope:'local'});}finally{localSignOut=null;}
 }
 export function createSessionFetch(fetchImpl=(...args)=>fetch(...args),timeoutMs=15000){
  return async(input,init={})=>{
@@ -12,14 +19,24 @@ export function createSessionFetch(fetchImpl=(...args)=>fetch(...args),timeoutMs
   if(!guard&&method!=='POST')return fetchImpl(input,init);
   let path;try{path=new URL(typeof input==='string'?input:input instanceof URL?input.href:input.url).pathname;}catch{return fetchImpl(input,init);}
   if(method==='POST'&&path.endsWith('/auth/v1/logout')){
-   const response=await fetchImpl(input,init);
-   if([401,403].includes(response.status)){
-    const body=await response.clone().json().catch(()=>null);
-    // The installed auth-js turns this into AuthSessionMissingError and
-    // returns before _removeSession, retaining the revoked local credentials.
-    if(body?.code==='session_not_found'||body?.error_code==='session_not_found')return new Response(null,{status:204,headers:{'Cache-Control':'no-store'}});
+   const logout=localSignOut;
+   if(logout&&(!logout.isCurrent()||(token!==logout.token&&(!logout.sessionId||tokenSessionId(token)!==logout.sessionId)))){
+    return Response.json({message:'تغيّرت جلسة الجهاز.'},{status:409});
    }
-   return response;
+   const controller=new AbortController(),incoming=init.signal||input?.signal;
+   const abort=()=>controller.abort();
+   if(incoming?.aborted)abort();else incoming?.addEventListener('abort',abort,{once:true});
+   const timer=logout?setTimeout(abort,timeoutMs):undefined;
+   try{
+    const response=await fetchImpl(input,logout?{...init,signal:controller.signal}:init);
+    if([401,403].includes(response.status)){
+     const body=await response.clone().json().catch(()=>null);
+     if(body?.code==='session_not_found'||body?.error_code==='session_not_found')return new Response(null,{status:204,headers:{'Cache-Control':'no-store'}});
+    }
+    // The SDK reads non-success bodies before releasing its auth lock.
+    if(logout&&!response.ok)await response.clone().arrayBuffer();
+    return response;
+   }finally{clearTimeout(timer);incoming?.removeEventListener('abort',abort);}
   }
   if(!guard)return fetchImpl(input,init);
   if(method!=='GET'||!path.endsWith('/auth/v1/user'))return fetchImpl(input,init);

@@ -1,0 +1,3 @@
+.workspaceUpdateBanner{display:flex;align-items:center;justify-content:space-between;gap:.5rem .9rem;flex-wrap:wrap;margin:.65rem 0;padding:.45rem .75rem;border:1px solid #a1cfc7;border-radius:.85rem;background:#e9f6f2;color:#124941;font-weight:650}
+.workspaceUpdateBanner button{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;width:auto;min-height:42px;padding:.35rem .8rem;border:0;border-radius:.6rem;background:#096b60;color:white;font-weight:650}
+.workspaceUpdateBanner small{flex-basis:100%;color:#923526}

@@ -3,6 +3,7 @@ import {useEffect,useRef,useState} from 'react';
 import AppIcon from './app-icons';
 import CompactPartyAccount from './compact-party-account';
 import CustomerNameEditor from './customer-name-editor';
+import {canRenameCustomer} from './customer-utils.mjs';
 import CustomerOwnerTransfer from './customer-owner-transfer';
 import CustomerOwnershipGuard from './customer-ownership-guard';
 import StatementPaymentEditor from './statement-payment-editor';
@@ -60,19 +61,34 @@ function AccountContents({profile,account,onAccountChanged,renderSaleEditor,onDe
   setEditor({id:row.id,kind:row.kind,action});
   window.scrollTo({top:0,behavior:'instant'});
  }
- function receiptActions(row){
+ function receiptPermissions(row){
   if(row.receiptRestricted||['opening_balance','account_reconciliation'].includes(row.mode))return null;
   const sale=saleKinds.includes(row.kind),page=sale?row.kind:paymentPages[row.kind];
   if(!page||!canOpenPage(profile,page))return null;
   const edit=row.canEditReceipt===true&&(!sale||!!renderSaleEditor);
   const remove=row.canDeleteReceipt===true&&(sale?!!onDeleteInvoice:canOpenPage(profile,'deletionRequests'));
-  if(!edit&&!remove)return null;
+  return edit||remove?{sale,edit,remove}:null;
+ }
+ function receiptActions(row){
+  const allowed=receiptPermissions(row);
+  if(!allowed)return null;
+  const {edit,remove,sale}=allowed;
   const label=sale?'وصل البيع':'وصل التسديد',disabled=saving||props.balanceStatus!=='ready';
   return <div className="customerReceiptActions" role="group" aria-label={'إجراءات '+label+(row.receiptNo?' #'+row.receiptNo:'')}>
    {edit&&<button type="button" aria-label={'تعديل '+label} disabled={disabled} onClick={e=>act(row,'update',e.currentTarget)}><AppIcon name="edit" size={15}/>تعديل <span>{label}</span></button>}
    {remove&&<button type="button" className="customerReceiptDelete" aria-label={'حذف '+label} disabled={disabled} onClick={e=>act(row,'delete',e.currentTarget)}><AppIcon name="trash" size={15}/>حذف <span>{label}</span></button>}
   </div>;
  }
+ let canEdit=false,canDelete=false;
+ const manageableRows=account.rows.filter(row=>{
+  const allowed=receiptPermissions(row);
+  if(!allowed)return false;
+  canEdit||=allowed.edit;canDelete||=allowed.remove;
+  return true;
+ });
+ const canRename=canRenameCustomer(profile,account),canTransfer=isAdministrator(profile);
+ const manageLabel=canEdit&&canDelete?'تعديل وحذف الوصولات':canEdit?'تعديل الوصولات':canDelete?'حذف الوصولات':'إدارة الوصولات';
+ const receiptManagement=manageableRows.length||canTransfer?{rows:manageableRows,label:manageLabel}:null;
  const selected=editor&&account.rows.find(row=>String(row.id)===String(editor.id)&&row.kind===editor.kind&&!row.receiptRestricted);
  useEffect(()=>{
   if(editor&&!selected&&!saving){setEditor(null);restoreOrigin();}
@@ -84,12 +100,12 @@ function AccountContents({profile,account,onAccountChanged,renderSaleEditor,onDe
   {notice&&<p className="miniSuccess" role="status">{notice}</p>}
   {error&&<p className="miniAlert" role="alert">{error}</p>}
   <div hidden={!!form}>
-   <CompactPartyAccount {...props} account={account} documentRevision={revision} renderReceiptActions={receiptActions}
-    identityActions={<div className="customerIdentityActions">
-     <CustomerNameEditor key={account.id} profile={profile} account={account} onSaved={refreshAfterSave}/>
-     {isAdministrator(profile)&&<CustomerOwnerTransfer key={profile.id+':'+account.id} account={account}
-      disabled={saving||props.balanceStatus!=='ready'} onSaved={refreshAfterSave}/>}
-    </div>}/>
+   <CompactPartyAccount {...props} account={account} documentRevision={revision} renderReceiptActions={receiptActions} receiptManagement={receiptManagement}
+    identityActions={(canRename||canTransfer)&&<>
+     {canRename&&<div className="statementIdentityItem"><CustomerNameEditor key={account.id} profile={profile} account={account} onSaved={refreshAfterSave}/></div>}
+     {canTransfer&&<div className="statementIdentityItem"><CustomerOwnerTransfer key={profile.id+':'+account.id} account={account}
+      disabled={saving||props.balanceStatus!=='ready'} onSaved={refreshAfterSave}/></div>}
+    </>}/>
   </div>
   {form&&<div ref={editorRegion} tabIndex={-1} aria-label="إدارة الوصل" role="region">{form}</div>}
  </>;

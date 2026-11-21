@@ -36,8 +36,8 @@ async function pageFor(session){
   delete headers.host;delete headers.origin;
   const response=await ctx.request.fetch(gateway+url.pathname+url.search,{method:request.method(),headers,data:request.postDataBuffer()||undefined});
   if(url.pathname.endsWith('/solar-admin-users')){
-   const action=request.postDataJSON()?.action||'list';
-   actions.push({actor:session.user.id,action,status:response.status()});
+   const body=request.postDataJSON(),action=body?.action||'list';
+   actions.push({actor:session.user.id,action,status:response.status(),credentialIncluded:Object.hasOwn(body||{},'password')});
   }
   if(response.status()>=500)errors.push({path:url.pathname,status:response.status()});
   await route.fulfill({response,headers:{...response.headers(),...cors}});
@@ -89,10 +89,19 @@ try{
  await row(account.id).getByText('موقوف',{exact:true}).waitFor();
  await byName(row(account.id),'تعديل').click();
  assert.equal(await identity.getByLabel('الاسم الظاهر',{exact:true}).inputValue(),display);
- assert.equal(await identity.getByLabel('كلمة المرور',{exact:true}).inputValue(),'');
+ assert.equal(await identity.locator('input[type=password]').count(),0);
+ const reset=identity.getByRole('checkbox',{name:'تغيير كلمة المرور'});
+ await reset.check();
+ await identity.getByLabel('كلمة المرور الجديدة',{exact:true}).fill(randomUUID());
+ await reset.uncheck();
+ assert.equal(await identity.locator('input[type=password]').count(),0);
+ const editedDisplay=display+' معدّل';
+ await identity.getByLabel('الاسم الظاهر',{exact:true}).fill(editedDisplay);
  await byName(identity,'حفظ البيانات والمتابعة').click();
  await step(2).waitFor();
+ assert.equal(actions.filter(x=>x.action==='save_details').at(-1).credentialIncluded,false);
  checks.newIdentityPersisted=true;
+ checks.cancelledResetOmittedPassword=true;
 
  await step(2).getByLabel('نوع المستخدم',{exact:true}).selectOption('user');
  async function enablePermission(key){

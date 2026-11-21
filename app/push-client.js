@@ -1,13 +1,14 @@
 import {supabase} from './supabase';
+import {releaseDevicePush} from './push-release.mjs';
 export function pushSupported(){return typeof window!=='undefined'&&'serviceWorker'in navigator&&'PushManager'in window&&'Notification'in window;}
-export async function setPushDeviceUser(userId){
+export async function setPushDeviceUser(userId,registration,expectedUserId){
  if(!('serviceWorker'in navigator))return;
- const reg=await navigator.serviceWorker.ready;
- if(!reg.active)return;
+ const reg=registration||(userId?await navigator.serviceWorker.ready:await navigator.serviceWorker.getRegistration());
+ if(!reg?.active)return;
  await new Promise((resolve,reject)=>{
-  const channel=new MessageChannel(),timeout=setTimeout(()=>reject(new Error('تعذر تحديث إعدادات الجهاز')),5000);
+  const channel=new MessageChannel(),timeout=setTimeout(()=>{channel.port1.close();reject(new Error('تعذر تحديث إعدادات الجهاز'));},5000);
   channel.port1.onmessage=e=>{clearTimeout(timeout);channel.port1.close();e.data?.ok?resolve():reject(new Error('تعذر حفظ إعدادات الإشعارات'));};
-  reg.active.postMessage({type:'SOLAR_PUSH_USER',userId:userId||null},[channel.port2]);
+  reg.active.postMessage({type:'SOLAR_PUSH_USER',userId:userId||null,expectedUserId},[channel.port2]);
  });
 }
 function publicKeyBytes(key){const raw=atob(key.replace(/-/g,'+').replace(/_/g,'/').padEnd(Math.ceil(key.length/4)*4,'='));return Uint8Array.from(raw,c=>c.charCodeAt(0));}
@@ -28,26 +29,28 @@ export async function enablePush(userId){
  localStorage.setItem('solar_push_user',userId);
  return true;
 }
-export async function disablePush(){
- localStorage.removeItem('solar_push_user');
- if(!('serviceWorker'in navigator))return;
- await setPushDeviceUser(null).catch(()=>{});
- const reg=await navigator.serviceWorker.getRegistration();
- const sub=await reg?.pushManager?.getSubscription();
- let error=null;
- if(sub){
-  const result=await supabase.from('solar_push_subscriptions').delete().eq('endpoint',sub.endpoint);
-  error=result.error;await sub.unsubscribe();
- }
- const notices=await reg?.getNotifications();notices?.forEach(n=>n.close());
- if(error)throw new Error('تم إيقاف إشعارات هذا المتصفح. تعذرت مزامنة حذف الجهاز؛ أعد المحاولة عند الاتصال.');
+export async function disablePush({userId=localStorage.getItem('solar_push_user'),isCurrent,timeoutMs}={}){
+ return releaseDevicePush({
+  worker:navigator.serviceWorker,storage:localStorage,userId,isCurrent,timeoutMs,
+  clearBinding:(reg,expected)=>setPushDeviceUser(null,reg,expected||undefined),
+  async removeEndpoint(endpoint,owner,signal){
+   if(!owner)return;
+   const result=await supabase.from('solar_push_subscriptions').delete().eq('endpoint',endpoint).eq('user_id',owner).abortSignal(signal);
+   if(result.error)throw new Error('تم إيقاف إشعارات هذا المتصفح. تعذرت مزامنة حذف الجهاز؛ أعد المحاولة عند الاتصال.');
+  }
+ });
 }
 export async function registeredOnThisDevice(userId){
  if(!pushSupported()||Notification.permission!=='granted')return false;
- if(localStorage.getItem('solar_push_user')!==userId){await setPushDeviceUser(null).catch(()=>{});return false;}
+ const bound=localStorage.getItem('solar_push_user');
+ if(bound!==userId){
+  const reg=await navigator.serviceWorker.getRegistration();
+  if(reg&&localStorage.getItem('solar_push_user')===bound)await setPushDeviceUser(null,reg,bound||undefined).catch(()=>{});
+  return false;
+ }
  const reg=await navigator.serviceWorker.ready,sub=await reg.pushManager.getSubscription();
  if(!sub)return false;
  const {data,error}=await supabase.from('solar_push_subscriptions').select('endpoint').eq('endpoint',sub.endpoint).eq('user_id',userId).maybeSingle();
- if(error||!data)return false;
- await setPushDeviceUser(userId);return true;
+ if(error||!data||localStorage.getItem('solar_push_user')!==userId)return false;
+ await setPushDeviceUser(userId,reg);return true;
 }

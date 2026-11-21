@@ -5,8 +5,8 @@ import PhoneActions from './phone-actions';
 import {supabase} from './supabase';
 import {isAdministrator} from './access-utils.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
-import {userDisplayName,validHonorific} from './user-name-utils.mjs';
-import {normalizeUserPhone,validUserPhone} from './user-phone-utils.mjs';
+import {userDisplayName} from './user-name-utils.mjs';
+import {userDetailsRequest} from './user-admin-details.mjs';
 import {
  accountPermissions,accountRole,changeAccountPermission,fieldRoleActions,
  permissionGroups,resetAccountPermissions,roleLabels,selectedPermissionLabels,warehouseDirections
@@ -103,8 +103,9 @@ function Wizard({editing,warehouses,actorId,onExit,onSaved}){
  const [stage,setStage]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),[confirm,setConfirm]=useState(''),[uncertain,setUncertain]=useState(false);
  const pending=useRef(null),lock=useRef(false),heading=useRef(null);
  const isSelf=target?.id===actorId;
+ const [changePassword,setChangePassword]=useState(false);
  const initialDetails=identity(target);
- const changedDetails=Object.keys(info).some(key=>String(initialDetails[key]||'')!==info[key]);
+ const changedDetails=changePassword||Object.keys(info).some(key=>key!=='password'&&String(initialDetails[key]||'')!==info[key]);
  const changedAccess=role!==accountRole(target)||JSON.stringify(perms)!==JSON.stringify(accountPermissions(target?.permissions))||
   JSON.stringify(warehouse)!==JSON.stringify(safeWarehouses(target))||!!target&&active!==target.active;
  const edited=target?changedDetails||changedAccess:Object.values(info).some(Boolean);
@@ -128,17 +129,11 @@ function Wizard({editing,warehouses,actorId,onExit,onSaved}){
  function details(e){
   e.preventDefault();
   if(target&&!changedDetails&&!uncertain){move(1);return;}
-  const normalized={...info,username:info.username.trim().toLowerCase(),display_name:info.display_name.trim(),phone:normalizeUserPhone(info.phone),honorific:info.honorific.trim()};
-  // An old record may have no phone. Edits to other fields preserve it.
-  if(!/^[a-z0-9_.-]{2,30}$/.test(normalized.username)){setError('اكتب اسم الدخول بحروف إنكليزية أو أرقام من ٢ إلى ٣٠ خانة.');return;}
-  if(!normalized.display_name||!validHonorific(normalized.honorific)||((!target||normalized.phone||target.phone)&&!validUserPhone(normalized.phone))){setError('راجع الاسم الظاهر والكنية ورقم الهاتف.');return;}
-  if((!target||normalized.password)&&normalized.password.length<6){setError('أدخل كلمة مرور من ست خانات على الأقل.');return;}
-  const body={action:'save_details',...normalized,...(target?{user_id:target.id,token:target.token}:{})};
-  if(!normalized.password)delete body.password;
-  if(target&&!normalized.phone&&!target.phone)delete body.phone;
+  let body;
+  try{body=userDetailsRequest(info,target,changePassword);}catch(err){setError(err.message);return;}
   void mutate(body,({user})=>{
    if(!user?.id||!user.token)throw Object.assign(new Error('لم يصل تأكيد حفظ الحساب. أعد المحاولة.'),{uncertain:true});
-   setTarget(user);setInfo(identity(user));if(!target)setWarehouse(safeWarehouses(user));setStage(1);
+   setTarget(user);setInfo(identity(user));setChangePassword(false);if(!target)setWarehouse(safeWarehouses(user));setStage(1);
   });
  }
  const currentLabels=selectedPermissionLabels(role,perms);
@@ -160,7 +155,8 @@ function Wizard({editing,warehouses,actorId,onExit,onSaved}){
     <label>اسم المستخدم<input aria-label="اسم المستخدم" value={info.username} dir="ltr" autoCapitalize="none" maxLength={30} autoComplete="off" onChange={e=>field('username',e.target.value)} required/></label>
     <label>رقم هاتف المستخدم<input aria-label="رقم هاتف المستخدم" value={info.phone} dir="ltr" type="tel" maxLength={30} onChange={e=>field('phone',e.target.value)} required={!target||!!target.phone}/></label>
     <label>الكنية أو الصفة <small>اختياري</small><input aria-label="كنية المستخدم" value={info.honorific} list="ua-honorifics" maxLength={50} onChange={e=>field('honorific',e.target.value)}/><datalist id="ua-honorifics"><option value="المهندس"/><option value="الإداري"/><option value="الحاج"/><option value="السيد"/></datalist>{info.honorific&&<small>{userDisplayName(info)}</small>}</label>
-    <label>كلمة المرور{target&&<small>لتغييرها فقط</small>}<input aria-label="كلمة المرور" type="password" dir="ltr" autoComplete="new-password" value={info.password} minLength={6} onChange={e=>field('password',e.target.value)} required={!target}/></label>
+    {target&&<label className="uaCheck"><input type="checkbox" checked={changePassword} onChange={e=>{setChangePassword(e.target.checked);field('password','');}}/>تغيير كلمة المرور</label>}
+    {(!target||changePassword)&&<label>{target?'كلمة المرور الجديدة':'كلمة المرور'}<input aria-label={target?'كلمة المرور الجديدة':'كلمة المرور'} type="password" dir="ltr" autoComplete="new-password" value={info.password} minLength={6} onChange={e=>field('password',e.target.value)} required/></label>}
    </fieldset>{!target&&<p className="uaHint">يُحفظ الحساب موقوفاً إلى أن تراجع الصلاحيات والمخازن وتختار تفعيله.</p>}
    {error&&<p role="alert" className="uaError">{error}</p>}<div className="uaActions"><button type="submit" disabled={busy} className="uaPrimary">{busy?'جاري الحفظ…':'حفظ البيانات والمتابعة'}</button></div></form>}
    {stage===1&&<><div className="uaRoleSelect"><label>نوع المستخدم<select aria-label="نوع المستخدم" value={role} disabled={isSelf} onChange={e=>setRole(e.target.value)}>{Object.entries(roleLabels).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label></div><PermissionStep role={role} value={perms} onChange={setPerms} onReset={()=>setConfirm('reset')}/></>}

@@ -6,7 +6,8 @@ import {refreshMaterialBrands} from './current-brand.mjs';
 import {createLatestLoader} from './data-refresh.mjs';
 import {changedRows} from './review-utils.mjs';
 import {createClient} from '@supabase/supabase-js';
-import {createSessionFetch} from './auth-session-fetch.mjs';
+import {createSessionFetch,guardSessionAdoption} from './auth-session-fetch.mjs';
+import {requestPasswordSession} from './password-login.mjs';
 import {cashBalanceSnapshot} from './cash-read-balances.mjs';
 import {cloudSnapshotAccess} from './cloud-snapshot-access.mjs';
 import {canManageQuotes} from './access-utils.mjs';
@@ -15,6 +16,17 @@ import {salesAuthorizationKey} from './sales-read-scope.mjs';
 const url='https://afxxaafsuscwyjzrnagc.supabase.co';
 const key='sb_publishable_NWfk9al_gjcSnI6NBQX6GA_CGiQ2-Jy';
 export const supabase=createClient(url,key,{global:{fetch:createSessionFetch()}});
+
+export async function loginWithPassword(login,password,signal){
+ const tokens=await requestPasswordSession(url+'/functions/v1/solar-login',key,{login,password},signal);
+ if(signal.aborted)return;
+ try{
+  const {data,error}=await guardSessionAdoption(tokens.access_token,signal,()=>supabase.auth.setSession(tokens));
+  if(error||!data?.session)throw new Error();
+ }catch{
+  if(!signal.aborted)throw new Error('تم التحقق من كلمة المرور، وتعذّر فتح الجلسة على هذا الجهاز. حاول تسجيل الدخول مرة ثانية.');
+ }
+}
 
 // Verify in an isolated, non-persistent session. The reset endpoint repeats this
 // check server-side when executing, after the user's final confirmation.

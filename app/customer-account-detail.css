@@ -76,3 +76,27 @@ body.premiumSolar .appContent .customerStatementLedger .customerReceiptActions {
  }
  body.premiumSolar .appContent .customerStatementLedger .customerReceiptActions button>span { display:none; }
 }
+
+body.premiumSolar .appContent .statementManagement {
+ margin:0 0 10px; padding:10px 12px 12px; border:1px solid #c8dcd8; border-radius:13px; background:#f2f8f6;
+}
+body.premiumSolar .appContent .statementManagement h2 { margin:0 0 7px; font-size:.95rem; color:#25494b; }
+body.premiumSolar .appContent .statementManagement .customerIdentityActions { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,128px),1fr)); align-items:start; gap:7px; }
+.statementManagement .statementNameControl { justify-items:stretch; }
+.statementManagement .statementIdentityItem:has(.statementNameForm) { grid-column:1/-1; }
+body.premiumSolar .appContent .statementManagement :is(.statementNameTrigger,.statementTransferTrigger,.statementReceiptTrigger) {
+ display:flex; justify-content:center; align-items:center; gap:6px; width:100%; min-height:44px; height:auto; padding:6px 9px;
+ border:1px solid #a8c8bf; border-radius:9px; background:white; color:#165751; font:inherit; font-size:.88rem; font-weight:650; white-space:normal;
+}
+body.premiumSolar .appContent .statementManagement .statementReceiptTrigger { background:#125d59; border-color:#125d59; color:white; }
+body.premiumSolar .appContent .statementManagement button:focus-visible { outline:2px solid #236974; outline-offset:2px; }
+.statementReceiptManager,.statementReceiptList { display:grid; gap:8px; }
+.statementManageReceipt { min-width:0; border:1px solid #cedfdb; border-radius:12px; background:#fff; }
+.statementManageReceiptInfo { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:6px 14px; padding:11px 12px 5px; color:#174b51; }
+.statementManageReceiptInfo>div { display:grid; gap:2px; }
+.statementManageReceiptInfo small { color:#526971; }
+.statementManageReceiptInfo>bdi { font-weight:700; }
+@media(max-width:540px) {
+ body.premiumSolar .appContent .statementManagement .customerIdentityActions { grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .statementManagement .customerIdentityActions>:last-child:nth-child(odd) { grid-column:1/-1; }
+}

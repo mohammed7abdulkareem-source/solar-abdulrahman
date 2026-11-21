@@ -1,4 +1,4 @@
-const CACHE='abdulrahman-solar-v4-1-18';
+const CACHE='abdulrahman-solar-v4-1-19';
 const CORE=['/manifest.webmanifest','/icon-192.png','/icon-512.png','/apple-touch-icon.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('abdulrahman-solar-')&&key!==CACHE).map(key=>caches.delete(key)))).then(()=>self.clients.claim()))});
@@ -10,16 +10,16 @@ self.addEventListener('fetch',event=>{
 });
 
 // Persist only the account binding; never store session tokens in the worker.
-function pushIdentity(userId,write=false){
+function pushIdentity(userId,write=false,expectedUserId){
  return new Promise((resolve,reject)=>{
   const request=indexedDB.open('solar-push-device',1);
   request.onupgradeneeded=()=>request.result.createObjectStore('settings');
   request.onerror=()=>reject(request.error);
   request.onsuccess=()=>{
    const db=request.result,tx=db.transaction('settings',write?'readwrite':'readonly'),store=tx.objectStore('settings');
-   let value=null;const op=write?store.put(userId,'user'):store.get('user');
-   op.onsuccess=()=>{value=op.result};
-   tx.oncomplete=()=>{db.close();resolve(write?userId:value)};tx.onerror=()=>{db.close();reject(tx.error)};
+   let value=null;const op=store.get('user');
+   op.onsuccess=()=>{value=op.result;if(write&&(expectedUserId===undefined||value===expectedUserId)){store.put(userId,'user');value=userId;}};
+   tx.oncomplete=()=>{db.close();resolve(value)};tx.onerror=()=>{db.close();reject(tx.error)};
   };
  });
 }
@@ -27,7 +27,7 @@ self.addEventListener('message',event=>{
  if(event.data?.type!=='SOLAR_PUSH_USER')return;
  const userId=event.data.userId;
  if(userId!==null&&(typeof userId!=='string'||!/^[0-9a-f-]{36}$/i.test(userId)))return;
- event.waitUntil(pushIdentity(userId,true).then(()=>event.ports[0]?.postMessage({ok:true})).catch(()=>event.ports[0]?.postMessage({ok:false})));
+ event.waitUntil(pushIdentity(userId,true,event.data.expectedUserId).then(()=>event.ports[0]?.postMessage({ok:true})).catch(()=>event.ports[0]?.postMessage({ok:false})));
 });
 self.addEventListener('push',event=>{
  event.waitUntil((async()=>{

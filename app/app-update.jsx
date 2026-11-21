@@ -1,18 +1,34 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
+import {createPortal} from 'react-dom';
 import AppIcon from './app-icons';
-export const APP_VERSION='4.1.18';
+import {reloadVerifiedApp,watchAppVersion} from './app-update-client.mjs';
+import './app-update.css';
+
+export const APP_VERSION='4.1.19';
 export default function AppUpdate(){
- const [busy,setBusy]=useState(false),[available,setAvailable]=useState(false),[error,setError]=useState('');
- useEffect(()=>{let live=true;const check=()=>{if(document.visibilityState!=='visible')return;fetch('/version.json',{cache:'no-store'}).then(r=>r.ok?r.json():null).then(v=>{if(live&&v?.version)setAvailable(v.version!==APP_VERSION)}).catch(()=>{})};check();window.addEventListener('focus',check);return()=>{live=false;window.removeEventListener('focus',check)}},[]);
+ const [busy,setBusy]=useState(false),[available,setAvailable]=useState(''),[error,setError]=useState(''),[statusArea,setStatusArea]=useState(null);
+ const refresh=useRef(null);
+ useEffect(()=>{
+  setStatusArea(document.getElementById('workspace-update-notice'));
+  const stop=watchAppVersion(version=>setAvailable(version===APP_VERSION?'':version));
+  return ()=>{stop();refresh.current?.abort();refresh.current=null;};
+ },[]);
  async function update(){
-  if(busy||!confirm('تحديث البرنامج الآن؟ احفظ أي بيانات غير محفوظة قبل المتابعة.'))return;
-  setBusy(true);setError('');
-  try{
-   const response=await fetch('/version.json?check='+Date.now(),{cache:'no-store',signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error();await response.json();
-   if('serviceWorker' in navigator){const registration=await navigator.serviceWorker.register('/sw.js',{updateViaCache:'none'});await registration.update();const worker=registration.installing||registration.waiting;if(worker&&worker.state!=='activated')await new Promise(resolve=>{const done=()=>{clearTimeout(timer);worker.removeEventListener('statechange',changed);resolve()};const changed=()=>{if(['activated','redundant'].includes(worker.state))done()};const timer=setTimeout(done,5000);worker.addEventListener('statechange',changed)})}
-   const url=new URL(window.location.href);url.searchParams.set('updated',String(Date.now()));window.location.replace(url.href);
-  }catch{setError('تعذر التحديث؛ تأكد من الإنترنت وحاول مجدداً.');setBusy(false)}
+  if(refresh.current||!window.confirm('تحديث البرنامج الآن؟ احفظ أي بيانات غير محفوظة قبل المتابعة.'))return;
+  const request=new AbortController();
+  refresh.current=request;setBusy(true);setError('');
+  try{await reloadVerifiedApp(request);}
+  catch{if(refresh.current===request)setError('تعذر التحديث. تأكد من الإنترنت وحاول مجدداً.');}
+  finally{if(refresh.current===request){refresh.current=null;setBusy(false);}}
  }
- return <div className="appUpdate"><button type="button" className={available?'available':''} disabled={busy} onClick={update} aria-label={busy?'جاري التحديث…':available?'تحديث جديد متوفر':'تحديث البرنامج'} title={'الإصدار الحالي '+APP_VERSION}><AppIcon name="refresh" size={18}/><span className="updateLabel">{busy?'جاري التحديث…':available?'تحديث جديد متوفر':'تحديث البرنامج'}</span></button>{error&&<small role="alert">{error}</small>}</div>;
+ const label=busy?'جاري التحديث…':available?'تحديث جديد متوفر':'تحديث البرنامج';
+ return <>
+  <div className="appUpdate"><button type="button" className={available?'available':''} disabled={busy} onClick={update} aria-label={label} title={'الإصدار الحالي '+APP_VERSION}><AppIcon name="refresh" size={18}/><span className="updateLabel">{label}</span></button>{error&&<small role="alert">{error}</small>}</div>
+  {statusArea&&available&&createPortal(<aside className="workspaceUpdateBanner" aria-label="تحديث البرنامج">
+   <span role="status">إصدار جديد متاح <bdi>{available}</bdi></span>
+   <button type="button" onClick={update} disabled={busy}><AppIcon name="refresh" size={16}/>{busy?'جاري التحديث…':'تحديث الآن'}</button>
+   {error&&<small role="alert">{error}</small>}
+  </aside>,statusArea)}
+ </>;
 }
