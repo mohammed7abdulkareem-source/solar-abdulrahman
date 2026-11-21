@@ -8,7 +8,7 @@ import {filteredStock,quantity,escapeHtml as e,warehouseDate} from './warehouse-
 import {formatMoney} from './money-format.mjs';
 import {usesPersonalSalePrices} from './inventory-valuation.mjs';
 import {a4 as documentA4} from './document-template.mjs';
-import {inventoryBalanceDocument,inventoryBalanceView,stockValue,stockMoney} from './inventory-balance-report.mjs';
+import {inventoryBalanceDocument,inventoryBalanceView,stockValue,stockMoney,stockUnitPrice,stockPriceSource} from './inventory-balance-report.mjs';
 import {materialQuantity} from './material-movement-utils.mjs';
 import './inventory-balance.css';
 
@@ -23,7 +23,7 @@ function StockRows({rows,priced,personalPrices}){
  return <div className="inventoryRows">{rows.length?rows.map(p=><article key={p.id} data-stock-product={p.id}>
   <div className="inventoryMaterial"><b dir="auto">{p.name}</b>
    <small><bdi>{p.code}</bdi>{[p.brand,p.category].filter(Boolean).map((mark,i)=><span key={i}> · {mark}</span>)}</small>
-   {priced&&<small>{personalPrices?'سعر الجملة':'كلفة الوحدة'} <bdi>{stockMoney(p.cost)}</bdi></small>}</div>
+   {priced&&<small>{personalPrices?'سعر المادة':'كلفة الوحدة'} <bdi>{stockUnitPrice(p.cost,personalPrices)}</bdi>{p.cost!=null&&' د.ع'}{personalPrices&&stockPriceSource(p)&&' · '+stockPriceSource(p)}</small>}</div>
   <div className="inventoryQty"><small>متاح</small><strong><bdi dir="ltr">{materialQuantity(p.qty)}</bdi></strong>
    {Number(p.reservedQty)!==0&&p.reservedQty!=null&&<small className="inventoryReserved">محجوز للنقل <bdi>{materialQuantity(p.reservedQty)}</bdi></small>}
    {priced&&<small>القيمة <bdi>{p.cost==null?'—':stockMoney(stockValue(p))}</bdi></small>}</div>
@@ -31,7 +31,7 @@ function StockRows({rows,priced,personalPrices}){
 }
 function StockMetrics({totals,priced,personalPrices}){
  const fields=[['products','عدد المواد','package'],['available','مجموع الكميات المتاحة','warehouse'],['reserved','محجوز لطلبات النقل','exchange']];
- if(priced)fields.push(['value',personalPrices?'قيمة المواد بأسعار الجملة المحددة':'قيمة المخزون مع المحجوز','banknote']);
+ if(priced)fields.push(['value',personalPrices?'قيمة المخزون بأسعار المواد مع المحجوز':'قيمة المخزون مع المحجوز','banknote']);
  return <dl className="inventoryBalanceMetrics" aria-label="ملخص نتائج المخزون">{fields.map(([key,label,icon])=><div key={key}>
   <dt><AppIcon name={icon} size={16}/>{label}</dt><dd data-stock-metric={key}><bdi dir="ltr">{key==='value'?formatMoney(totals[key]):materialQuantity(totals[key])}</bdi>{key==='value'&&<small> د.ع</small>}</dd>
  </div>)}</dl>;
@@ -40,8 +40,8 @@ export default function InventoryWorkspace({profile,a4=documentA4,onChanged,init
  const [tab,setTab]=useState(initialTransferId?'transfers':'balances'),[mode,setMode]=useState('total');
  const [query,setQuery]=useState(''),[hideZero,setHideZero]=useState(true),[cost,setCost]=useState(false);
  const radioName=useId(),split=mode==='warehouses';
- const inventory=useWarehouseInventory({aggregate:true,byWarehouse:tab==='balances'&&split});
  const personalPrices=usesPersonalSalePrices(profile);
+ const inventory=useWarehouseInventory({aggregate:true,byWarehouse:tab==='balances'&&split,inventoryMaterialPrices:tab==='balances'&&cost&&personalPrices});
  const warehouseName=inventory.warehouseName||'جميع المخازن المسموحة';
  const priced=inventory.ready&&inventory.showCost&&cost;
  const view=useMemo(()=>inventory.ready&&tab==='balances'?inventoryBalanceView({
@@ -62,7 +62,7 @@ export default function InventoryWorkspace({profile,a4=documentA4,onChanged,init
     <div className="inventoryPresentationControls">
      <fieldset className="stockModes"><legend>طريقة عرض الأرصدة</legend><div>{[['total','المجموع','grid'],['warehouses','حسب المخزن','warehouse']].map(([key,label,icon])=>
       <label key={key}><input type="radio" name={radioName} value={key} checked={mode===key} onChange={()=>setMode(key)}/><span><AppIcon name={icon} size={16}/>{label}</span></label>)}</div></fieldset>
-     <div className="stockToggles">{inventory.showCost&&<label><input type="checkbox" checked={cost} onChange={ev=>setCost(ev.target.checked)}/>{personalPrices?'إظهار سعر الجملة':'إظهار الكلفة'}</label>}
+     <div className="stockToggles">{inventory.showCost&&<label><input type="checkbox" checked={cost} onChange={ev=>setCost(ev.target.checked)}/>{personalPrices?'إظهار سعر المادة':'إظهار الكلفة'}</label>}
       <label><input type="checkbox" checked={hideZero} onChange={ev=>setHideZero(ev.target.checked)}/>إخفاء الأرصدة الصفرية</label></div>
     </div>
    </div>
@@ -70,7 +70,7 @@ export default function InventoryWorkspace({profile,a4=documentA4,onChanged,init
     <section className="inventoryStockList" aria-label={split?'تفصيل الأرصدة حسب المخزن':'مجموع أرصدة المواد'}>
      <div className="inventoryBalanceListHead"><h3>{split?'الأرصدة حسب المخزن':'أرصدة المواد'}</h3><span>{warehouseName}</span></div>
      {split?view.groups.length?view.groups.map(w=><section key={w.id} data-stock-warehouse={w.id} aria-label={w.name} className="inventoryStockGroup"><header><div><AppIcon name="warehouse" size={18}/><h4>{w.name}</h4>{w.active===false&&<small>موقوف</small>}</div>
-      <small>{materialQuantity(w.rows.length)} مادة · <bdi>{materialQuantity(w.available)}</bdi> متاح</small></header><StockRows rows={w.rows} priced={priced} personalPrices={personalPrices}/></section>):<p className="inventoryEmpty">لا توجد مخازن مسموحة لعرض أرصدتها.</p>:<StockRows rows={view.rows} priced={priced} personalPrices={personalPrices}/>}
+      <small>{materialQuantity(w.rows.length)} مادة · <bdi>{materialQuantity(w.available)}</bdi> متاح{priced&&<> · قيمة المخزون <bdi>{stockMoney(w.value)}</bdi></>}</small></header><StockRows rows={w.rows} priced={priced} personalPrices={personalPrices}/></section>):<p className="inventoryEmpty">لا توجد مخازن مسموحة لعرض أرصدتها.</p>:<StockRows rows={view.rows} priced={priced} personalPrices={personalPrices}/>}
     </section></>}
    {inventory.loading&&<p role="status" className="inventoryEmpty">جاري تحميل أرصدة المواد…</p>}
    <section className="inventoryBalanceExport" aria-label="تصدير أرصدة المخزون"><h3>كشف أرصدة المخزون</h3><ReportActions showPrint enabled={!!view} html={doc?a4(doc.title,doc.body,doc.total,doc.subtitle):''} filename={(split?'أرصدة-حسب-المخزن-':'مجموع-الأرصدة-')+warehouseName}/></section>

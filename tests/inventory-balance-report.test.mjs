@@ -45,13 +45,34 @@ test('export escapes the warehouse label in both its HTML title and body',()=>{
  assert.ok(doc.title.includes('&lt;فرع&gt;'));assert.ok(!doc.body.includes('<فرع>'));
 });
 
-test('personal price list keeps the quantities of unpriced products and qualifies the visible total',()=>{
- const products=[{id:1,name:'أ',qty:3,cost:40},{id:2,name:'ب',qty:5,cost:null}];
- const view=inventoryBalanceView({...snapshot,products,byWarehouse:false});
- const result=inventoryBalanceDocument(view,{...settings,byWarehouse:false,priced:true,personalPrices:true});
- assert.equal(view.totals.available,8);
- assert.equal(result.total,'120 د.ع');
- assert.match(result.body,/أسعار الجملة المحددة فقط/);
- assert.match(result.body,/غير محدد/);
- assert.doesNotMatch(result.body,/كلفة الوحدة/);
+test('stock uses effective unit prices for every material and counts its reserved quantity once in both views',()=>{
+ const list=[
+  {id:1,name:'يدوية',qty:5,reservedQty:1,bookQty:6,cost:40,bookCost:999999,floorSource:'configured'},
+  {id:2,name:'تلقائية',qty:2.5,reservedQty:0.5,bookQty:3,cost:100.125455,floorSource:'cost'},
+  {id:3,name:'صفر',qty:1,reservedQty:0,cost:0,floorSource:'cost'}
+ ];
+ const balances=[
+  {productId:1,warehouseId:3,qty:2,reservedQty:1,bookQty:3},
+  {productId:1,warehouseId:5,qty:3,bookQty:3},
+  {productId:2,warehouseId:3,qty:1.5,reservedQty:0.5},
+  {productId:2,warehouseId:5,qty:1,bookQty:1},
+  {productId:3,warehouseId:5,qty:1}
+ ];
+ const source={...snapshot,products:list,warehouseBalances:balances};
+ const aggregate=inventoryBalanceView({...source,byWarehouse:false});
+ const view=inventoryBalanceView({...source,byWarehouse:true});
+ assert.deepEqual(view.totals,aggregate.totals);
+ assert.equal(view.totals.available,8.5);assert.equal(view.totals.reserved,1.5);
+ assert.equal(view.totals.value,6*40+3*100.125455);
+ assert.deepEqual(view.groups.map(w=>w.value),[3*40+2*100.125455,3*40+100.125455]);
+ const priced=inventoryBalanceDocument(view,{...settings,priced:true,personalPrices:true});
+ assert.equal(priced.total,'540.38 د.ع');
+ assert.match(priced.body,/سعر المادة د.ع/);assert.match(priced.body,/100\.125455/);
+ assert.match(priced.body,/يدوي/);assert.match(priced.body,/حسب الكلفة/);
+ assert.match(priced.body,/320\.25/);assert.match(priced.body,/220\.13/);
+ assert.match(priced.body,/<td><bdi>0<\/bdi><br><small>حسب الكلفة/);
+ assert.doesNotMatch(priced.body,/999,999|غير محدد|أسعار الجملة/);
+ const quantities=inventoryBalanceDocument(view,{...settings,priced:false,personalPrices:true});
+ assert.equal(quantities.total,'');
+ assert.doesNotMatch(quantities.body,/قيمة المخزون|سعر المادة|حسب الكلفة|100\.125455|999,999|320\.25|220\.13/);
 });

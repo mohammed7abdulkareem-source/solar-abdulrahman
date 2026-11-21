@@ -2,6 +2,7 @@ import {phoneContactDocument} from './phone-contact-utils.mjs';
 import {accountEffect} from './reconciliation-utils.mjs';
 import {supplierEffect,money} from './supplier-utils.mjs';
 import {escapeHtml as e} from './warehouse-utils.mjs';
+import {personalStockPricingNote,stockBookQuantity,stockPriceSource,stockUnitPrice} from './inventory-balance-report.mjs';
 
 const rounded=n=>Math.round((n+Number.EPSILON)*100)/100;
 const metric=(label,value,unit='د.ع')=>'<div class="reportMetric"><span>'+e(label)+'</span><strong>'+money(value)+' '+unit+'</strong></div>';
@@ -24,14 +25,14 @@ export function capitalAccounts(tx,parties=[],supplier=false){
  return {rows,net,total:rounded(rows.reduce((sum,r)=>sum+Math.max(0,r.balance),0)),credit:rounded(rows.reduce((sum,r)=>sum+Math.max(0,-r.balance),0))};
 }
 export function capitalStockReport(products,personalPrices=false){
- const rows=products.map(p=>({...p,qty:p.bookQty??p.qty})).filter(p=>Number(p.qty)>0);
+ const rows=products.map(p=>({...p,qty:stockBookQuantity(p)})).filter(p=>Number(p.qty)>0);
  const total=rows.reduce((sum,p)=>sum+Number(p.qty)*Number(p.cost??0),0);
- const title=personalPrices?'كشف المخزون بأسعار الجملة المحددة':'كشف المخزون بالكلفة';
- const unitLabel=personalPrices?'سعر الجملة د.ع':'كلفة الوحدة د.ع';
- const valueLabel=personalPrices?'القيمة بسعر الجملة د.ع':'القيمة الدفترية د.ع';
- const stockInfo=personalPrices?'تدخل في القيمة المواد التي لها سعر جملة محدد فقط.':'الكلفة هي الكلفة المثبتة للمواد.';
- return {title,total,body:'<div class="meta"><div>نطاق الكشف: المخزون المشمول في بيانات رأس المال</div><div>عملة الكشف: الدينار العراقي · IQD</div></div><div class="reportSummary">'+metric(personalPrices?'إجمالي قيمة المواد المسعّرة':'إجمالي قيمة المخزون الدفترية',total)+'</div><p>الكميات حسب الرصيد الدفتري، ويظل المخزون المحجوز ضمن الموجودات. '+stockInfo+'</p>'+
-  table(['ت','الكود','المادة / البراند / الصنف','الكمية الدفترية',unitLabel,valueLabel],rows.map((p,i)=>[i+1,e(p.code),'<strong>'+e(p.name)+'</strong><br>'+e([p.brand,p.category].filter(Boolean).join(' • ')),money(p.qty),p.cost==null?'غير محدد':money(p.cost),p.cost==null?'—':money(Number(p.qty)*Number(p.cost))]),[7,10,28,10,21,24])+
+ const title=personalPrices?'كشف المخزون بأسعار المواد':'كشف المخزون بالكلفة';
+ const unitLabel=personalPrices?'سعر المادة د.ع':'كلفة الوحدة د.ع';
+ const valueLabel=personalPrices?'القيمة بسعر المادة د.ع':'القيمة الدفترية د.ع';
+ const stockInfo=personalPrices?personalStockPricingNote:'الكلفة هي الكلفة المثبتة للمواد.';
+ return {title,total,body:'<div class="meta"><div>نطاق الكشف: المخزون المشمول في بيانات رأس المال</div><div>عملة الكشف: الدينار العراقي · IQD</div></div><div class="reportSummary">'+metric(personalPrices?'إجمالي قيمة المخزون بأسعار المواد':'إجمالي قيمة المخزون الدفترية',total)+'</div><p>الكميات حسب الرصيد الدفتري، ويظل المخزون المحجوز ضمن الموجودات. '+stockInfo+'</p>'+
+  table(['ت','الكود','المادة / البراند / الصنف','الكمية الدفترية',unitLabel,valueLabel],rows.map((p,i)=>[i+1,e(p.code),'<strong>'+e(p.name)+'</strong><br>'+e([p.brand,p.category].filter(Boolean).join(' • ')),money(p.qty),stockUnitPrice(p.cost,personalPrices)+(personalPrices&&stockPriceSource(p)?'<br><small>'+stockPriceSource(p)+'</small>':''),p.cost==null?'—':money(Number(p.qty)*Number(p.cost))]),[7,10,28,10,21,24])+
   '<div data-pdf-end class="documentCounts">عدد الأصناف: '+rows.length+' • مجموع الكميات: '+money(rows.reduce((sum,p)=>sum+Number(p.qty),0))+'</div>'};
 }
 export function capitalDebtReport(accounts,supplier=false){

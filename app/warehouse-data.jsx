@@ -1,7 +1,7 @@
 'use client';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {supabase} from './supabase';
-import {VALUATION_EVENT} from './valuation-events.mjs';
+import {VALUATION_EVENT,watchStockPriceChanges} from './valuation-events.mjs';
 
 const emptyRows=[];
 
@@ -19,14 +19,18 @@ export function useInventoryRequest(){
   catch(error){if(error.code)attempt.current=null;throw error;}
  };
 }
-export function useWarehouseInventory({aggregate=false,versionKey,initialWarehouseId,byWarehouse=false}={}){
+export function useWarehouseInventory({aggregate=false,versionKey,initialWarehouseId,byWarehouse=false,inventoryMaterialPrices=false}={}){
  const [warehouseId,setWarehouse]=useState(()=>initialWarehouseId?String(initialWarehouseId):''),[version,setVersion]=useState(0),[data,setData]=useState(null),[loaded,setLoaded]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
- const scope=JSON.stringify([warehouseId,byWarehouse,versionKey??null]);
+ const scope=JSON.stringify([warehouseId,byWarehouse,inventoryMaterialPrices,versionKey??null]);
  const generation=useRef(0);
  const refresh=useCallback(()=>setVersion(v=>v+1),[]);
- useEffect(()=>{window.addEventListener(VALUATION_EVENT,refresh);return()=>window.removeEventListener(VALUATION_EVENT,refresh);},[refresh]);
+ useEffect(()=>{
+  if(inventoryMaterialPrices)return watchStockPriceChanges(refresh);
+  window.addEventListener(VALUATION_EVENT,refresh);
+  return()=>window.removeEventListener(VALUATION_EVENT,refresh);
+ },[inventoryMaterialPrices,refresh]);
  useEffect(()=>{const id=++generation.current;let live=true;setLoading(true);setError('');
-  inventoryCall('stock',{warehouseId:warehouseId?Number(warehouseId):null,...(byWarehouse?{byWarehouse:true}:{})}).then(result=>{
+  inventoryCall('stock',{warehouseId:warehouseId?Number(warehouseId):null,...(byWarehouse?{byWarehouse:true}:{}),...(inventoryMaterialPrices?{inventoryMaterialPrices:true}:{})}).then(result=>{
    if(!live||id!==generation.current)return;
    if(byWarehouse&&!Array.isArray(result.warehouseBalances))throw new Error('تعذّر تحميل تفصيل الأرصدة حسب المخزن.');
    setData(result);
@@ -34,7 +38,7 @@ export function useWarehouseInventory({aggregate=false,versionKey,initialWarehou
    setLoaded(scope);setLoading(false);
   }).catch(e=>{if(live&&id===generation.current){setError(e.message||'تعذر تحميل المخازن');setLoading(false);setLoaded(null);}});
   return()=>{live=false;};
- },[warehouseId,version,aggregate,byWarehouse,scope]);
+ },[warehouseId,version,aggregate,byWarehouse,inventoryMaterialPrices,scope]);
  const ready=!loading&&loaded===scope&&!error;
  const products=useMemo(()=>loaded===scope&&!error?(data?.products||emptyRows).map(p=>({...p,brand:p.brand||p.brands?.name||'',brandId:p.brand_id,costBasis:p.cost_basis||{},costingRevision:p.costing_revision||0})):emptyRows,[scope,loaded,data,error]);
  return {...data,products,warehouseBalances:ready&&byWarehouse?data.warehouseBalances:emptyRows,warehouses:data?.warehouses||emptyRows,warehouseId,warehouseName:data?.warehouses.find(w=>String(w.id)===warehouseId)?.name||'',setWarehouse,loading:loading||(!error&&loaded!==scope),error,ready,refresh};

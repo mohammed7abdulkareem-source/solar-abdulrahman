@@ -67,11 +67,18 @@ test('supplier debt report labels source currency and IQD book value separately'
  assert.match(report.body,/يعرض العملة الأصلية لكل حساب/);assert.match(report.body,/الموجب مستحق للموردين، والسالب سلف وأرصدة لنا عندهم/);
 });
 
-test('personal stock report includes quantities for unpriced materials without treating the missing price as zero',()=>{
- const result=capitalStockReport([{name:'أ',qty:3,cost:40},{name:'ب',qty:5,cost:null}],true);
- assert.equal(result.total,120);
- assert.match(result.title,/بأسعار الجملة المحددة/);
- assert.match(result.body,/غير محدد/);
- assert.match(result.body,/مجموع الكميات: 8/);
- assert.doesNotMatch(result.body,/كلفة الوحدة/);
+test('personal capital uses the same manual and current-cost material prices, including reserved stock and zero',()=>{
+ const result=capitalStockReport([
+  {name:'يدوي',qty:2,reservedQty:1,bookQty:3,cost:40,bookCost:999999,floorSource:'configured'},
+  {name:'تلقائي',qty:4,reservedQty:1,cost:30.100625,floorSource:'cost'},
+  {name:'مجاني',qty:1,cost:0,floorSource:'cost'}
+ ],true);
+ assert.equal(result.total,120+5*30.100625);
+ assert.match(result.title,/بأسعار المواد/);
+ assert.match(result.body,/سعر المادة د.ع/);assert.match(result.body,/30\.100625/);
+ assert.match(result.body,/مجموع الكميات: 9/);assert.match(result.body,/حسب الكلفة/);
+ assert.doesNotMatch(result.body,/غير محدد|999,999|سعر الجملة|المسعّرة/);
+ const snapshot=capitalSnapshotReport({scope:'own',asOf:'2026-11-21T12:00:00Z',stock:{value:270.5},
+  cash:{iqd:0,usdBook:0},customers:{receivable:0,advances:0},suppliers:{prepayments:0,payable:0},assets:270.5,liabilities:0,net:270.5},true);
+ assert.match(snapshot.body,/المخزون بأسعار المواد/);assert.match(snapshot.body,/بالكلفة الحالية حسب سعر الصرف/);
 });

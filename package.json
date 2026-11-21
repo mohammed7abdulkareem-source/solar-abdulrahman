@@ -1,6 +1,6 @@
 {
   "name": "solar-abdulrahman",
-  "version": "4.1.26",
+  "version": "4.1.27",
   "private": true,
   "scripts": {
     "dev": "next dev",
