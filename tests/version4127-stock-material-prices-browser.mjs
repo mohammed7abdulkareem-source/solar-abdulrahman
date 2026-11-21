@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
-process.env.SOLAR_FIXTURE_DB ||= 'solar_v4127_stock_pricing_browser';
-process.env.SOLAR_FIXTURE_API ||= 'http://127.0.0.1:3360';
-process.env.SOLAR_APP_URL ||= 'http://127.0.0.1:3361';
-process.env.SOLAR_ARTIFACT_DIR ||= '/workspace/solar-review/v4127/integration/browser';
+process.env.SOLAR_FIXTURE_DB ||= 'solar_v4127_stock_release_browser';
+process.env.SOLAR_FIXTURE_API ||= 'http://127.0.0.1:3364';
+process.env.SOLAR_APP_URL ||= 'http://127.0.0.1:3363';
+process.env.SOLAR_ARTIFACT_DIR ||= '/workspace/solar-review/v4127/integration/release';
 const {db,sql,rpc,fingerprint,createHarness}=await import('./version4-browser-support.mjs');
 assert.match(db,/^solar_v4127_stock_[a-z0-9_]+_browser$/);
 const path=join(process.env.SOLAR_ARTIFACT_DIR,'fixture.json');
@@ -60,6 +60,7 @@ async function seed(){
 }
 async function verify(h){
  const f=JSON.parse(await readFile(path,'utf8')),{marked,warehouse,items,a,b,foreign,key}=f;
+ await rate(1500);
  const office=await priced(marked,{byWarehouse:true});
  assert.equal(office.showCost,true);
  for(const [kind,value,source] of [['fixed',prices.fixed,'configured'],['auto',prices.before,'cost'],['missing',prices.missing,'cost'],['zero',0,'cost'],['noStock',prices.noStock,'cost']]){
