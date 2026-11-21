@@ -22,7 +22,7 @@ export function salesDocument(row,customer=true){
  const system=row.kind==='system',items=row.items||[];
  const meta=[['رقم الفاتورة',receiptNumber(row)],['التاريخ',invoiceDate(row.created_at)]];
  const customerPhone=row.customer_phone||row.customerPhone;
- const contacts='<div class="invoicePartyContacts"><div class="invoiceCustomerContact"><small>الزبون</small><b>'+escape(row.party_name||'زبون نقدي')+'</b>'+(customerPhone?'<span>هاتف الزبون: '+phoneContactDocument(customerPhone)+'</span>':'')+'</div><div class="invoiceSellerContact"><small>مسؤول الفاتورة</small><b>'+escape(row.creatorName||'—')+'</b>'+(row.creatorPhone?'<span>هاتف المسؤول: <strong>'+phoneContactDocument(row.creatorPhone)+'</strong></span>':'')+'</div></div>';
+ const contacts='<div class="invoicePartyContacts"><div class="invoiceCustomerContact"><small>الزبون</small><b>'+escape(row.party_name||'زبون نقدي')+'</b>'+(customerPhone?'<span>هاتف الزبون: '+phoneContactDocument(customerPhone)+'</span>':'')+'</div><div class="invoiceSellerContact"><small>مسؤول الفاتورة</small><b>'+escape(row.creatorName||row.issuerName||'—')+'</b>'+(row.creatorPhone?'<span>هاتف المسؤول: <strong>'+phoneContactDocument(row.creatorPhone)+'</strong></span>':'')+'</div></div>';
  const warehouseName=row.warehouseName||row.warehouse_name;
  if(row.draft&&warehouseName)meta.push(['المخزن',warehouseName]);
  if(customer)meta.push(['طريقة الدفع',system?'آجل':row.cash||row.payment_mode==='cash'||row.mode==='cash'?'نقدي':'آجل']);
@@ -36,7 +36,7 @@ export function salesDocument(row,customer=true){
  const metaRows=meta.map(([k,v])=>'<div><b>'+k+':</b> '+escape(v)+'</div>');
  const body='<section class="salesDocument"><div class="invoiceIntro"><div class="meta">'+metaRows.slice(0,2).join('')+contacts+metaRows.slice(2).join('')+'</div>'+(qr?'<div class="invoiceQr">'+qr+'<b>فحص الفاتورة والضمان</b><small>رقم '+escape(receiptNumber(row))+'</small></div>':'')+'</div><table class="invoiceItems" data-pdf-paginate><colgroup>'+cols.map(n=>'<col style="width:'+n+'%">').join('')+'</colgroup><thead><tr><th>ت</th><th>تفاصيل المادة / البراند</th><th>العدد</th>'+(prices?'<th>سعر الوحدة د.ع</th><th>المجموع د.ع</th>':'')+'</tr></thead><tbody>'+rows+'</tbody></table><div class="documentCounts"><span>عدد الفقرات: <b>'+items.length+'</b></span><span>مجموع الكميات: <b class="documentNumber">'+formatMoney(items.reduce((sum,i)=>sum+Number(i.qty||0),0))+'</b></span></div>'+
  (customer&&!system&&saleExpensesOnCustomer(row)&&Number(row.expenses)>0?'<div class="notes">المصاريف الإضافية على الزبون: '+money(row.expenses)+'</div>':'')+
- (customer?invoiceAccountDocument(row):'')+warrantyDocument(row,{hasQr:!!qr})+
+ (customer&&(!row.assignedReceipt||row.invoiceAccount||row.invoice_account)?invoiceAccountDocument(row):'')+warrantyDocument(row,{hasQr:!!qr})+
  (!customer&&row.preparedBy?'<div class="notes"><b>مسؤول التجهيز:</b> '+escape(row.preparedBy)+'</div>':'')+
  (!customer&&row.note?'<div class="notes" data-pdf-end><b>ملاحظات التجهيز:</b> '+escape(row.note)+'</div>':'')+
  (customer&&row.notes?'<div class="notes" data-pdf-end><b>ملاحظات الفاتورة:</b> '+escape(row.notes)+'</div>':'')+'</section>';

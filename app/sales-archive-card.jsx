@@ -22,7 +22,7 @@ export default function SalesArchiveCard({row,profile,warehouseStatus,doc,openA4
   <header className="saleHistoryHeader">
    <div className="saleHistoryIdentity"><div className="saleHistoryReceipt"><AppIcon name={system?'sun':'truck'} size={18}/><span>{system?'بيع منظومة':'بيع جملة'}</span><bdi>#{receiptNumber(row)}</bdi></div>
     <div className="saleHistoryCustomer"><span className="saleHistoryCustomerIcon"><AppIcon name="building" size={21}/></span><h3>{row.party_name||'زبون نقدي'}</h3></div>
-    <div className="saleHistoryMeta"><span><AppIcon name="calendar" size={15}/><time dateTime={row.created_at}><bdi>{date}</bdi></time></span><span><AppIcon name="user" size={15}/>{row.creatorName||'—'}</span></div>
+    <div className="saleHistoryMeta"><span><AppIcon name="calendar" size={15}/><time dateTime={row.created_at}><bdi>{date}</bdi></time></span><span><AppIcon name="user" size={15}/>{row.creatorName||row.issuerName||'—'}</span>{row.assignedReceipt&&<span>وصل محوّل إليك</span>}</div>
    </div>
    <div className="saleHistoryTotal" data-wide-amount={formatMoney(row.total).length>12}><div><span className="saleHistoryMoneyIcon"><AppIcon name="coins" size={20}/></span><strong><bdi dir="ltr">{formatMoney(row.total)}</bdi><small>د.ع</small></strong></div><span>{system?'إجمالي قيمة المنظومة':'إجمالي قيمة الجملة'}</span></div>
   </header>
@@ -33,7 +33,7 @@ export default function SalesArchiveCard({row,profile,warehouseStatus,doc,openA4
   <div className="saleHistoryCopies"><CopyActions {...{row,doc,openA4,saveA4,shareA4}} customer/><CopyActions {...{row,doc,openA4,saveA4,shareA4}} customer={false}/></div>
   {((profile?.is_admin||(row.created_by===profile?.id&&profile?.permissions?.[row.kind]))||(system&&onFollow)||onEdit)&&<div className="saleHistoryUtilities">{onEdit&&<button type="button" className="saleHistoryEdit" disabled={deleting!==null||editBusy} onClick={()=>onEdit(row)}><AppIcon name="edit" size={16}/>تعديل الفاتورة</button>}
    {(profile?.is_admin||(row.created_by===profile?.id&&profile?.permissions?.[row.kind]))&&<WarrantyManage invoiceId={row.id} onChanged={onWarrantyChanged}/>}
-   {system&&onFollow&&<button type="button" className="workflowSecondary archiveFollow" onClick={()=>onFollow(String(row.id))}><AppIcon name="tools" size={15}/>متابعة ملف التنصيب</button>}
+   {system&&onFollow&&(profile?.is_admin||!row.operationalOwnerId||row.operationalOwnerId===profile.id)&&<button type="button" className="workflowSecondary archiveFollow" onClick={()=>onFollow(String(row.id))}><AppIcon name="tools" size={15}/>متابعة ملف التنصيب</button>}
   </div>}
   {row.canDelete&&canDeleteSale(profile,row.created_by,row.kind)&&(canOpenPage(profile,'deletionRequests')||warehouseStatus!=='ready'&&(!system||row.installation_status==='pending'))&&<button type="button" className="dangerMini archiveDelete saleHistoryDelete" disabled={deleting!==null} onClick={()=>onDelete(row)}><AppIcon name="trash" size={18}/>{deleting===row.id?'جاري التحقق…':'حذف الوصل'}</button>}
  </article>;

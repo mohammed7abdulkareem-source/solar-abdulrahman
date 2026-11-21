@@ -6,7 +6,7 @@ import CustomerAccountView from './customer-account-view';
 import {customerAccount} from './compact-party-utils.mjs';
 import {CustomerAccountMatch} from './reconciliation-workspace';
 
-export default function DebtorAccount({id,profile,a4,onBack,onAccessLost,onPayment,onSale,onChanged,renderSaleEditor,onDeleteInvoice}){
+export default function DebtorAccount({id,profile,a4,onBack,onAccessLost,onPayment,onSale,onChanged,onFollowInstallation,renderSaleEditor,onDeleteInvoice}){
  const [record,setRecord]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(true);
  const generation=useRef(0);
  const directoryAccess=canOpenPage(profile,'customers')||canOpenPage(profile,'customerCreate');
@@ -28,7 +28,7 @@ export default function DebtorAccount({id,profile,a4,onBack,onAccessLost,onPayme
  const account=customerAccount(record),wholesale=account.customerType==='wholesale';
  return <>{error&&<p role="alert" className="miniAlert">{error} <button type="button" onClick={load}>تحديث الكشف</button></p>}<CustomerAccountView profile={profile} account={account} a4={a4} balanceStatus={loading?'loading':error?'error':'ready'}
   onBack={onBack} backLabel="رجوع إلى مدينون العملاء" onRefresh={load} onAccountChanged={changed}
-  renderSaleEditor={renderSaleEditor} onDeleteInvoice={onDeleteInvoice}
+  onFollowInstallation={onFollowInstallation} renderSaleEditor={renderSaleEditor} onDeleteInvoice={onDeleteInvoice}
   onPayment={onPayment&&canOpenPage(profile,wholesale?'customerPayment':'systemPayment')?()=>onPayment(record):undefined}
   onSale={onSale&&canOpenPage(profile,wholesale?'sale':'system')?()=>onSale(record):undefined}
   renderMatch={canOpenPage(profile,'customerReconcile')?()=> <CustomerAccountMatch customerId={id} onSaved={changed}/>:undefined}/></>;

@@ -33,7 +33,8 @@ export function verifySalesResponse(data,profile,selectedOwner=null,{period=fals
   if(permitted.length===1&&data.rows.some(row=>!permitted.includes(row.kind)))throw scopeFailure();
   // Reject the whole page, including totals and document actions, instead of
   // trimming foreign records but retaining a different owner's total count.
-  if(!Number.isFinite(data.count)||data.count<0||ownerId!==null&&data.rows.some(row=>row?.created_by!==ownerId))throw scopeFailure();
+  const matchesOwner=row=>row?.created_by===ownerId||(!isAdministrator(profile)&&row?.assignedReceipt===true&&row.operationalOwnerId===ownerId);
+  if(!Number.isFinite(data.count)||data.count<0||ownerId!==null&&data.rows.some(row=>!matchesOwner(row)))throw scopeFailure();
  }
  return data;
 }

@@ -8,7 +8,7 @@ import {customerAccount} from './compact-party-utils.mjs';
 import {MatchAccount} from './reconciliation-workspace';
 import {canOpenPage} from './access-utils.mjs';
 import {groupBalances,ownerKey} from './party-balances-utils.mjs';
-export default function CustomerStatement({profile,canReconcile,onChanged,a4,initialId='',onPayment,onSale,renderSaleEditor,onDeleteInvoice}){
+export default function CustomerStatement({profile,canReconcile,onChanged,a4,initialId='',onPayment,onSale,onFollowInstallation,renderSaleEditor,onDeleteInvoice}){
  const [directory,setDirectory]=useState([]),[directoryLoading,setDirectoryLoading]=useState(true),[directoryError,setDirectoryError]=useState(''),[ownerId,setOwnerId]=useState('all'),[category,setCategory]=useState('all'),[filtersOpen,setFiltersOpen]=useState(false);
  const [id,setId]=useState(String(initialId)),[ledger,setLedger]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(false);const generation=useRef(0),directoryGeneration=useRef(0);
  const loadDirectory=useCallback(async()=>{
@@ -51,7 +51,7 @@ export default function CustomerStatement({profile,canReconcile,onChanged,a4,ini
   const account=customerAccount(ledger),wholesale=account.customerType==='wholesale';
   return <>{error&&<p role="alert" className="miniAlert">{error} <button type="button" onClick={load}>تحديث الكشف</button></p>}<CustomerAccountView key={ledger.id} profile={profile} account={account} balanceStatus={loading?'loading':error?'error':'ready'} a4={a4}
    backLabel="رجوع إلى اختيار العميل" onBack={()=>{setId('');setLedger(null);}} onRefresh={load} onAccountChanged={changed}
-   renderSaleEditor={renderSaleEditor} onDeleteInvoice={onDeleteInvoice}
+   onFollowInstallation={onFollowInstallation} renderSaleEditor={renderSaleEditor} onDeleteInvoice={onDeleteInvoice}
    onPayment={onPayment&&canOpenPage(profile,wholesale?'customerPayment':'systemPayment')?()=>onPayment(account):undefined}
    onSale={onSale&&canOpenPage(profile,wholesale?'sale':'system')?()=>onSale(account):undefined}
    renderMatch={canReconcile?()=> <MatchAccount standalone customerId={Number(id)} ledger={ledger} onSaved={changed}/>:undefined}/></>;

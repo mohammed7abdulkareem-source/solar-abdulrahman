@@ -17,7 +17,7 @@ import {approvedExpenseValue,installationPaidExpense,installationExpenseDifferen
 const fmt=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const dateText=value=>value?new Date(value).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad',dateStyle:'short',timeStyle:'short'}):'';
 export default function InstallationWorkflow({profile,onChanged,selectedJob=''}){
- return <InstallationQueue key={[profile?.id,profile?.user_type,profile?.is_admin].join('|')} profile={profile} onChanged={onChanged} selectedJob={selectedJob}/>;
+ return <InstallationQueue key={[profile?.id,profile?.user_type,profile?.is_admin,profile?.permissions?.installations,profile?.permissions?.system].join('|')} profile={profile} onChanged={onChanged} selectedJob={selectedJob}/>;
 }
 function InstallationQueue({profile,onChanged,selectedJob}){
  const [jobs,setJobs]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[status,setStatus]=useState(selectedJob?'all':'open'),[query,setQuery]=useState(selectedJob),[busy,setBusy]=useState(null),[message,setMessage]=useState(''),[toast,setToast]=useState(false);
@@ -56,7 +56,7 @@ function InstallationQueue({profile,onChanged,selectedJob}){
  const summaries=[['today','أعمال اليوم'],['in_progress','قيد التنفيذ'],['completed','بانتظار المراجعة'],['closed','مكتملة ومغلقة']].map(([key,label])=>({key,label,count:jobs.filter(j=>installationMatchesStatus(j,key,today)).length}));
  const resultsTitle=summaries.find(s=>s.key===status)?.label||stages.find(([key])=>key===status)?.[1]||(status==='all'?'جميع التنصيبات':'التنصيبات المفتوحة');
  function selectSummary(key){setStatus(key);setQuery('');setShowCalendar(false);requestAnimationFrame(()=>{resultsHeading.current?.focus({preventScroll:true});resultsHeading.current?.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});});}
- const visible=jobs.filter(j=>installationMatchesStatus(j,status,today)&&(!query||[j.party,j.customerPhone,j.customerAddress,j.installerName,j.creatorName,String(j.receiptNo),String(j.id)].join(' ').includes(query.trim())));
+ const visible=jobs.filter(j=>installationMatchesStatus(j,status,today)&&(!query||[j.party,j.customerPhone,j.customerAddress,j.installerName,j.responsibleName,j.creatorName,String(j.receiptNo),String(j.id)].join(' ').includes(query.trim())));
  return <div className="workflow installationRefresh">
   {toast&&createPortal(<div className="installationActionToast" role="status"><AppIcon name="check" size={22}/><div><b>تم الغلق</b><span>تم اعتماد المصاريف وإغلاق ملف التنصيب بنجاح.</span></div><button type="button" aria-label="إغلاق تنبيه الغلق" onClick={()=>setToast(false)}>×</button></div>,document.body)}
   <div className="workflowHero"><div><small>متابعة التنفيذ خطوة بخطوة</small><h2>إدارة التنصيبات</h2><p>جدول مشترك ومراحل موحّدة مع مهندس التنصيب</p></div><span aria-hidden="true"><AppIcon name="tools" size={26}/></span></div>
@@ -76,7 +76,7 @@ function JobCard({job,busy,change}){
  return <article className="workflowJob">
   <header><div><small>ملف #{receiptNumber(job)}</small><h3>{job.party||'عميل منظومة'}</h3>{job.warehouseName&&<small className="orderWarehouseLabel">{job.warehouseName}</small>}</div><span className={'workflowStatus '+job.installationStatus}>{stages[index][1]}</span></header>
   {job.sellingPrice!=null&&Number.isFinite(Number(job.sellingPrice))&&<div className="jobSalePrice"><span>سعر بيع المنظومة</span><strong><bdi>{fmt(job.sellingPrice)}</bdi> <small>د.ع</small></strong></div>}
-  <div className="jobResponsible"><AppIcon name="user" size={17}/><span>المستخدم المسؤول <b>{job.creatorName||'غير محدد'}</b></span><PhoneActions phone={job.creatorPhone} label={'بالمسؤول '+job.creatorName}/></div>
+  <div className="jobResponsible"><AppIcon name="user" size={17}/><span>المستخدم المسؤول <b>{job.responsibleName||job.creatorName||'غير محدد'}</b></span><PhoneActions phone={job.responsibleId?job.responsiblePhone:job.creatorPhone} label={'بالمسؤول '+(job.responsibleName||job.creatorName||'')}/></div>
   <ol className="workflowSteps" aria-label="مراحل التنصيب">{stages.map(([stage,label],i)=><li key={stage} className={i<=index?'reached':''} aria-current={i===index?'step':undefined}><span>{i<index||job.installationStatus==='closed'?'✓':i+1}</span><small>{label}</small></li>)}</ol>
   <WarehouseBadge status={job.warehouseStatus} compact/>
   {flexible&&<p className={'installationNoAppointment'+(carried?' carried':'')}>{carried?'مرحّل إلى أعمال اليوم · يُنفّذ حسب الوقت المتاح':'بدون موعد · ضمن أعمال كل يوم إلى أن يُنجز'}</p>}

@@ -20,7 +20,7 @@ export default function CustomerAccountView(props){
  return <CustomerOwnershipGuard key={profile.id+':'+account.id} customerId={account.id} userId={profile.id} onBack={onBack} backLabel={backLabel} onLost={onRefresh}>{view}</CustomerOwnershipGuard>;
 }
 
-function AccountContents({profile,account,onAccountChanged,renderSaleEditor,onDeleteInvoice,...props}){
+function AccountContents({profile,account,onAccountChanged,renderSaleEditor,onDeleteInvoice,onFollowInstallation,...props}){
  const [editor,setEditor]=useState(null),[saving,setSaving]=useState(false),[revision,setRevision]=useState(0),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const mutating=useRef(false),origin=useRef(null),editorRegion=useRef(null),live=useRef(true);
  useEffect(()=>{if(editor)editorRegion.current?.focus({preventScroll:true});},[editor]);
@@ -71,10 +71,12 @@ function AccountContents({profile,account,onAccountChanged,renderSaleEditor,onDe
  }
  function receiptActions(row){
   const allowed=receiptPermissions(row);
-  if(!allowed)return null;
-  const {edit,remove,sale}=allowed;
+  const follow=row.kind==='system'&&row.canFollowInstallation===true&&!row.receiptRestricted&&onFollowInstallation&&canOpenPage(profile,'installations');
+  if(!allowed&&!follow)return null;
+  const {edit,remove,sale}=allowed||{sale:true};
   const label=sale?'وصل البيع':'وصل التسديد',disabled=saving||props.balanceStatus!=='ready';
   return <div className="customerReceiptActions" role="group" aria-label={'إجراءات '+label+(row.receiptNo?' #'+row.receiptNo:'')}>
+   {follow&&<button type="button" disabled={disabled} onClick={()=>onFollowInstallation(String(row.id))}><AppIcon name="tools" size={15}/>فتح ملف التنصيب</button>}
    {edit&&<button type="button" aria-label={'تعديل '+label} disabled={disabled} onClick={e=>act(row,'update',e.currentTarget)}><AppIcon name="edit" size={15}/>تعديل <span>{label}</span></button>}
    {remove&&<button type="button" className="customerReceiptDelete" aria-label={'حذف '+label} disabled={disabled} onClick={e=>act(row,'delete',e.currentTarget)}><AppIcon name="trash" size={15}/>حذف <span>{label}</span></button>}
   </div>;

@@ -20,3 +20,44 @@
 .statementTransferReview small { display:block; font-weight:400; }
 .statementTransferFooter { display:flex; flex-wrap:wrap; gap:8px; }
 .statementTransferFooter .uiButton { flex:1 1 120px; min-height:44px; }
+.statementTransferDialog .transferReceiptChoices {
+ margin:0;min-width:0;padding:9px 11px 11px;border:1px solid #cfdfdf;border-radius:12px;
+}
+.transferReceiptChoices legend,.transferReviewReceipts h3 {color:#214d55;font-size:.96rem;font-weight:700;}
+.transferReceiptChoices legend {padding:0 5px;}
+.transferReceiptChoices>p,.transferReceiptChoices .transferReceiptList>p,.transferReceiptHint {
+ margin:0;color:#466268;font-size:.85rem;line-height:1.55;
+}
+.transferReceiptFilter {display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;margin:8px 0;}
+.statementTransferDialog .transferReceiptFilter label {
+ flex:1 1 170px;display:flex;align-items:center;gap:7px;min-height:44px;padding-inline:8px;
+ border:1px solid #cadae0;border-radius:8px;color:#476570;background:#f7fafb;
+}
+.statementTransferDialog .transferReceiptFilter label:focus-within {outline:2px solid #14756c;}
+.statementTransferDialog .transferReceiptFilter input {flex:1;min-width:0;width:100%;padding:6px;border:0;background:transparent;box-shadow:none;font-size:16px;}
+.transferReceiptFilter>span {color:#285e58;font-size:.81rem;white-space:nowrap;}
+.transferReceiptList {display:grid;min-width:0;gap:5px;max-height:clamp(160px,35dvh,320px);overflow:auto;overscroll-behavior-y:contain;}
+.statementTransferDialog .transferReceiptChoice {
+ display:grid;grid-template-columns:20px minmax(0,1fr) auto;align-items:center;min-height:48px;gap:8px;
+ padding:7px 8px;border:1px solid #dce5e9;border-radius:8px;background:white;cursor:pointer;
+}
+.transferReceiptChoice[data-selected=true] {border-color:#76aa9e;background:#edf7f3;}
+.transferReceiptChoice[data-assigned=true] {background:#f3f5f6;color:#53656a;cursor:default;}
+.statementTransferDialog .transferReceiptChoice input {width:19px;height:19px;margin:0;min-height:0;accent-color:#0d7168;}
+.transferReceiptIdentity {display:grid;gap:2px;min-width:0;overflow-wrap:anywhere;color:#234651;line-height:1.5;}
+.transferReceiptIdentity small,.transferReceiptAmount {color:#50656f;font-size:.8rem;}
+.transferReceiptAmount {font-variant-numeric:tabular-nums;text-align:end;}
+.transferReceiptHint {padding:8px 10px;border-inline-start:3px solid #92b6bd;background:#f1f6f7;border-radius:6px;}
+.transferReviewBody {display:grid;gap:10px;min-width:0;}
+.transferReviewReceipts {min-width:0;}
+.transferReviewReceipts h3 {margin:0 0 5px;}
+.transferReviewReceipts ul {list-style:none;display:grid;gap:5px;margin:0;padding:0;max-height:32dvh;overflow:auto;}
+.transferReviewReceipts li {display:flex;align-items:baseline;justify-content:space-between;gap:6px 12px;flex-wrap:wrap;padding:7px 8px;background:#f4f8fa;border-radius:6px;font-size:.87rem;overflow-wrap:anywhere;}
+.transferReviewReceipts li span {color:#416171;}
+.statementTransferFooter {position:sticky;bottom:0;padding:8px 0;background:white;}
+.customerEditor .customerEditorTransfer {display:grid;gap:6px;padding-block:10px;margin-top:6px;border-top:1px solid #d4e2e0;}
+.customerEditorTransfer small {color:#52676a;}
+@media(max-width:390px) {
+ .statementTransferDialog .transferReceiptChoice {grid-template-columns:20px minmax(0,1fr);gap:2px 7px;}
+ .transferReceiptAmount {grid-column:2;text-align:start;}
+}

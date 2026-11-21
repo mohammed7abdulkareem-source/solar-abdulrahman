@@ -15,4 +15,4 @@ export function archiveInvoiceDraft(row){
   items:(row.items||[]).map(i=>({...i,id:i.product_id??i.productId??i.id,name:i.product_name||i.name,brand:i.brand_name||i.brand||'',qty:Number(i.qty),price:Number(i.price||0),cost:Number(i.cost||0)}))};
 }
 
-export function canEditInstallationExpenses(profile,row){return !!profile?.active&&!isEngineer(profile)&&!isWarehouse(profile)&&(isAdministrator(profile)||((row.created_by||row.createdBy)===profile.id&&profile.permissions?.installations===true));}
+export function canEditInstallationExpenses(profile,row){return !!profile?.active&&!isEngineer(profile)&&!isWarehouse(profile)&&(isAdministrator(profile)||((row.operationalOwnerId??row.created_by??row.createdBy)===profile.id&&profile.permissions?.installations===true));}

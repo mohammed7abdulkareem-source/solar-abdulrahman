@@ -11,7 +11,7 @@ import dynamic from 'next/dynamic';
 import {canOpenPage} from './access-utils.mjs';
 const DebtorAccount=dynamic(()=>import('./debtor-account'));
 
-export default function PartyBalances({mode='customers',a4,profile,onPayment,onSale,onChanged,renderSaleEditor,onDeleteInvoice,initialAccountId}){
+export default function PartyBalances({mode='customers',a4,profile,onPayment,onSale,onChanged,onFollowInstallation,renderSaleEditor,onDeleteInvoice,initialAccountId}){
  const customer=mode==='customers',title=customer?'مدينون العملاء':'أرصدة الموردين';
  const [asOf,setAsOf]=useState(baghdadToday),[query,setQuery]=useState(''),[category,setCategory]=useState('all'),[ownerId,setOwnerId]=useState('all'),[dueOnly,setDueOnly]=useState(true),[showPhone,setShowPhone]=useState(true),[showType,setShowType]=useState(true),[groupByOwner,setGroupByOwner]=useState(true);
  const [data,setData]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[refresh,setRefresh]=useState(0);
@@ -34,7 +34,7 @@ export default function PartyBalances({mode='customers',a4,profile,onPayment,onS
  const ready=!!data&&data.as_of===asOf&&!loading&&!error;
  const html=ready?a4(title,balancesDocument(rows,{...options,ownerName,unresolved:legacy}),money(total)+' د.ع',asOf):'';
  const columns=5+(showPhone?1:0)+(customer&&showType?1:0);
- if(customer&&selected&&canOpenAccount)return <DebtorAccount key={profile.id+':'+selected.id+':'+JSON.stringify(profile.permissions||{})+':'+profile.is_admin} id={selected.id} profile={profile} a4={a4} onBack={closeAccount} onAccessLost={expireCustomerReport} onPayment={onPayment} onSale={onSale} renderSaleEditor={renderSaleEditor} onDeleteInvoice={onDeleteInvoice} onChanged={()=>{setRefresh(n=>n+1);return onChanged?.();}}/>;
+ if(customer&&selected&&canOpenAccount)return <DebtorAccount key={profile.id+':'+selected.id+':'+JSON.stringify(profile.permissions||{})+':'+profile.is_admin} id={selected.id} profile={profile} a4={a4} onBack={closeAccount} onAccessLost={expireCustomerReport} onPayment={onPayment} onSale={onSale} onFollowInstallation={onFollowInstallation} renderSaleEditor={renderSaleEditor} onDeleteInvoice={onDeleteInvoice} onChanged={()=>{setRefresh(n=>n+1);return onChanged?.();}}/>;
  return <section className="accountWorkspace debtorWorkspace">
   <header className="accountHero"><span className="accountHeroIcon"><ReportIcon name={customer?'users':'wallet'}/></span><div><span className="accountEyebrow">التقارير المالية</span><h1>{title}</h1><p>{customer?'ديون الجملة والمنظومات حسب مسؤول العميل.':'رصيد الموردين وآخر دفعة ضمن صلاحيات حسابك.'}</p></div><button className="reportRefresh" disabled={loading} onClick={()=>setRefresh(n=>n+1)}><ReportIcon name="refresh"/>{loading?'جاري التحديث':'تحديث الأرصدة'}</button></header>
   <section className="accountFilterPanel" aria-label="تصفية تقرير الأرصدة"><div className="accountFilterTitle"><div><h2>تصفية المدينين</h2></div><span className="accountScopeBadge">{data?.scope||'ضمن صلاحياتك'}</span></div>

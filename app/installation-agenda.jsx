@@ -47,7 +47,7 @@ export default function InstallerAgenda({jobs,installerId,selectedJob,loading,bu
  function selectFilter(value){setFilter(value);setFocusedId('');setQuery('');setCalendar(false);}
  const visible=own.filter(job=>{
   if(focusedId)return String(job.id)===String(focusedId);
-  return matches(job,activeFilter,today)&&(!term||normalizeSearch([job.party,job.customerPhone,job.customerAddress,job.creatorName,receiptNumber(job),job.id].join(' ')).includes(term));
+  return matches(job,activeFilter,today)&&(!term||normalizeSearch([job.party,job.customerPhone,job.customerAddress,job.responsibleName,job.creatorName,receiptNumber(job),job.id].join(' ')).includes(term));
  }).sort(queueOrder);
  function draftKey(job){return job.id+':'+job.installationRevision;}
  async function act(job,action,payload){
@@ -95,8 +95,8 @@ function FieldJob({job,today,busy,onChange,reportOpen,toggleReport,draft,setDraf
   {status==='completed'&&<p className="installerOutcome"><AppIcon name="document" size={16}/>أُرسل التقرير وينتظر مراجعة الإدارة</p>}
   {status==='closed'&&<p className="installerOutcome"><AppIcon name="check" size={16}/>أغلقت الإدارة ملف التنصيب</p>}
   <details className="installerJobDetail"><summary>تفاصيل المهمة والمواد <span>{items.length} مادة</span></summary>
-   <dl className="installerVisit"><div><dt>المستخدم المسؤول</dt><dd>{job.creatorName||'غير محدد'}</dd>
-     <PhoneActions phone={job.creatorPhone} label={'بالمسؤول '+(job.creatorName||'')}/></div>
+   <dl className="installerVisit"><div><dt>المستخدم المسؤول</dt><dd>{job.responsibleName||job.creatorName||'غير محدد'}</dd>
+     <PhoneActions phone={job.responsibleId?job.responsiblePhone:job.creatorPhone} label={'بالمسؤول '+(job.responsibleName||job.creatorName||'')}/></div>
     <div><dt>مخزن التجهيز</dt><dd>{job.warehouseName||'غير محدد'}</dd></div></dl>
    {items.length>0?<ul className="installerMaterials">{items.map((item,i)=><li key={item.id||i}><span><span>{item.name}</span>{item.brand&&<small>{item.brand}</small>}</span><b>× <bdi>{item.qty}</bdi></b></li>)}</ul>:<p>لا توجد مواد مسجلة</p>}
    <dl className="installerTimeline">{[['installationStartedAt','بدء العمل'],['installationCompletedAt','إرسال التقرير'],['installationClosedAt','إغلاق الملف']].filter(([key])=>job[key]).map(([key,label])=><div key={key}><dt>{label}</dt><dd>{timestamp.format(new Date(job[key]))}</dd></div>)}</dl>

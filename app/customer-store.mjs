@@ -1,6 +1,19 @@
 import {supabase} from './supabase';
 export async function customerDirectory(){const {data,error}=await supabase.rpc('solar_customer_directory');if(error)throw error;return data;}
 export async function customerRecord(id){const {data,error}=await supabase.rpc('solar_customer_get',{customer_id:Number(id)});if(error)throw error;return data;}
+export async function customerTransferOptions(customerId){
+ const [record,targets,candidates]=await Promise.all([
+  customerRecord(customerId),
+  supabase.rpc('solar_customer_transfer_targets'),
+  supabase.rpc('solar_customer_transfer_receipts',{customer_id:Number(customerId)})
+ ]);
+ if(targets.error)throw targets.error;
+ if(candidates.error)throw candidates.error;
+ const {receiptToken,receipts}=candidates.data||{};
+ if(String(record?.id)!==String(customerId)||!record.token||record.balance==null||!Number.isFinite(Number(record.balance))||
+    !Array.isArray(targets.data)||!receiptToken||!Array.isArray(receipts))throw new Error('تعذّر تحميل بيانات التحويل. أعد المحاولة.');
+ return {record,owners:targets.data,receiptToken,receipts};
+}
 export async function checkCustomer(name,phone,id){const {data,error}=await supabase.rpc('solar_customer_check',{customer_name:name,phone,exclude_id:id??null});if(error)throw error;return data;}
 export async function saveCustomer(attempt,action,payload){
  const signature=JSON.stringify({action,payload});
