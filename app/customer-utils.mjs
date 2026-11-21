@@ -1,5 +1,11 @@
+import {isAdministrator,isEngineer,isWarehouse} from './access-utils.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 export const customerNameKey=value=>normalizeSearch(value).replace(/[\s\u200B-\u200F\u202A-\u202E\uFEFF]/g,'');
+export function canRenameCustomer(profile,account){
+ if(!profile?.active||!profile.id||!account?.id||isEngineer(profile)||isWarehouse(profile))return false;
+ const ownerId=account.ownerId??account.owner_id;
+ return isAdministrator(profile)||(profile.permissions?.customers===true&&profile.id===ownerId);
+}
 export function customerPhoneKey(value){
  let digits=normalizeSearch(value).replace(/[^0-9]/g,'');
  if(digits.startsWith('00'))digits=digits.slice(2);

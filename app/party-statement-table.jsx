@@ -12,7 +12,7 @@ function AmountCell({label, amount, currency, hiddenOnMobile, className}) {
  </td>;
 }
 
-export default function PartyStatementTable({period, currency, onOpen, customer}) {
+export default function PartyStatementTable({period, currency, onOpen, customer, renderReceiptActions}) {
  return <div className={'miniTableWrap' + (customer ? ' customerStatementLedger' : '')}>
   <table className="miniStatementTable" role="table" aria-label={'حركات كشف الحساب · ' + currencyUnit(currency)}>
    <thead role="rowgroup"><tr role="row">
@@ -27,6 +27,7 @@ export default function PartyStatementTable({period, currency, onOpen, customer}
       <span>{row.label}{row.receiptNo ? ' #' + row.receiptNo : ''}</span>
       {!row.receiptRestricted && <small>فتح الوصل <AppIcon name="chevron" size={13}/></small>}
      </button>
+     {renderReceiptActions?.(row)}
      {row.notes && <small className="partyStatementNote">{row.notes}</small>}
     </td>
     <AmountCell label={row.receiptRestricted ? 'مبلغ الحركة' : columns[2]} amount={row.amount} currency={currency}/>

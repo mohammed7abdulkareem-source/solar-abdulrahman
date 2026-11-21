@@ -22,7 +22,7 @@ export function partyReportOverviewBody(account,period,from,to,filters={}){
   (hasBalances?'<div class="partyReportSummary"><div>رصيد أول المدة: <b>'+money(period.opening,currency)+' '+unit(currency)+'</b> · '+partyBalanceMeaning(account.type,period.opening)+'</div><div><b>رصيد الحساب بنهاية الفترة: '+money(period.balance,currency)+' '+unit(currency)+'</b> · '+partyBalanceMeaning(account.type,period.balance)+'</div></div>':'')+'<p>'+(hasBalances?e(scope.balanceNote)+' ':'')+partyBalanceLegend(account.type)+'</p>';
 }
 export function customerAccount(record){
- return {...record,type:'customer',currency:'IQD',customerType:record.customerType||record.customer_type,ownerName:record.ownerName||record.owner_name,
+ return {...record,type:'customer',currency:'IQD',ownerId:record.ownerId??record.owner_id,customerType:record.customerType||record.customer_type,ownerName:record.ownerName||record.owner_name,
   rows:(record.rows||[]).map(r=>r.receiptRestricted?restrictedAccountEffect(r):({...r,date:r.date,effect:accountEffect(r),amount:Math.abs(Number(r.total)),label:accountLabel(r),
    category:r.mode==='opening_balance'?'opening':r.mode==='account_reconciliation'?'adjustment':['sale','system'].includes(r.kind)?'invoices':Number(r.total)>0?'payments':'charges',original:r}))};
 }

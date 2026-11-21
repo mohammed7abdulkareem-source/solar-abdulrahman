@@ -4,9 +4,9 @@ import {supabase} from './supabase';
 import {invoiceLines} from './party-invoice-reports.mjs';
 import {formatMoney as money,currencyUnit as unit} from './money-format.mjs';
 
-export function useCustomerInvoiceLines(account,rows,active){
+export function useCustomerInvoiceLines(account,rows,active,revision=0){
  const ids=JSON.stringify(rows.filter(row=>row.category==='invoices'&&!row.receiptRestricted).map(row=>row.id));
- const key=JSON.stringify([account.id,account.token,account.name,ids]);
+ const key=JSON.stringify([account.id,account.token,account.name,ids,revision]);
  const [state,setState]=useState({key:'',documents:{},loading:false,error:''}),[retry,setRetry]=useState(0);
  useEffect(()=>{
   if(!active)return;

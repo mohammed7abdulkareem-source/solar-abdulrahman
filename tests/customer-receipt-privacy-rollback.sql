@@ -100,7 +100,10 @@ end$$;
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000412201',true);
 do $$declare a jsonb;begin
- a:=public.solar_customer_statement(-412201);assert a->'rows'=pg_temp.raw_ledger(-412201),'Admin statement changed';
+ a:=public.solar_customer_statement(-412201);
+ assert (select jsonb_agg(r.value-'canEditReceipt'-'canDeleteReceipt' order by r.ordinality)
+         from jsonb_array_elements(a->'rows') with ordinality r(value,ordinality))=pg_temp.raw_ledger(-412201),
+        'Admin financial rows or receipt identities changed';
  a:=public.solar_customer_payment_manage('get',null,'{"id":-412219}');assert(a->>'total')::numeric=100,'Admin foreign payment detail restricted';
  a:=public.solar_system_payment_context(-412202);assert a->'systems'=pg_temp.raw_system(-412202)->'systems','Admin system allocation choices changed';
 end$$;

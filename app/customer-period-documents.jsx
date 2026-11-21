@@ -7,7 +7,7 @@ import AppIcon from './app-icons';
 
 export default function CustomerPeriodDocuments({account,from,to,category,query,invalid,a4}){
  const [result,setResult]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState('');const generation=useRef(0),request=useRef(null);
- const key=JSON.stringify([account.id,from,to,category,query]);
+ const key=JSON.stringify([account.id,account.token,account.name,from,to,category,query]);
  useEffect(()=>{generation.current++;request.current?.abort();setResult(null);setBusy(false);setError('');return()=>{generation.current++;request.current?.abort();};},[key]);
  async function prepare(){
   if(busy||invalid)return;const seq=++generation.current,controller=new AbortController();request.current=controller;setBusy(true);setError('');setResult(null);

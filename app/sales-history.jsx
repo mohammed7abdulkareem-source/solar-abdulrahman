@@ -4,9 +4,8 @@ import {userDisplayName} from './user-name-utils.mjs';
 import {useEffect,useRef,useState} from 'react';
 import {useWarehouseStatuses} from './warehouse-badge';
 import SalesArchiveCard from './sales-archive-card';
-import CurrencyInvoice from './currency-invoice';
-import SystemInvoiceEditor from './system-invoice-editor';
-import {canEditArchivedInvoice,archiveInvoiceDraft,canEditInstallationExpenses} from './invoice-edit-utils.mjs';
+import {ArchivedSaleEditor} from './archived-sale-editor';
+import {canEditArchivedInvoice,archiveInvoiceDraft} from './invoice-edit-utils.mjs';
 import {supabase} from './supabase';
 import WarehousePricing from './warehouse-pricing';
 import {salesDocument,statusLabel,formatMoney} from './sales-document.mjs';
@@ -26,7 +25,7 @@ export default function SalesHistory({initialSearch='',initialKind='',profile,cu
  useEffect(()=>{if(initialSearch&&!reviewInitialized.current){reviewInitialized.current=true;if(mode==='period')setMode('list');}},[initialSearch,mode,setMode]);
  const moved=useRef(false);
  const editLock=useRef(false),[preparingEdit,setPreparingEdit]=useState(false);
- const [editing,setEditing]=useState(null),[editItems,setEditItems]=useState([]),[editSearch,setEditSearch]=useState(''),[deleting,setDeleting]=useState(null),[message,setMessage]=useState('');
+ const [editing,setEditing]=useState(null),[deleting,setDeleting]=useState(null),[message,setMessage]=useState('');
  async function remove(row){if(deleting!==null)return;setDeleting(row.id);setError('');setMessage('');try{const result=await deleteSale(row.id,profile);if(result){setMessage(deletionResultMessage(result));setOffset(0);setPosition(0);setRefresh(n=>n+1);await onChanged?.()}}catch(e){setError(e.message)}finally{setDeleting(null)}}
  const [query,setQuery]=useState(initialSearch),[search,setSearch]=useState(initialSearch),[selectedKind,setKind]=useState(initialKind),[from,setFrom]=useState(''),[to,setTo]=useState(''),[status,setStatus]=useState(''),[offset,setOffset]=useState(0),[refresh,setRefresh]=useState(0);
  const offeredKinds=allowedSaleHistoryKinds(profile);
@@ -50,8 +49,8 @@ export default function SalesHistory({initialSearch='',initialKind='',profile,cu
  const change=(setter,value)=>{setter(value);setOffset(0);setPosition(0)};
  const doc=(row,customer)=>{const party=customers.find(c=>row.party_id!=null?String(c.id)===String(row.party_id):c.name===row.party_name);const d=salesDocument({...row,customerPhone:row.customer_phone||row.customerPhone||party?.phone},customer);return a4(d.title,d.body,d.total,d.subtitle)};
  const finishEdit=()=>{setEditing(null);setMessage('تم حفظ تعديل الفاتورة وتصحيح حسابها والمخزون.');setRefresh(n=>n+1);};
- const edit=async row=>{if(editLock.current||!canEditArchivedInvoice(profile,row)||!onUpdateInvoice)return;editLock.current=true;setPreparingEdit(true);setError('');try{await onPrepareEdit?.();const draft=archiveInvoiceDraft(row);setEditing(draft);setEditItems([]);setEditSearch('');window.scrollTo({top:0,behavior:'instant'});}catch{setError('تعذر تحميل بيانات تعديل الفاتورة. أعد المحاولة.');}finally{editLock.current=false;setPreparingEdit(false);}};
- if(editing)return editing.kind==='system'?<SystemInvoiceEditor canEditExpenses={canEditInstallationExpenses(profile,editing)} key={editing.id} original={editing} customers={customers} staff={staff} products={products} onUpdate={onUpdateInvoice} onSaved={finishEdit} onCancel={()=>setEditing(null)} a4={a4}/>:<CurrencyInvoice key={editing.id} kind="sale" contact={{...profile,display_name:editing.creatorName,phone:editing.creatorPhone}} products={products} parties={customers} initialInvoice={editing} items={editItems} setItems={setEditItems} search={editSearch} setSearch={setEditSearch} onUpdateInvoice={async(old,changes)=>{const ok=await onUpdateInvoice(old,changes);if(ok)finishEdit();return ok;}} onCancel={()=>setEditing(null)} a4={a4} openA4={openA4} saveA4={saveA4} shareA4={shareA4}/>;
+ const edit=async row=>{if(editLock.current||!canEditArchivedInvoice(profile,row)||!onUpdateInvoice)return;editLock.current=true;setPreparingEdit(true);setError('');try{await onPrepareEdit?.();const draft=archiveInvoiceDraft(row);setEditing(draft);window.scrollTo({top:0,behavior:'instant'});}catch{setError('تعذر تحميل بيانات تعديل الفاتورة. أعد المحاولة.');}finally{editLock.current=false;setPreparingEdit(false);}};
+ if(editing)return <ArchivedSaleEditor key={editing.id} original={editing} profile={profile} customers={customers} staff={staff} products={products} onUpdateInvoice={onUpdateInvoice} onSaved={finishEdit} onCancel={()=>setEditing(null)} a4={a4} openA4={openA4} saveA4={saveA4} shareA4={shareA4}/>;
  return <section className="salesArchive"><WarehousePricing profile={profile} onChanged={()=>{setRefresh(n=>n+1);onChanged?.();}}/><p className="archiveCount">{isAdministrator(profile)?'الإدارة — جميع وصولات المستخدمين':'مبيعات ووصولات حسابك فقط'}</p>
   <form className={'card form salesFilterPanel'+(isAdministrator(profile)?' hasUserFilter':'')} onSubmit={e=>{e.preventDefault();const q=normalizeSearch(query);change(setSearch,/^[#\d,٬\s]+$/.test(q)?receiptQuery(q):query.trim());setRefresh(n=>n+1)}}>
    <label className="archiveSearchField">بحث الوصل أو الزبون<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="رقم الوصل / اسم الزبون"/></label>

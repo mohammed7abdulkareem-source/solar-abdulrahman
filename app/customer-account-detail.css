@@ -49,3 +49,30 @@ body.premiumSolar .appContent .customerOverviewPeriod {
 
 body.premiumSolar .appContent .miniAccountStats.customerOverviewTotals { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .customerOriginalBalance { display:flex; gap:.65rem; align-items:baseline; color:#425e65; }
+
+body.premiumSolar .appContent .customerReceiptActions {
+ display:flex; flex-wrap:wrap; gap:6px; margin:4px 12px 8px;
+}
+body.premiumSolar .appContent .customerReceiptActions button {
+ display:inline-flex; align-items:center; justify-content:center; gap:5px;
+ min-height:40px; min-width:0; padding:5px 10px; border:1px solid #cddfdd;
+ border-radius:8px; background:white; color:#175750; font:inherit; font-size:.83rem;
+ cursor:pointer;
+}
+body.premiumSolar .appContent .customerReceiptActions button.customerReceiptDelete { color:#953846; border-color:#e8d8da; }
+body.premiumSolar .appContent .customerReceiptActions button:disabled { opacity:.5; cursor:default; }
+body.premiumSolar .appContent .customerReceiptActions button:focus-visible { outline:2px solid #247b75; outline-offset:2px; }
+body.premiumSolar .appContent .customerStatementLedger .customerReceiptActions { margin:4px 0; }
+@media(max-width:640px) {
+ body.premiumSolar .appContent .customerReceiptActions button { min-height:44px; }
+}
+@media(max-width:640px) {
+ body.premiumSolar .appContent .customerStatementLedger .customerReceiptActions { gap:4px; }
+ body.premiumSolar .appContent .customerStatementLedger .customerReceiptActions button {
+  padding:4px 7px; min-width:48px; background:#f4faf8; color:#175750;
+ }
+ body.premiumSolar .appContent .customerStatementLedger .customerReceiptActions button.customerReceiptDelete {
+  color:#953846; background:#fbf4f4;
+ }
+ body.premiumSolar .appContent .customerStatementLedger .customerReceiptActions button>span { display:none; }
+}
