@@ -3,14 +3,23 @@ import {useEffect,useRef,useState} from 'react';
 import AppIcon from './app-icons';
 import CompactPartyAccount from './compact-party-account';
 import CustomerNameEditor from './customer-name-editor';
+import CustomerOwnerTransfer from './customer-owner-transfer';
+import CustomerOwnershipGuard from './customer-ownership-guard';
 import StatementPaymentEditor from './statement-payment-editor';
-import {canOpenPage} from './access-utils.mjs';
+import {canOpenPage,isAdministrator} from './access-utils.mjs';
 import {deletionResultMessage} from './receipt-deletion.mjs';
 
 const saleKinds=['sale','system'];
 const paymentPages={customer_payment:'customerPayment',system_payment:'systemPayment'};
 
-export default function CustomerAccountView({profile,account,onAccountChanged,renderSaleEditor,onDeleteInvoice,...props}){
+export default function CustomerAccountView(props){
+ const {account,profile,onBack,backLabel,onRefresh}=props;
+ const view=<AccountContents {...props}/>;
+ if(isAdministrator(profile))return view;
+ return <CustomerOwnershipGuard key={profile.id+':'+account.id} customerId={account.id} userId={profile.id} onBack={onBack} backLabel={backLabel} onLost={onRefresh}>{view}</CustomerOwnershipGuard>;
+}
+
+function AccountContents({profile,account,onAccountChanged,renderSaleEditor,onDeleteInvoice,...props}){
  const [editor,setEditor]=useState(null),[saving,setSaving]=useState(false),[revision,setRevision]=useState(0),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const mutating=useRef(false),origin=useRef(null),editorRegion=useRef(null),live=useRef(true);
  useEffect(()=>{if(editor)editorRegion.current?.focus({preventScroll:true});},[editor]);
@@ -76,7 +85,11 @@ export default function CustomerAccountView({profile,account,onAccountChanged,re
   {error&&<p className="miniAlert" role="alert">{error}</p>}
   <div hidden={!!form}>
    <CompactPartyAccount {...props} account={account} documentRevision={revision} renderReceiptActions={receiptActions}
-    nameEditor={<CustomerNameEditor key={account.id} profile={profile} account={account} onSaved={refreshAfterSave}/>}/>
+    identityActions={<div className="customerIdentityActions">
+     <CustomerNameEditor key={account.id} profile={profile} account={account} onSaved={refreshAfterSave}/>
+     {isAdministrator(profile)&&<CustomerOwnerTransfer key={profile.id+':'+account.id} account={account}
+      disabled={saving||props.balanceStatus!=='ready'} onSaved={refreshAfterSave}/>}
+    </div>}/>
   </div>
   {form&&<div ref={editorRegion} tabIndex={-1} aria-label="إدارة الوصل" role="region">{form}</div>}
  </>;

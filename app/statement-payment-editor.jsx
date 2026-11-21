@@ -61,6 +61,10 @@ export default function StatementPaymentEditor({profile,movement,action='update'
    if(!deleting&&/^[0-9A-Z]{5}$/.test(e.code||'')){
     clearCashAttempt(actor,attemptKey,saved?.id);setPending(null);
    }
+   if(e.code==='42501'){
+    setContext(null);setAmount('');setNotes('');
+    await onChanged?.({message:e.message||'لم يعد هذا التسديد متاحاً ضمن صلاحياتك.'});
+   }
    setError(e.message||'تعذر تأكيد العملية. أعد المحاولة بنفس البيانات.');
   }finally{locked.current=false;setBusy(false);}
  }

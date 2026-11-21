@@ -38,11 +38,16 @@ export default function CustomerWorkspace({profile,staff=[],rows:sourceRows=[],o
  const proposedBalance=Number(editing?.balance||0)-Number(editing?.openingBalance||0)+signed;
  const change=(key,value)=>{setForm(f=>({...f,[key]:value}));setError('');setNotice('');};
  function cancel(){if(uncertain)return;setEditorOpen(false);detailGeneration.current++;setEditing(null);setForm(emptyForm(profile));setError('');setNotice('');attempt.current=null;}
+ function evictDeniedAccount(id){
+  setRecords(current=>current.filter(row=>String(row.id)!==String(id)));
+  setDetail(null);setEditing(null);setEditorOpen(false);setForm(emptyForm(profile));
+  void load();
+ }
  async function edit(id){
   if(busy||uncertain||!canManage)return;
   const n=++detailGeneration.current;setEditingId(id);setError('');setNotice('');
   try{const record=await customerRecord(id);if(n!==detailGeneration.current)return;setEditorOpen(true);setDetail(null);setEditing(record);setForm({name:record.name,phone:record.phone,customerType:record.customerType,ownerId:record.ownerId||profile.id,opening:Number(record.openingBalance)!==0,amount:record.openingBalance?String(Math.abs(record.openingBalance)):'',direction:record.openingBalance<0?'-1':'1'});attempt.current=null;panel.current?.scrollIntoView({behavior:'smooth',block:'start'});}
-  catch(e){if(n===detailGeneration.current)setError(e.message||'تعذر فتح تعديل الزبون');}
+  catch(e){if(n===detailGeneration.current){if(e.code==='42501')evictDeniedAccount(id);setError(e.message||'تعذر فتح تعديل الزبون');}}
   finally{if(n===detailGeneration.current)setEditingId(null);}
  }
  async function refresh(){if(uncertain)return;setError('');await load();if(editing)await edit(editing.id);}
@@ -68,7 +73,7 @@ export default function CustomerWorkspace({profile,staff=[],rows:sourceRows=[],o
    if(String(record?.id)!==String(id))throw new Error('تعذر تأكيد حساب العميل المحدد. أعد المحاولة.');
    if(request===detailGeneration.current)setDetail(record);
   }catch(e){
-   if(request===detailGeneration.current){if(e.code)setDetail(null);setError(e.message||'تعذر فتح الحساب');}
+   if(request===detailGeneration.current){if(e.code==='42501')evictDeniedAccount(id);else if(e.code)setDetail(null);setError(e.message||'تعذر فتح الحساب');}
   }finally{if(request===detailGeneration.current)setEditingId(null);}
  }
  function closeAccount(){detailGeneration.current++;setDetail(null);setEditingId(null);}

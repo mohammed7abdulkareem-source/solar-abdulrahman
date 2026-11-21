@@ -1,0 +1,22 @@
+.customerIdentityActions { display:flex; flex-wrap:wrap; align-items:flex-start; gap:6px; }
+.customerIdentityActions:empty { display:none; }
+.customerIdentityActions>.statementNameForm { flex-basis:100%; }
+.customerIdentityActions .statementTransferTrigger {
+ display:inline-flex; align-items:center; justify-content:center; gap:6px; width:auto;
+ min-height:42px; padding:4px 10px; border:1px solid #b6d3ce; border-radius:.65rem;
+ background:#fff; color:#115b57; font:inherit; font-size:.86rem;
+}
+.statementTransferDialog .statementTransferCustomer { margin:2px 0 16px; color:#284f58; font-weight:700; overflow-wrap:anywhere; }
+.statementTransferDialog form,.statementTransferDialog label { display:grid; min-width:0; gap:8px; }
+.statementTransferDialog form { gap:14px; }
+.statementTransferDialog select { min-width:0; width:100%; min-height:46px; }
+.statementTransferSource,.statementTransferReview { background:#f0f7f5; border:1px solid #d6e6e0; border-radius:12px; padding:10px 13px; }
+.statementTransferSource,.statementTransferReview>div { display:flex; justify-content:space-between; align-items:baseline; gap:12px; }
+.statementTransferSource span,.statementTransferReview dt { color:#46676a; }
+.statementTransferReview { margin:0; }
+.statementTransferReview>div { padding:8px 0; }
+.statementTransferReview>div+div { border-top:1px solid #d3e2de; }
+.statementTransferReview dd { margin:0; min-width:0; text-align:end; color:#173d40; font-weight:700; overflow-wrap:anywhere; }
+.statementTransferReview small { display:block; font-weight:400; }
+.statementTransferFooter { display:flex; flex-wrap:wrap; gap:8px; }
+.statementTransferFooter .uiButton { flex:1 1 120px; min-height:44px; }

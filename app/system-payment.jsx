@@ -18,7 +18,12 @@ export default function SystemPayment({profile,onChanged,a4,ledgerType='system',
  const [draftOpen,setDraftOpen]=useState(false);
  const generation=useRef(0),pending=useRef(null),posting=useRef(false),directoryGeneration=useRef(0);
  const loadDirectory=useCallback(async()=>{const n=++directoryGeneration.current;setDirectoryLoading(true);setDirectoryError('');try{const {data,error}=await supabase.rpc(contextRpc,{customer_id:null});if(error)throw error;if(n===directoryGeneration.current)setDirectory(data.customers||[]);}catch(e){if(n===directoryGeneration.current)setDirectoryError(e.message||'تعذر تحميل الزبائن.');}finally{if(n===directoryGeneration.current)setDirectoryLoading(false);}},[contextRpc]);
- const load=useCallback(async()=>{const n=++generation.current;setAccount(null);if(!customerId){setLoading(false);return;}setLoading(true);try{const {data,error}=await supabase.rpc(contextRpc,{customer_id:Number(customerId)});if(error)throw error;if(n===generation.current)setAccount(data);}catch(e){if(n===generation.current)setError(e.message||'تعذر تحميل الحساب.');}finally{if(n===generation.current)setLoading(false);}},[customerId,contextRpc]);
+ const discardAccount=useCallback(id=>{
+  setAccount(null);setLast(null);setAmount('');setNotes('');setDraftOpen(false);
+  setDirectory(rows=>rows.filter(row=>String(row.id)!==String(id)));
+  void loadDirectory();
+ },[loadDirectory]);
+ const load=useCallback(async()=>{const n=++generation.current;setAccount(null);if(!customerId){setLoading(false);return;}setLoading(true);try{const {data,error}=await supabase.rpc(contextRpc,{customer_id:Number(customerId)});if(error)throw error;if(n===generation.current)setAccount(data);}catch(e){if(n===generation.current){if(e.code==='42501')discardAccount(customerId);setError(e.message||'تعذر تحميل الحساب.');}}finally{if(n===generation.current)setLoading(false);}},[customerId,contextRpc,discardAccount]);
  useEffect(()=>{loadDirectory();return()=>{directoryGeneration.current++;};},[loadDirectory]);
  useEffect(()=>{setError('');load();return()=>{generation.current++;};},[load]);
  const charge=mode==='charge',movementMode=charge?reason:'payment',value=Number(amount),balance=Number(account?.balance||0),limit=Math.max(0,balance);
@@ -30,7 +35,7 @@ export default function SystemPayment({profile,onChanged,a4,ledgerType='system',
   if(pending.current&&pending.current.signature!==signature){setError('أعد تأكيد الحفظ السابق بنفس البيانات أولاً.');return;}
   if(!pending.current)pending.current={id:crypto.randomUUID(),signature};posting.current=true;setSaving(true);setError('');
   try{const {data,error}=await saveRequest(signal=>supabase.rpc(saveRpc,{request_id:pending.current.id,payload}).abortSignal(signal));if(error)throw error;pending.current=null;setLast(data);if(data.accountContext)setAccount(data.accountContext);else refreshAfterSave(load);refreshAfterSave(onChanged,()=>setError('تم حفظ الوصل؛ تعذر تحديث بقية الأقسام. اضغط تحديث الرصيد.'));}
-  catch(e){if(e.code){pending.current=null;setError(e.message||'تعذر الحفظ.');if(['40001','PT409'].includes(e.code))await load();}else setError('لم يتأكد رد الحفظ؛ أعد تأكيده بنفس البيانات ولن يتكرر الوصل.');}finally{posting.current=false;setSaving(false);}
+  catch(e){if(e.code){pending.current=null;setError(e.message||'تعذر الحفظ.');if(e.code==='42501')discardAccount(customerId);else if(['40001','PT409'].includes(e.code))await load();}else setError('لم يتأكد رد الحفظ؛ أعد تأكيده بنفس البيانات ولن يتكرر الوصل.');}finally{posting.current=false;setSaving(false);}
  }
  function choose(id){generation.current++;setCustomerId(id);setAccount(null);setLast(null);setAmount('');setError('');}
  if(wholesale&&historyOpen)return <CustomerPaymentHistory profile={profile} initialId={historyId} onChanged={onChanged} onBack={()=>{setHistoryOpen(false);setHistoryId(null);setLast(null);setAmount('');setNotes('');load();}}/>;

@@ -14,7 +14,7 @@ import {supplierDocument,escapeHtml} from './supplier-utils.mjs';
 import './customer-account-detail.css';
 import PartyStatementTable from './party-statement-table';
 
-function CustomerAccountHeader({account, status, showStatementBalance, nameEditor}) {
+function CustomerAccountHeader({account, status, showStatementBalance, identityActions}) {
  const raw = account.balance;
  const hasAmount = (typeof raw === 'number' || typeof raw === 'string' && raw.trim() !== '') && Number.isFinite(Number(raw));
  const available = status === 'ready' && hasAmount;
@@ -27,7 +27,7 @@ function CustomerAccountHeader({account, status, showStatementBalance, nameEdito
     <span className="customerIdentityAvatar" aria-hidden="true">{partyInitials(account.name)}</span>
     <div><h2>{account.name}</h2><small>{customerType}{account.ownerName && ' · ' + account.ownerName}</small></div>
    </div>
-   {nameEditor}
+   {identityActions}
    {account.phone && <PhoneActions phone={account.phone} label={account.name}/>}
   </div>
   <div className="customerBalanceAmount" aria-live="polite" aria-busy={status === 'loading'}>
@@ -41,7 +41,7 @@ function CustomerAccountHeader({account, status, showStatementBalance, nameEdito
 }
 
 
-export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,onPayment,onSale,onSettings,onMovementEdit,canEditMovement,canDeletePayment=false,renderMatch,initialView='overview',extraControls,backLabel,balanceStatus='ready',nameEditor,renderReceiptActions,documentRevision=0}){
+export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,onPayment,onSale,onSettings,onMovementEdit,canEditMovement,canDeletePayment=false,renderMatch,initialView='overview',extraControls,backLabel,balanceStatus='ready',identityActions,renderReceiptActions,documentRevision=0}){
  const [view,setView]=useState(initialView),[category,setCategory]=useState('all'),[from,setFrom]=useState(''),[to,setTo]=useState(''),[query,setQuery]=useState(''),[selected,setSelected]=useState(null),[days,setDays]=useState('all');
  const [detailOrigin,setDetailOrigin]=useState('movements');
  const [purchaseVersion,setPurchaseVersion]=useState('original');
@@ -93,7 +93,7 @@ export default function CompactPartyAccount({account,a4,onBack,onRefresh,onEdit,
   {supplier&&view!=='detail'&&<div className="miniIdentity"><span className="miniAvatar">{partyInitials(account.name)}</span><div><h2>{account.name}</h2><small>{supplier?'عملة الحساب: '+currency:(account.customerType==='wholesale'?'جملة':'مفرد · منظومات')}{account.ownerName?' · '+account.ownerName:''}</small></div><span className="miniCurrency">{currency}</span></div>}
   {supplier&&account.phone&&<div className="miniIdentityPhone"><PhoneActions phone={account.phone} label={account.name}/></div>}
   {!supplier&&view!=='detail'&&<>
-   <CustomerAccountHeader nameEditor={nameEditor} account={account} status={balanceStatus} showStatementBalance={!showPeriodBalances && view==='overview'}/>
+   <CustomerAccountHeader identityActions={identityActions} account={account} status={balanceStatus} showStatementBalance={!showPeriodBalances && view==='overview'}/>
    <nav className="customerAccountSections" aria-label="أقسام حساب العميل">
     {reportActions.map(([icon,label,next,tab])=><button key={tab} type="button"
      aria-pressed={view===next&&(next==='report'||category===tab)} onClick={()=>changeView(next,tab)}>
