@@ -16,6 +16,9 @@ import {unlockNotificationSound,playNotificationSound} from './notification-soun
 import {supabase} from './supabase';
 import {receiptNumber} from './supplier-utils.mjs';
 import {approvedExpenseValue,installationPaidExpense,installationExpenseDifference} from './expense-review.mjs';
+import {installationCost} from './review-utils.mjs';
+import {receiptProfitFigures} from './profit-material-document.mjs';
+import './installation-financials.css';
 const fmt=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const dateText=value=>value?new Date(value).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad',dateStyle:'short',timeStyle:'short'}):'';
 export default function InstallationWorkflow({profile,onChanged,selectedJob=null}){
@@ -26,12 +29,12 @@ function InstallationQueue({profile,onChanged,selectedJob}){
  const engineer=profile?.user_type==='installer';
  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(false),6500);return()=>clearTimeout(timer);},[toast]);
  const request=useRef({seq:0,controller:null}),actionBusy=useRef(false),resultsHeading=useRef(null);
- const [showCalendar,setShowCalendar]=useState(!selectedJob),[focusedId,setFocusedId]=useState(selectedJob?.id||'');
+ const [showCalendar,setShowCalendar]=useState(!selectedJob),[focusedId,setFocusedId]=useState(String(selectedJob?.id??''));
  const refresh=useCallback(async()=>{
   request.current.controller?.abort();const controller=new AbortController(),seq=++request.current.seq;request.current.controller=controller;const timer=setTimeout(()=>controller.abort(),12000);
   try{const {data,error}=await supabase.rpc('solar_installation_jobs').abortSignal(controller.signal);if(seq!==request.current.seq)return;if(error)throw error;setJobs(data||[]);return data||[];}finally{clearTimeout(timer);if(seq===request.current.seq)request.current.controller=null;}
  },[]);
- useEffect(()=>{if(selectedJob?.id){setFocusedId(selectedJob.id);setQuery('');setStatus('all');setShowCalendar(false);}},[selectedJob]);
+ useEffect(()=>{if(selectedJob?.id){setFocusedId(String(selectedJob.id));setQuery('');setStatus('all');setShowCalendar(false);}},[selectedJob]);
  useEffect(()=>{let live=true;refresh().catch(()=>{if(live)setError('تعذر تحميل المهام. اضغط تحديث للمحاولة مجدداً.');}).finally(()=>{if(live)setLoading(false);});return()=>{live=false;request.current.seq++;request.current.controller?.abort();};},[refresh]);
  async function change(job,action,payload={}){
   if(actionBusy.current)return false;actionBusy.current=true;setBusy(job.id);setError('');setMessage('');void unlockNotificationSound();
@@ -73,15 +76,17 @@ function InstallationQueue({profile,onChanged,selectedJob}){
   <div className="statusTabs" aria-label="تصفية المهام">{[['open','المفتوحة'],...stages,['all','الكل']].map(([value,label])=><button key={value} aria-pressed={status===value} onClick={()=>{setFocusedId('');setStatus(value);}}>{label}</button>)}</div>
   {error&&<div className="workflowError" role="alert">{error}</div>}{message&&<div className="workflowSuccess" role="status">{message}</div>}
   <div className="installationResultsHeading"><h3 ref={resultsHeading} tabIndex={-1}>{resultsTitle}</h3>{focusedId?<button type="button" className="installerControl" onClick={()=>selectSummary('open')}>العودة إلى القائمة</button>:<span aria-live="polite">{loading?'جاري التحميل…':visible.length+' ملف'}</span>}</div>
-  {loading?<div className="empty">جاري تحميل المهام…</div>:!visible.length?<div className="workflowEmpty"><span>✓</span><h3>لا توجد مهام ضمن هذا الاختيار</h3><p>يمكن إسناد مهمة من فاتورة بيع المنظومة.</p></div>:visible.map(job=><JobCard key={job.id} job={job} busy={busy!==null} change={change}/>)}
+  {loading?<div className="empty">جاري تحميل المهام…</div>:!visible.length?<div className="workflowEmpty"><span>✓</span><h3>لا توجد مهام ضمن هذا الاختيار</h3><p>يمكن إسناد مهمة من فاتورة بيع المنظومة.</p></div>:visible.map(job=><JobCard key={job.id} job={job} focused={String(job.id)===focusedId} busy={busy!==null} change={change}/>)}
  </div>;
 }
-function JobCard({job,busy,change}){
+function JobCard({job,busy,change,focused}){
  const report=job.installationReport||{};
  const flexible=installationFlexibleTask(job,installationLocalDay(Date.now())),carried=flexible&&hasInstallationAppointment(job);
+ const financials=installationFinancials(job);
+ const canApprove=job.canManage&&job.canCloseFile&&job.warehouseStatus==='ready'&&job.installationStatus!=='closed';
  return <article className="workflowJob" data-job-id={job.id} data-job-status={job.installationStatus}>
   <header><div><small>ملف #{receiptNumber(job)}</small><h3>{job.party||'عميل منظومة'}</h3>{job.warehouseName&&<small className="orderWarehouseLabel">{job.warehouseName}</small>}</div><span className={'workflowStatus '+job.installationStatus}>{installationStageLabel(job)}</span></header>
-  {job.sellingPrice!=null&&Number.isFinite(Number(job.sellingPrice))&&<div className="jobSalePrice"><span>سعر بيع المنظومة</span><strong><bdi>{fmt(job.sellingPrice)}</bdi> <small>د.ع</small></strong></div>}
+  {!financials&&job.sellingPrice!=null&&Number.isFinite(Number(job.sellingPrice))&&<div className="jobSalePrice"><span>سعر بيع المنظومة</span><strong><bdi>{fmt(job.sellingPrice)}</bdi> <small>د.ع</small></strong></div>}
   <InstallationHandoff job={job}/>
   <WarehouseBadge status={job.warehouseStatus} compact/>
   {flexible&&<p className={'installationNoAppointment'+(carried?' carried':'')}>{carried?'مرحّل إلى أعمال اليوم · يُنفّذ حسب الوقت المتاح':'بدون موعد · ضمن أعمال كل يوم إلى أن يُنجز'}</p>}
@@ -90,11 +95,12 @@ function JobCard({job,busy,change}){
   <details className="jobMaterials" open><summary>مواد التنصيب <span>{job.items?.length||0} مادة</span></summary>{job.items?.length?job.items.map((item,i)=><div key={item.id||i}><span>{item.name}{item.brand&&<small>{item.brand}</small>}</span><b>× {fmt(item.qty)}</b></div>):<p>لا توجد مواد مسجلة</p>}</details>
   <div className="jobTimes">{job.installationStartedAt&&<span>بدء العمل: {dateText(job.installationStartedAt)}</span>}{job.installationCompletedAt&&<span>إرسال التقرير: {dateText(job.installationCompletedAt)}</span>}{job.installationClosedAt&&<span>إغلاق الملف: {dateText(job.installationClosedAt)}</span>}</div>
   {report.submittedAt&&<div className="jobReport"><h4>تقرير المهندس</h4><p>{report.notes}</p>{(report.expenses||[]).map((e,i)=><div key={i}><span>{e.description}</span><b>{fmt(e.amount)} د.ع</b></div>)}<div><span>المصاريف المرفوعة للمراجعة</span><b>{fmt(report.expenseTotal)} د.ع</b></div></div>}
+  {financials&&<InstallationFinancials amounts={financials} closed={job.installationStatus==='closed'} expanded={focused||canApprove||job.installationStatus==='closed'}/>}
   {job.canManage&&job.installationStatus!=='closed'&&(installationPaidExpense(job)>0||Number(job.installationExpenses)>0)&&<div className="cancelInstallationExpenses"><p>مصاريف التنصيب المدفوعة: {fmt(installationPaidExpense(job))} د.ع</p><button type="button" className="workflowSecondary" disabled={busy} onClick={()=>confirm('إلغاء مصاريف التنصيب وإرجاع المدفوع إلى قاصة صاحبه؟')&&change(job,'clear_expenses',{notes:'إلغاء مصاريف التنصيب المعتمدة'})}>إلغاء مصاريف التنصيب وإرجاعها للقاصة</button></div>}
-  {job.canManage&&job.canCloseFile&&job.warehouseStatus==='ready'&&job.installationStatus!=='closed'&&<ApproveInstallation job={job} busy={busy} onSubmit={payload=>change(job,'close',payload)}/>}
+  {canApprove&&<ApproveInstallation job={job} financials={financials} busy={busy} onSubmit={payload=>change(job,'close',payload)}/>}
   {job.canManage&&job.canReturnReport&&<ReturnReport key={job.installationRevision} busy={busy} onSend={payload=>change(job,'return_report',payload)}/>}
   {job.canManage&&job.warehouseStatus!=='ready'&&job.installationStatus!=='closed'&&<p className="workflowNotice">بانتظار تجهيز المخزن. يظهر اعتماد المصاريف والغلق بعد التجهيز.</p>}
-  {job.canManage&&job.installationStatus==='closed'&&<div className="jobFinancials"><div><small>المصاريف المعتمدة</small><b>{fmt(job.installationExpenses)} د.ع</b></div><div><small>الكلفة النهائية</small><b>{fmt(Number(job.cost||0)+Number(job.expenses||0)+Number(job.installationExpenses||0))} د.ع</b></div><div><small>الربح النهائي</small><b>{fmt(Number(job.total||0)-Number(job.cost||0)-Number(job.expenses||0)-Number(job.installationExpenses||0))} د.ع</b></div>{job.installationExpenseNotes&&<p>{job.installationExpenseNotes}</p>}<button disabled={busy} onClick={()=>confirm('إعادة فتح الملف للمراجعة؟ فتح الملف لا يلغي المصاريف؛ يمكنك إلغاءها أو تعديلها بعد الفتح.')&&change(job,'reopen')}>إعادة فتح للمراجعة</button></div>}
+  {job.canManage&&job.installationStatus==='closed'&&<div className="jobFinancials">{job.installationExpenseNotes&&<p>{job.installationExpenseNotes}</p>}<button disabled={busy} onClick={()=>confirm('إعادة فتح الملف للمراجعة؟ فتح الملف لا يلغي المصاريف؛ يمكنك إلغاءها أو تعديلها بعد الفتح.')&&change(job,'reopen')}>إعادة فتح للمراجعة</button></div>}
  </article>;
 }
 function ReturnReport({busy,onSend}){
@@ -105,16 +111,34 @@ function ReturnReport({busy,onSend}){
    <button type="submit" className="workflowSecondary" disabled={busy||!notes.trim()}>إعادة التقرير للمهندس</button>
   </form></details>;
 }
-function ApproveInstallation({job,busy,onSubmit}){
+function installationFinancials(job){
+ if(!job.canManage||job.total==null||job.cost==null||job.expenses===undefined||job.installationExpenses===undefined)return null;
+ const [sales,materialsCost,invoiceExpenses,installationExpenses]=[job.total,job.cost,job.expenses,job.installationExpenses].map(Number);
+ if(![sales,materialsCost,invoiceExpenses,installationExpenses].every(Number.isFinite))return null;
+ const grossProfit=sales-materialsCost,totalCost=installationCost(job);
+ return {kind:'system',sales,materialsCost,invoiceExpenses,installationExpenses,grossProfit,
+  beforeInstallation:grossProfit-invoiceExpenses,totalCost,netProfit:sales-totalCost};
+}
+function InstallationFinancials({amounts,closed,expanded}){
+ const figures=receiptProfitFigures(amounts,{provisional:!closed,showInvoiceExpenses:true});
+ const [,saleLabel,sale]=figures[0];
+ const rows=[...figures.slice(1,-1),['totalCost','إجمالي الكلفة والمصاريف',amounts.totalCost],figures.at(-1)];
+ return <details className="installationFinancials" open={expanded}>
+  <summary><span className="installationFinancialsTitle">تفاصيل ربح المنظومة</span><span className="jobSalePrice"><span>{saleLabel}</span><strong><bdi dir="ltr">{fmt(sale)}</bdi> <small>د.ع</small></strong></span></summary>
+  <dl>{rows.map(([key,label,value])=><div key={key} className={key==='net'?'installationNet'+(value<0?' loss':''):undefined}><dt>{label}</dt><dd><bdi dir="ltr">{fmt(value)}</bdi> <small>د.ع</small></dd></div>)}</dl>
+ </details>;
+}
+function ApproveInstallation({job,financials,busy,onSubmit}){
  const [amount,setAmount]=useState(()=>approvedExpenseValue(job)),[notes,setNotes]=useState(job.installationExpenseNotes||''),[error,setError]=useState(''),[draftRevision,setDraftRevision]=useState(job.installationRevision);
  const stale=draftRevision!==job.installationRevision,paid=installationPaidExpense(job),difference=installationExpenseDifference(job,amountInput(amount)),proposal=job.installationReport?.expenseTotal;
- const approved=amountInput(amount)===''?0:Number(amountInput(amount)),cost=Number(job.cost||0)+Number(job.expenses||0)+(Number.isFinite(approved)?approved:0);
+ const approved=Number(amountInput(amount));
+ const preview=financials&&!stale&&Number.isFinite(approved)&&approved>=0&&approved<=1e9&&approved!==financials.installationExpenses;
  return <form className="approvalForm" onSubmit={async e=>{e.preventDefault();setError('');if(stale)return setError('تغيّر الملف؛ حمّل القيم الحالية قبل الاعتماد.');if(!Number.isFinite(approved)||approved<0||approved>1e9)return setError('أدخل مصاريف صحيحة.');if(confirm('تأكيد اعتماد المصاريف وإغلاق الملف؟ يُسجّل فرق المبلغ فقط.'))await onSubmit({amount:approved,notes:notes.trim()})}}>
   <h4>مراجعة الإدارة وإغلاق الملف</h4>{stale&&<div className="workflowError" role="alert">تغيّر الملف أثناء المراجعة.<button type="button" onClick={()=>{setAmount(approvedExpenseValue(job));setNotes(job.installationExpenseNotes||'');setDraftRevision(job.installationRevision);setError('');}}>تحميل القيم الحالية</button></div>}
   <p className="workflowHint">المدفوع فعليًا سابقًا: <b>{fmt(paid)} د.ع</b></p>{proposal!=null&&<p className="workflowHint">مقترح تقرير المهندس: <b>{fmt(proposal)} د.ع</b> <button type="button" disabled={busy||stale} onClick={()=>setAmount(String(proposal))}>استخدام مبلغ التقرير</button></p>}
   <label className="workflowField">المصاريف النهائية المعتمدة — د.ع<MoneyInput aria-label="المصاريف النهائية للمنظومة" value={amount} disabled={busy||stale} placeholder="اختياري — الفارغ يعني 0" onChange={setAmount}/></label>
   <label className="workflowField">ملاحظات الاعتماد (اختياري)<textarea value={notes} maxLength={4000} disabled={busy||stale} placeholder="يمكن إغلاق الملف بدون كتابة سبب" onChange={e=>setNotes(e.target.value)}/></label>
-  <div className="approvalTotals"><span>الكلفة النهائية <b>{fmt(cost)} د.ع</b></span><span>الربح النهائي <b>{fmt(Number(job.total||0)-cost)} د.ع</b></span></div>
+  {preview&&<div className="installationApprovalPreview" role="status"><h5>معاينة قبل الاعتماد</h5><dl><div><dt>مصاريف التنصيب بعد التعديل</dt><dd><bdi>{fmt(approved)}</bdi> د.ع</dd></div><div><dt>صافي الربح بعد التعديل</dt><dd><bdi>{fmt(financials.beforeInstallation-approved)}</bdi> د.ع</dd></div></dl></div>}
   {Number.isFinite(difference)&&<p className="workflowHint expenseDifference" role="status">{difference>0?'المبلغ الإضافي المطلوب من القاصة: '+fmt(difference)+' د.ع':difference<0?'المبلغ الذي يرجع لقاصة من دفعه: '+fmt(-difference)+' د.ع':'لا يوجد صرف إضافي؛ المبلغ مسجل سابقًا.'}</p>}
   <p className="workflowHint">تنخصم المصاريف حتى لو صار رصيد القاصة سالبًا؛ تسديدات الزبائن تُضاف إليه تلقائيًا. اعتماد الصفر يرجع المدفوع لقاصة صاحبه، والسجل يحفظ الصرف والإرجاع للتدقيق.</p>{error&&<p className="workflowError" role="alert">{error}</p>}<button className="workflowPrimary" disabled={busy||stale}>{busy?'جاري الاعتماد…':'اعتماد المصاريف وإغلاق الملف'}</button>
  </form>;

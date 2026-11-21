@@ -8,3 +8,11 @@
 .profitCurrentHint{display:block;margin-top:9px;color:inherit;opacity:.9;font-size:11px!important}.profitBalanceNotice{margin:0 0 18px;padding:11px 14px;border:1px solid #c9dfdc;border-radius:10px;background:#f0f8f6;color:#365852;font-size:12px;line-height:1.8}.profitWorkspace .financeMetrics b{overflow-wrap:anywhere;font-variant-numeric:tabular-nums}.profitWorkspace .financeMetrics article.highlight b{font-size:clamp(24px,5vw,38px)}
 
 .profitMovementRestrictedHead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px}.profitMovementRestrictedHead>strong{color:#147660;white-space:nowrap}.profitMovementRestrictedHead>strong.negative{color:#b44655}
+
+.receiptProfitFigures,.pendingSystemRows .receiptProfitFigures{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin:9px 0}
+.receiptProfitFigures>div,.pendingSystemRows .receiptProfitFigures>div{display:grid;gap:4px;min-width:0;padding:8px;border:1px solid #d9e5e8;border-radius:9px;background:#f8fbfc}
+.receiptProfitFigures dt,.pendingSystemRows .receiptProfitFigures dt{color:#47616b;font-size:12px;line-height:1.5}
+.receiptProfitFigures dd,.pendingSystemRows .receiptProfitFigures dd{direction:rtl;margin:0;color:#193e48;font-weight:700;overflow-wrap:anywhere}
+.receiptProfitFigures [data-profit-component=gross]{background:#eef5fa}
+.receiptProfitFigures [data-profit-component=net],.pendingSystemRows .receiptProfitFigures [data-profit-component=net]{grid-column:1/-1;background:#e8f4ef}
+@media(min-width:760px){.receiptProfitFigures,.pendingSystemRows .receiptProfitFigures{grid-template-columns:repeat(3,minmax(0,1fr))}}

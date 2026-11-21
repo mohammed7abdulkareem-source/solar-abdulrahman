@@ -33,7 +33,7 @@ const cases=[
  doc('user-profit',{title:'كشف أرباح المستخدم',body:profitStatementDocument({ownerName:'المستخدم التجريبي',retainedProfit:-big,available:big,rows:statementRows},from,to)},{rows:48,pages:true,text:['الرصيد المتبقي بعد التسوية','ألغيت الحركة']}),
  doc('settlement-snapshot',{title:'كشف تسوية أرباح',body:profitStatementRows(statementRows,big,{snapshot:true})},{rows:48,pages:true,text:['لقطة محفوظة للطلب، وليست الرصيد الحالي.']}),
  doc('material-profit',profitMaterialDocument({...material,kind:'sale'},{settled:big,available:-big}),{rows:48,pages:true,text:['ربح الفقرة','مطابقة ربح الحركة والتسويات']}),
- doc('system-profit',profitMaterialDocument({...material,kind:'system'},{settled:big,available:-big}),{rows:48,pages:true,text:['سعر المنظومة إجمالي متفق عليه','ربح الحركة المعتمد']}),
+ doc('system-profit',profitMaterialDocument({...material,kind:'system'},{settled:big,available:-big}),{rows:48,pages:true,text:['سعر المنظومة إجمالي متفق عليه','صافي الربح']}),
  doc('capital-snapshot',capitalSnapshotReport(capital),{rows:10,text:['القيمة الدفترية','USD','توقيت بغداد','إجمالي الموجودات','إجمالي المطلوبات']}),
  doc('pending-systems',pendingSystemsDocument(pending),{rows:73,pages:true,text:['لا يمثل نقدًا متاحًا للتوزيع','وليسا مقصورين على فترة بيع المنظومات','رصيد الحساب الموجب مستحق لنا على العميل']}),
  doc('period-sales',periodSalesDocument(period),{rows:60,pages:true,text:['حالة التنصيب: ملف مغلق','لا يمثل رصيد نهاية الفترة','عدد الفواتير']}),

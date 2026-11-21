@@ -1,0 +1,68 @@
+.installationFinancials {
+ margin-block:14px;
+ border:1px solid #bcd8d5;
+ border-radius:12px;
+ overflow:hidden;
+ background:#fff;
+ color:#183e47;
+}
+.installationFinancials > summary {
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ flex-wrap:wrap;
+ gap:6px 14px;
+ padding:12px 14px;
+ background:#edf6f5;
+ cursor:pointer;
+ list-style:none;
+}
+.installationFinancials > summary::-webkit-details-marker {display:none}
+.installationFinancials > summary:focus-visible {outline:2px solid #087c70;outline-offset:-3px}
+.installationFinancialsTitle {display:inline-flex;align-items:center;gap:9px;font-weight:700}
+.installationFinancialsTitle::before {
+ content:'';
+ width:7px;
+ height:7px;
+ border-inline-end:2px solid currentColor;
+ border-block-end:2px solid currentColor;
+ transform:rotate(45deg);
+}
+.installationFinancials[open] .installationFinancialsTitle::before {transform:rotate(135deg)}
+.installationFinancials .jobSalePrice {
+ display:inline-flex;
+ align-items:baseline;
+ gap:8px;
+ margin:0;
+ padding:0;
+ background:transparent;
+ border:0;
+ color:#255561;
+}
+.installationFinancials .jobSalePrice strong {font-size:1.05rem;color:inherit}
+.installationFinancials dl,.installationApprovalPreview dl {padding:0;margin:0}
+.installationFinancials dl > div,.installationApprovalPreview dl > div {
+ display:flex;
+ align-items:baseline;
+ justify-content:space-between;
+ gap:8px;
+ padding:7px 14px;
+ border-block-start:1px solid #e5eceb;
+}
+.installationFinancials dt,.installationApprovalPreview dt {font-size:.84rem}
+.installationFinancials dd,.installationApprovalPreview dd {
+ margin:0;
+ white-space:nowrap;
+ font-weight:650;
+ font-variant-numeric:tabular-nums;
+}
+.installationFinancials dd small {font-weight:400;font-size:.76rem}
+.installationFinancials .installationNet {background:#e8f5ef;color:#185a41;font-weight:700}
+.installationFinancials .installationNet.loss {background:#fff0ed;color:#963a32}
+.installationApprovalPreview {border:1px solid #c3d7e6;border-radius:9px;background:#f5f9fc;color:#244d64}
+.installationApprovalPreview h5 {margin:0;padding:8px 14px;font-size:.88rem}
+@media (min-width:720px) {
+ .installationFinancials dl {display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .installationFinancials dl > div:nth-child(even) {border-inline-start:1px solid #e5eceb}
+ .installationFinancials .installationNet {grid-column:1/-1}
+}
