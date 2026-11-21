@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {inventoryBalanceDocument,inventoryBalanceView} from '../app/inventory-balance-report.mjs';
+import {inventoryBalanceDocument,inventoryBalanceView,stockWarehouseScope} from '../app/inventory-balance-report.mjs';
 
 const warehouses=[{id:3,name:'الرئيسي',active:true},{id:5,name:'مخزن فرعي',active:true}];
 const products=[
@@ -75,4 +75,49 @@ test('stock uses effective unit prices for every material and counts its reserve
  const quantities=inventoryBalanceDocument(view,{...settings,priced:false,personalPrices:true});
  assert.equal(quantities.total,'');
  assert.doesNotMatch(quantities.body,/قيمة المخزون|سعر المادة|حسب الكلفة|100\.125455|999,999|320\.25|220\.13/);
+});
+
+
+test('admin can render the cost and selling valuations separately or together, including the exact FX amount on reserved stock',()=>{
+ const list=[
+  {id:20,name:'يدوية',qty:2,reservedQty:1,bookQty:3,cost:101.25,salePrice:145.75,salePriceSource:'configured'},
+  {id:21,name:'تلقائية',qty:1.5,bookQty:1.5,cost:17.129375,salePrice:17.129375,salePriceSource:'cost'},
+  {id:22,name:'بدون رصيد',qty:0,bookQty:0,cost:833333,salePrice:944444,salePriceSource:'configured'}
+ ];
+ const warehouseBalances=[
+  {productId:20,warehouseId:3,qty:1,reservedQty:1,bookQty:2},
+  {productId:20,warehouseId:5,qty:1,bookQty:1},
+  {productId:21,warehouseId:5,qty:1.5,bookQty:1.5}
+ ];
+ const data={...snapshot,products:list,warehouseBalances};
+ const all=inventoryBalanceView({...data,byWarehouse:false});
+ const view=inventoryBalanceView({...data,byWarehouse:true});
+ assert.deepEqual(all.totals,view.totals);
+ assert.equal(view.totals.products,2);assert.equal(view.totals.available,3.5);assert.equal(view.totals.reserved,1);
+ assert.equal(view.totals.value,3*101.25+1.5*17.129375);
+ assert.equal(view.totals.saleValue,3*145.75+1.5*17.129375);
+ assert.deepEqual(view.groups.map(w=>[w.value,w.saleValue]),[[202.5,291.5],[101.25+1.5*17.129375,145.75+1.5*17.129375]]);
+ const active={...settings,warehouseNames:['الرئيسي','فرع <١>']};
+ const none=inventoryBalanceDocument(view,active);
+ assert.equal(none.total,'');assert.doesNotMatch(none.body,/القيمة بالكلفة|سعر البيع|101\.25|145\.75/);
+ const cost=inventoryBalanceDocument(view,{...active,priced:true});
+ assert.equal(cost.total,'329.44 د.ع');assert.match(cost.body,/كلفة الوحدة/);assert.match(cost.body,/101\.25/);
+ assert.doesNotMatch(cost.body,/سعر البيع|145\.75/);
+ const sell=inventoryBalanceDocument(view,{...active,salePrices:true});
+ assert.equal(sell.total,'462.94 د.ع');assert.match(sell.body,/17\.129375/);assert.match(sell.body,/145\.75/);
+ assert.doesNotMatch(sell.body,/كلفة الوحدة|القيمة بالكلفة|101\.25/);
+ const both=inventoryBalanceDocument(view,{...active,priced:true,salePrices:true});
+ assert.equal(both.total,'');assert.match(both.body,/القيمة بالكلفة مع المحجوز: 329\.44/);
+ assert.match(both.body,/القيمة بسعر البيع مع المحجوز: 462\.94/);
+ assert.match(both.body,/القيمة بالكلفة 202\.5/);assert.match(both.body,/القيمة بسعر البيع 291\.5/);
+ assert.match(both.body,/سعر البيع/);assert.match(both.body,/حسب الكلفة/);assert.match(both.body,/يدوي/);
+ assert.match(both.body,/عدد المواد المختلفة: 2/);assert.match(both.body,/فرع &lt;١&gt;/);assert.doesNotMatch(both.body,/833,333|944,444|<١>/);
+ const zeros=inventoryBalanceView({...data,byWarehouse:false,hideZero:false});assert.equal(zeros.totals.products,3);
+ assert.equal(zeros.totals.value,all.totals.value);assert.equal(zeros.totals.saleValue,all.totals.saleValue);
+});
+
+test('stock scope names match the allowed warehouses and avoid repeated titles in the document filename',()=>{
+ assert.deepEqual(stockWarehouseScope([{id:4,name:'الرئيسي'}],''),{label:'الرئيسي',names:['الرئيسي']});
+ assert.deepEqual(stockWarehouseScope(warehouses,'5'),{label:'مخزن فرعي',names:['مخزن فرعي']});
+ assert.deepEqual(stockWarehouseScope(warehouses,''),{label:'جميع المخازن المسموحة',names:['الرئيسي','مخزن فرعي']});
 });

@@ -60,3 +60,18 @@
  .inventoryBalanceMetrics>div:last-child:nth-child(odd) {grid-column:1/-1}
  .inventoryStockList .inventoryRows article {padding:9px}
 }
+.inventoryHeading .stockScope{max-width:58ch;overflow-wrap:anywhere;font-size:12px;color:var(--stock-muted)}
+details.stockScope summary{cursor:pointer}
+details.stockScope ul{margin:5px 0 0;padding-inline-start:18px}
+.stockCountHint{display:block;margin-top:2px;font-size:10px;line-height:1.55;color:#536b75}
+.inventoryBalanceMetrics [data-metric-type=value]{background:#f1f5fa}
+.inventoryBalanceMetrics [data-metric-type=saleValue]{background:#eaf6f3}
+.inventoryStockList .inventoryRows article{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:5px 12px}
+.inventoryStockList .inventoryQty{max-width:none}
+.inventoryRowPrices{grid-column:1/-1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,195px),1fr));gap:5px}
+.stockPricePair{padding:6px 9px;border-inline-start:3px solid #a6bbcc;background:#f3f6fa;border-radius:5px;min-width:0}
+.stockPricePair.sale{border-color:#83b9a9;background:#eff8f4}
+.stockPricePair small{display:block;font-size:11px;line-height:1.65;color:#506775;overflow-wrap:anywhere}
+.stockPricePair bdi,.stockGroupValue bdi{color:#1c4956;font-variant-numeric:tabular-nums}
+.stockGroupValue{display:inline-block;margin-inline-start:9px}
+@media(max-width:690px){.inventoryRowPrices{grid-template-columns:repeat(auto-fit,minmax(min(100%,130px),1fr))}.stockPricePair{padding:5px 7px}.stockToggles label{min-height:40px}}

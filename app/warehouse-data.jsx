@@ -19,33 +19,34 @@ export function useInventoryRequest(){
   catch(error){if(error.code)attempt.current=null;throw error;}
  };
 }
-export function useWarehouseInventory({aggregate=false,versionKey,initialWarehouseId,byWarehouse=false,inventoryMaterialPrices=false}={}){
+export function useWarehouseInventory({aggregate=false,versionKey,initialWarehouseId,byWarehouse=false,inventoryMaterialPrices=false,adminSalePrices=false}={}){
  const [warehouseId,setWarehouse]=useState(()=>initialWarehouseId?String(initialWarehouseId):''),[version,setVersion]=useState(0),[data,setData]=useState(null),[loaded,setLoaded]=useState(null),[loading,setLoading]=useState(true),[error,setError]=useState('');
- const scope=JSON.stringify([warehouseId,byWarehouse,inventoryMaterialPrices,versionKey??null]);
+ const scope=JSON.stringify([warehouseId,byWarehouse,inventoryMaterialPrices,adminSalePrices,versionKey??null]);
  const generation=useRef(0);
  const refresh=useCallback(()=>setVersion(v=>v+1),[]);
  useEffect(()=>{
-  if(inventoryMaterialPrices)return watchStockPriceChanges(refresh);
+  if(inventoryMaterialPrices||adminSalePrices)return watchStockPriceChanges(refresh);
   window.addEventListener(VALUATION_EVENT,refresh);
   return()=>window.removeEventListener(VALUATION_EVENT,refresh);
- },[inventoryMaterialPrices,refresh]);
+ },[inventoryMaterialPrices,adminSalePrices,refresh]);
  useEffect(()=>{const id=++generation.current;let live=true;setLoading(true);setError('');
-  inventoryCall('stock',{warehouseId:warehouseId?Number(warehouseId):null,...(byWarehouse?{byWarehouse:true}:{}),...(inventoryMaterialPrices?{inventoryMaterialPrices:true}:{})}).then(result=>{
+  inventoryCall('stock',{warehouseId:warehouseId?Number(warehouseId):null,...(byWarehouse?{byWarehouse:true}:{}),...(inventoryMaterialPrices?{inventoryMaterialPrices:true}:{}),...(adminSalePrices?{adminSalePrices:true}:{})}).then(result=>{
    if(!live||id!==generation.current)return;
    if(byWarehouse&&!Array.isArray(result.warehouseBalances))throw new Error('تعذّر تحميل تفصيل الأرصدة حسب المخزن.');
+   if(adminSalePrices&&(!Array.isArray(result.products)||result.products.some(p=>!Object.hasOwn(p,'salePrice')||!['configured','cost'].includes(p.salePriceSource))))throw new Error('تعذّر تأكيد أسعار البيع للمخزون. حدّث الأرصدة وأعد المحاولة.');
    setData(result);
    if(!aggregate&&!warehouseId){const first=result.warehouses.find(w=>w.active);if(first){setWarehouse(String(first.id));return;}}
    setLoaded(scope);setLoading(false);
   }).catch(e=>{if(live&&id===generation.current){setError(e.message||'تعذر تحميل المخازن');setLoading(false);setLoaded(null);}});
   return()=>{live=false;};
- },[warehouseId,version,aggregate,byWarehouse,inventoryMaterialPrices,scope]);
+ },[warehouseId,version,aggregate,byWarehouse,inventoryMaterialPrices,adminSalePrices,scope]);
  const ready=!loading&&loaded===scope&&!error;
  const products=useMemo(()=>loaded===scope&&!error?(data?.products||emptyRows).map(p=>({...p,brand:p.brand||p.brands?.name||'',brandId:p.brand_id,costBasis:p.cost_basis||{},costingRevision:p.costing_revision||0})):emptyRows,[scope,loaded,data,error]);
  return {...data,products,warehouseBalances:ready&&byWarehouse?data.warehouseBalances:emptyRows,warehouses:data?.warehouses||emptyRows,warehouseId,warehouseName:data?.warehouses.find(w=>String(w.id)===warehouseId)?.name||'',setWarehouse,loading:loading||(!error&&loaded!==scope),error,ready,refresh};
 }
-export function WarehouseField({inventory,disabled=false,label='مخزن الفاتورة',allowAll=false}){
+export function WarehouseField({inventory,disabled=false,label='مخزن الفاتورة',allowAll=false,allLabel='جميع المخازن المسموحة'}){
  return <label className="warehouseLocationField">{label}<select aria-label={label} disabled={disabled||(!inventory.warehouses.length&&inventory.loading)} value={inventory.warehouseId} onChange={e=>inventory.setWarehouse(e.target.value)}>
-  <option value="" disabled={!allowAll}>{allowAll?'جميع المخازن المسموحة':'اختر المخزن'}</option>
+  <option value="" disabled={!allowAll}>{allowAll?allLabel:'اختر المخزن'}</option>
   {inventory.warehouses.filter(w=>w.active||String(w.id)===inventory.warehouseId).map(w=><option key={w.id} value={w.id}>{w.name}</option>)}
  </select>{inventory.loading&&<small role="status">جاري تحديث رصيد المخزن…</small>}{inventory.error&&<small role="alert">{inventory.error} <button type="button" onClick={inventory.refresh}>إعادة المحاولة</button></small>}</label>;
 }
