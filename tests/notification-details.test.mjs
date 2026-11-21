@@ -11,9 +11,9 @@ test('purchase inbox and toast whitelist material identity and quantity without 
  assert.equal(JSON.stringify(notice),copy);
 });
 
-test('price notices retain each new selling minimum and checked/free status while discarding costs',()=>{
+test('price notices distinguish current manual floors from older inactive amounts and discard purchase costs',()=>{
  const notice={event:'wholesale_prices_updated',details:{type:'wholesale_prices_updated',currency:'IQD',cost:76321,items:[{name:'لوح',category:'ألواح',brand:'FULLMAX',minPrice:120000.25,enabled:true,cost:76321,qty:8},{name:'انفيرتر',category:'انفيرتر',brand:'F',minPrice:2000000,enabled:false,purchasePrice:987654},{name:'بطارية',minPrice:null,enabled:false}]}},data=structuredNotification(notice);
- assert.deepEqual(data.items,[{name:'لوح',category:'ألواح',brand:'FULLMAX',minPrice:120000.25,enabled:true},{name:'انفيرتر',category:'انفيرتر',brand:'F',minPrice:2000000,enabled:false},{name:'بطارية',category:'',brand:'',minPrice:null,enabled:false}]);
+ assert.deepEqual(data.items,[{name:'لوح',category:'ألواح',brand:'FULLMAX',minPrice:120000.25,enabled:true},{name:'انفيرتر',category:'انفيرتر',brand:'F',minPrice:null,enabled:false,inactiveManualPrice:2000000},{name:'بطارية',category:'',brand:'',minPrice:null,enabled:false}]);
  assert.equal(data.currency,'IQD');
  for(const hidden of['76321','987654','purchasePrice','cost','qty'])assert.ok(!JSON.stringify(data).includes(hidden),hidden);
  assert.equal(notificationPreview(notice).body,'3 مادة في تحديث الأسعار');

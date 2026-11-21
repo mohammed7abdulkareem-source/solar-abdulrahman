@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {availableWholesalePriceProducts,wholesalePriceSaveNotice,wholesalePriceDraft,wholesalePriceChanged,wholesalePriceValidation,wholesalePriceItems,wholesaleScopeDraft,wholesaleScopeChanged,wholesaleScopeValidation,wholesaleScopePayload,wholesaleConfigurationDraft,wholesaleConfigurationChanged,wholesaleConfigurationValidation,wholesaleConfigurationPayload,wholesaleConfigurationUser,readWholesalePriceAttempt,rememberWholesalePriceAttempt,clearWholesalePriceAttempt} from '../app/wholesale-pricing-utils.mjs';
+import {availableWholesalePriceProducts,refreshWholesalePricing,wholesaleEffectivePrice,wholesalePriceSaveNotice,wholesalePriceDraft,wholesalePriceChanged,wholesalePriceValidation,wholesalePriceItems,wholesaleScopeDraft,wholesaleScopeChanged,wholesaleScopeValidation,wholesaleScopePayload,wholesaleConfigurationDraft,wholesaleConfigurationChanged,wholesaleConfigurationValidation,wholesaleConfigurationPayload,wholesaleConfigurationUser,readWholesalePriceAttempt,rememberWholesalePriceAttempt,clearWholesalePriceAttempt} from '../app/wholesale-pricing-utils.mjs';
 import {canManageWholesalePricing,canOpenPage} from '../app/access-utils.mjs';
 import {sectionGroups,sections} from '../app/section-directory.mjs';
 
@@ -119,7 +119,7 @@ test('price management permission is independent from free selling and limited t
  assert.equal(canManageWholesalePricing({...staff,active:false,is_admin:true}),false);
  assert.equal(canOpenPage({...staff,permissions:{wholesalePricingManage:true}},'users'),false);
  assert.ok(sectionGroups.find(group=>group.id==='settings').ids.includes('wholesalePricing'));
- assert.ok(sections.flatMap(([,rows])=>rows).some(([id,label])=>id==='wholesalePricing'&&label==='أسعار بيع الجملة'));
+ assert.ok(sections.flatMap(([,rows])=>rows).some(([id,label])=>id==='wholesalePricing'&&label==='أسعار المواد'));
 });
 
 test('an uncertain settings request survives same-tab reload and is scoped to user and exact request',()=>{
@@ -145,4 +145,37 @@ test('an uncertain settings request survives same-tab reload and is scoped to us
   globalThis.sessionStorage={getItem:()=>null,setItem:()=>{throw new Error('Storage unavailable');}};
   assert.equal(rememberWholesalePriceAttempt('one',attempt),false);
  }finally{if(previous===undefined)delete globalThis.sessionStorage;else globalThis.sessionStorage=previous;}
+});
+
+test('automatic floor uses the current quote even when a disabled manual price is saved',()=>{
+ const automatic={id:1,minPrice:83000,enabled:false,cost:61200.25,effectiveMinPrice:61200.25,floorSource:'cost'};
+ assert.deepEqual(wholesaleEffectivePrice(automatic),{source:'cost',amount:61200.25});
+ assert.deepEqual(wholesaleEffectivePrice({...automatic,minPrice:null}),{source:'cost',amount:61200.25});
+ assert.deepEqual(wholesaleEffectivePrice({...automatic,effectiveMinPrice:61200.25173}),{source:'cost',amount:61200.26});
+ assert.deepEqual(wholesaleEffectivePrice(automatic,{enabled:true,minPrice:'83000'}),{source:'configured',amount:83000});
+ const manual={...automatic,minPrice:70000,enabled:true,floorSource:'configured',effectiveMinPrice:70000};
+ assert.deepEqual(wholesaleEffectivePrice(manual,{minPrice:'70000',enabled:false}),{source:'cost',amount:61200.25});
+ assert.deepEqual(wholesalePriceItems([automatic],{1:{minPrice:'83000',enabled:true}})[0].minPrice,83000);
+ assert.deepEqual(wholesalePriceItems([manual],{1:{minPrice:'70000',enabled:false}})[0].minPrice,70000);
+});
+
+test('personal pricing management cannot reveal a numeric automatic floor on load or when previewing an unchecked override',()=>{
+ const row={minPrice:92000,enabled:false,cost:67911,effectiveMinPrice:67911,floorSource:'cost'};
+ assert.deepEqual(wholesaleEffectivePrice(row,undefined,true),{source:'cost',amount:null});
+ assert.deepEqual(wholesaleEffectivePrice({...row,personalPriceBasis:true}),{source:'cost',amount:null});
+ assert.deepEqual(wholesaleEffectivePrice({...row,enabled:true},{enabled:false,minPrice:'92000'},true),{source:'cost',amount:null});
+ assert.deepEqual(wholesaleEffectivePrice({...row,enabled:true},undefined,true),{source:'configured',amount:92000});
+});
+
+test('live valuation refresh keeps the draft editing baseline including the original price and scope revisions',()=>{
+ const old={revision:8,scopeMode:'selected',products:[{id:1,minPrice:123000,enabled:false,revision:5,cost:64000,floorSource:'cost',effectiveMinPrice:64000}]};
+ const fresh={revision:10,scopeMode:'all',products:[{id:1,minPrice:150000,enabled:true,revision:9,cost:66350,floorSource:'configured',effectiveMinPrice:150000}]};
+ const retained=refreshWholesalePricing(old,fresh,true);
+ assert.equal(retained.scopeMode,'selected');assert.equal(retained.revision,8);
+ const row=retained.products[0];assert.equal(row.revision,5);
+ assert.deepEqual(wholesaleEffectivePrice(row),{source:'cost',amount:66350});
+ const expected=wholesalePriceItems([row],{1:{enabled:true,minPrice:'149000'}});
+ assert.deepEqual(expected,[{productId:1,minPrice:149000,enabled:true,expectedRevision:5}]);
+ assert.equal(old.products[0].cost,64000);
+ assert.equal(refreshWholesalePricing(old,fresh,false),fresh);
 });

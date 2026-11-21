@@ -60,6 +60,9 @@ end$$;
 reset role;
 do $$begin
  assert not exists(select 1 from public.solar_notifications where event='wholesale_prices_updated'and user_id::text between'00000000-0000-0000-0000-000000411001'and'00000000-0000-0000-0000-000000411011'and(details::text~'cost|supplier|98765|43210'or body~'150000|90000')),'Price notices expose procurement/lockscreen amounts';
+ assert exists(select 1 from public.solar_notifications n cross join lateral jsonb_array_elements(n.details->'items')item
+  where n.user_id='00000000-0000-0000-0000-000000411002' and n.event='wholesale_prices_updated' and jsonb_array_length(n.details->'items')=2
+   and item->'enabled'='false'::jsonb and item->'minPrice'='null'::jsonb), 'An automatic material notice published its inactive manual price';
  assert exists(select 1 from public.solar_notifications where user_id='00000000-0000-0000-0000-000000411002'and event='wholesale_prices_updated'and jsonb_array_length(details->'items')=1 and details->'items'->0->'minPrice'='null'::jsonb),'Cleared price details';
  assert not exists(select 1 from public.solar_notifications n cross join lateral jsonb_array_elements(n.details->'items')item where n.event='wholesale_prices_updated'and n.user_id::text between'00000000-0000-0000-0000-000000411001'and'00000000-0000-0000-0000-000000411011'and(item?'model'or item?'code'or item->>'category'<>'ألواح')),'New price notice must contain category, never material code/model';
 end$$;

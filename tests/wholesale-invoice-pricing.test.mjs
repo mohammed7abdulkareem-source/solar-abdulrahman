@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {wholesalePricingReady,wholesaleEconomicsChanged,wholesaleLinePricing,wholesalePriceDefault,wholesalePricingIssues,wholesalePolicyEnforced} from '../app/wholesale-invoice-pricing.mjs';
+import {wholesalePricingReady,wholesaleEconomicsChanged,wholesaleLinePricing,wholesalePriceDefault,wholesaleSuggestedPrice,refreshWholesaleDefaults,wholesaleFloorTokens,wholesalePricingIssues,wholesalePolicyEnforced} from '../app/wholesale-invoice-pricing.mjs';
 import {salesDocument} from '../app/sales-document.mjs';
 
 const state=(overrides={})=>({enabled:true,canManage:false,canOverride:false,currency:'IQD',revision:4,products:[{id:10,name:'لوح',enabled:true,minPrice:150000.25,revision:2},{id:11,name:'انفيرتر',enabled:false,minPrice:170000},{id:12,name:'بطارية',enabled:false,minPrice:null}],...overrides});
@@ -119,4 +119,35 @@ test('customer preview/PDF/share uses actual selling prices without internal cos
   assert.equal(warehouse.total,'');
   for(const hidden of['117,284.39','234,568.78','87,654.32','98,765.43','سعر البيع المقرر'])assert.ok(!warehouse.body.includes(hidden),hidden);
  }
+});
+
+test('automatic floors use current IQD valuation, including USD components already converted by the server',()=>{
+ const policy=state({products:[{id:1,enabled:false,minPrice:690000,floorSource:'cost',effectiveMinPrice:125050.000001,floorToken:'old'},
+  {id:2,enabled:true,minPrice:130000,floorSource:'configured',effectiveMinPrice:130000,floorToken:'manual'}]});
+ const automatic={id:1,name:'مادة',qty:1,price:'',useWholesaleFloor:true},negotiated={id:2,qty:1,price:'155500'};
+ const before=refreshWholesaleDefaults([automatic,negotiated],policy);
+ assert.equal(before[0].price,'125050.01');assert.strictEqual(before[1],negotiated);
+ assert.equal(wholesalePricingIssues(policy,[{...automatic,price:'125050'}])[0].minimum,125050.01);
+ assert.deepEqual(wholesalePricingIssues(policy,before),[]);
+ const next={...policy,products:[{...policy.products[0],effectiveMinPrice:129050.25,floorToken:'new'},policy.products[1]]};
+ const after=refreshWholesaleDefaults(before,next);
+ assert.equal(after[0].price,'129050.25');
+ assert.strictEqual(after[1],negotiated);
+ const typed={...before[0],useWholesaleFloor:false,price:'125300'};
+ assert.strictEqual(refreshWholesaleDefaults([typed],next)[0],typed);
+ assert.deepEqual(wholesaleFloorTokens(next,[typed]),{'1':'new'});
+ assert.equal(wholesaleFloorTokens(next,[typed],[typed]),undefined);
+ assert.equal(wholesaleFloorTokens({...next,enabled:false},[typed]),undefined);
+ for(const [raw,rounded] of [[0,0],[0.29,0.29],[0.290001,.3],[1.995001,2],['',null],[null,null]])assert.equal(wholesaleSuggestedPrice(raw),rounded);
+});
+test('hidden automatic minima never prefill book cost or an inactive saved override and remain server-validated',()=>{
+ const restricted=state({products:[{id:10,enabled:false,minPrice:175555,floorSource:'cost',effectiveMinPrice:null,floorToken:'opaque'}]});
+ const rule=wholesaleLinePricing(restricted,10);
+ assert.equal(rule.required,true);
+ assert.equal(rule.price,null);assert.equal(rule.suggested,null);
+ assert.equal(wholesalePriceDefault(restricted,10),'');
+ assert.deepEqual(wholesalePricingIssues(restricted,[line({price:1})]),[]);
+ assert.equal(refreshWholesaleDefaults([line({useWholesaleFloor:true})],restricted)[0].price,'');
+ assert.equal(wholesaleLinePricing({...restricted,canOverride:true},10).required,false);
+ assert.equal(wholesaleLinePricing(restricted,10,{historical:true}).required,false);
 });

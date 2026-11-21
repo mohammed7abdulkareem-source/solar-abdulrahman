@@ -144,8 +144,10 @@ do $$declare r jsonb;nonce uuid:=gen_random_uuid();before_hash text:=pg_temp.wp_
  r:=public.solar_invoice_save(nonce,pg_temp.wp_invoice(1250));perform set_config('test.wp.bound',r->>'id',true);perform set_config('test.wp.boundNonce',nonce::text,true);perform set_config('test.wp.boundResult',r::text,true);
  if(r->>'total')::numeric<>1250 or(r->>'cost')::numeric<>1000 or(r->>'profit')::numeric<>250 then raise exception 'Exact floor changed financial calculation %',r;end if;
  r:=public.solar_invoice_save(gen_random_uuid(),pg_temp.wp_invoice(2000));if(r->>'total')::numeric<>2000 then raise exception 'Higher price not preserved';end if;
- r:=public.solar_invoice_save(gen_random_uuid(),pg_temp.wp_invoice(100,null,1,-410002));if(r->>'total')::numeric<>100 then raise exception 'Unchecked product got floor';end if;
- r:=public.solar_invoice_save(gen_random_uuid(),pg_temp.wp_invoice(50,null,1,-410003));if(r->>'total')::numeric<>50 then raise exception 'Blank product got floor';end if;
+ begin perform public.solar_invoice_save(gen_random_uuid(),pg_temp.wp_invoice(499.99,null,1,-410002));raise exception 'Unchecked override failed to enforce current cost';exception when sqlstate'PT422'then null;end;
+ r:=public.solar_invoice_save(gen_random_uuid(),pg_temp.wp_invoice(500,null,1,-410002));if(r->>'total')::numeric<>500 then raise exception 'Unchecked product rejected at current cost';end if;
+ begin perform public.solar_invoice_save(gen_random_uuid(),pg_temp.wp_invoice(199.99,null,1,-410003));raise exception 'Blank price failed to enforce current cost';exception when sqlstate'PT422'then null;end;
+ r:=public.solar_invoice_save(gen_random_uuid(),pg_temp.wp_invoice(200,null,1,-410003));if(r->>'total')::numeric<>200 then raise exception 'Blank product rejected at current cost';end if;
  begin perform public.solar_invoice_save(gen_random_uuid(),pg_temp.wp_invoice(100,null,1,-410004));set constraints all immediate;raise exception 'FAIL fractional floor rounded down';exception when sqlstate'PT422'then null;end;
  r:=public.solar_invoice_save(gen_random_uuid(),pg_temp.wp_invoice(100.01,null,1,-410004));if(r->>'total')::numeric<>100.01 then raise exception 'Exact fractional floor rejected or rounded';end if;
  r:=public.solar_invoice_save(gen_random_uuid(),pg_temp.wp_invoice(900,id)||'{"notes":"تعديل ملاحظة تاريخية فقط"}');

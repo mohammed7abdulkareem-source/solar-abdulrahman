@@ -26,3 +26,9 @@
 .wpBasisBody .wpScopeEmpty{padding:10px;color:#60767c;font-size:12px}
 .wpBasisBody .wpScopeUser{min-height:44px}.wpBasisBody .wpBasisSearch{min-width:0}
 .wpBasisBody .wpConfigurationSave button:disabled{opacity:.5;cursor:not-allowed}
+.wpFloorHint{margin:0 0 12px;font-size:12px;line-height:1.8;color:#456776}
+.wpEffective>span{display:grid;gap:2px;min-width:0}
+.wpEffective .wpCost{font-size:13px;color:#116b5b}
+.wpFloorSource,.wpCostNote{font-size:10px;line-height:1.6;color:#577381}
+.wpEffective[data-floor-source=configured] .wpFloorSource{color:#775515}
+@media(max-width:700px){.wpTable tbody td.wpEffective{display:block}.wpEffective>span{margin-top:3px}.wpFloorHint{font-size:11px}.wpTable .wpApply{min-height:40px}}

@@ -13,7 +13,10 @@ export function structuredNotification(notice){
  const items=valid?details.items.map(row=>{
   const item=row&&typeof row==='object'&&!Array.isArray(row)?row:{};
   const identity={name:text(item.name)||'مادة غير مسماة',category:text(item.category),brand:text(item.brand)};
-  return purchase?{...identity,qty:amount(item.qty)}:{...identity,minPrice:amount(item.minPrice),enabled:typeof item.enabled==='boolean'?item.enabled:null};
+  if(purchase)return {...identity,qty:amount(item.qty)};
+  const price=amount(item.minPrice),enabled=typeof item.enabled==='boolean'?item.enabled:null;
+  return {...identity,minPrice:enabled&&price>0?price:null,enabled,
+   ...(enabled===false&&price>0?{inactiveManualPrice:price}:{})};
  }):null;
  const warehouseName=purchase&&valid?text(details.warehouseName).trim():'';
  const itemSummary=items?items.length+' '+(purchase?'فقرة في المواد المستلمة':'مادة في تحديث الأسعار'):'افتح الإشعار للاطلاع على التفاصيل';

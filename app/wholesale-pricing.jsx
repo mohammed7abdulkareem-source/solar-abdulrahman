@@ -5,9 +5,10 @@ import {canManageWholesalePricing,isAdministrator} from './access-utils.mjs';
 import {usesPersonalSalePrices} from './inventory-valuation.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 import {formatMoney as money} from './money-format.mjs';
+import {VALUATION_EVENT} from './valuation-events.mjs';
 import {saveRequest} from './save-request.mjs';
 import {unlockNotificationSound,playNotificationSound} from './notification-sound.mjs';
-import {WHOLESALE_PRICE_BATCH_LIMIT,availableWholesalePriceProducts,wholesalePriceSaveNotice,wholesalePriceDraft,wholesalePriceChanged,wholesalePriceValidation,wholesalePriceItems,wholesaleConfigurationDraft,wholesaleConfigurationChanged,wholesaleConfigurationValidation,wholesaleConfigurationPayload,wholesaleConfigurationUser,readWholesalePriceAttempt,rememberWholesalePriceAttempt,clearWholesalePriceAttempt} from './wholesale-pricing-utils.mjs';
+import {WHOLESALE_PRICE_BATCH_LIMIT,availableWholesalePriceProducts,refreshWholesalePricing,wholesaleEffectivePrice,wholesalePriceSaveNotice,wholesalePriceDraft,wholesalePriceChanged,wholesalePriceValidation,wholesalePriceItems,wholesaleConfigurationDraft,wholesaleConfigurationChanged,wholesaleConfigurationValidation,wholesaleConfigurationPayload,wholesaleConfigurationUser,readWholesalePriceAttempt,rememberWholesalePriceAttempt,clearWholesalePriceAttempt} from './wholesale-pricing-utils.mjs';
 import AppIcon from './app-icons';
 import MoneyInput from './money-input';
 import ProfitBasisUsers from './profit-basis-users';
@@ -30,24 +31,41 @@ export default function WholesalePricing({profile}){
  const selectedCount=configuration.mode==='all'?(data?.eligibleUsers?.length||0):configuration.userIds.length;
  const allUsersInput=useRef(null);
  useEffect(()=>{if(allUsersInput.current)allUsersInput.current.indeterminate=configuration.mode==='selected'&&selectedCount>0;},[configuration.mode,selectedCount,loading,scopeReady]);
- const load=useCallback(async()=>{
-  if(!allowed||lock.current)return;
+ const edits=useRef(false),suspendRefresh=useRef(true);
+ edits.current=dirtyCount>0||configurationDirty;
+ suspendRefresh.current=!data||loading||busy||!!pending||conflict;
+ const [refreshError,setRefreshError]=useState(false);
+ const load=useCallback(async(background=false)=>{
+  if(!allowed||lock.current||(background&&(suspendRefresh.current||controller.current)))return;
   const request=++sequence.current;controller.current?.abort();const nextController=new AbortController();controller.current=nextController;
-  setLoading(true);setError('');const timer=setTimeout(()=>nextController.abort(),15000);
+  if(!background){setLoading(true);setError('');}const timer=setTimeout(()=>nextController.abort(),15000);
   try{
    const result=await supabase.rpc('solar_wholesale_pricing',{action:'state'}).abortSignal(nextController.signal);
    if(request!==sequence.current||liveUser.current!==userId)return;
    if(result.error)throw result.error;
-   if(!result.data?.canManage||result.data.currency!=='IQD'||!Array.isArray(result.data.products))throw new Error('تعذر تحميل أسعار الجملة ضمن صلاحيات حسابك.');
-   setData(result.data);setDrafts({});setConfigurationDraft(null);setConflict(false);setReloadWarning(false);setLimit(PAGE_SIZE);
-  }catch(failure){if(request===sequence.current&&liveUser.current===userId){setData(null);setError(nextController.signal.aborted?'تأخر تحميل أسعار الجملة. تحقق من الاتصال وحاول مجدداً.':failure.message||'تعذر تحميل أسعار بيع الجملة.');}}
-  finally{clearTimeout(timer);if(request===sequence.current&&liveUser.current===userId)setLoading(false);}
+   if(!result.data?.canManage||result.data.currency!=='IQD'||!Array.isArray(result.data.products))throw new Error('تعذر تحميل أسعار المواد ضمن صلاحيات حسابك.');
+   setRefreshError(false);
+   if(background)setData(previous=>refreshWholesalePricing(previous,result.data,edits.current));
+   else{setData(result.data);setDrafts({});setConfigurationDraft(null);setConflict(false);setReloadWarning(false);setLimit(PAGE_SIZE);}
+  }catch(failure){if(request===sequence.current&&liveUser.current===userId){
+   if(background)setRefreshError(true);
+   else{setData(null);setError(nextController.signal.aborted?'تأخر تحميل أسعار المواد. تحقق من الاتصال وحاول مجدداً.':failure.message||'تعذر تحميل أسعار المواد.');}
+  }}finally{clearTimeout(timer);if(controller.current===nextController)controller.current=null;if(!background&&request===sequence.current&&liveUser.current===userId)setLoading(false);}
  },[allowed,userId]);
  useEffect(()=>{mounted.current=true;setData(null);setDrafts({});setConfigurationDraft(null);setUsersQuery('');setNotice('');setPending(readWholesalePriceAttempt(userId));setConflict(false);setReloadWarning(false);void load();return()=>{mounted.current=false;++sequence.current;controller.current?.abort();};},[load,userId]);
+ useEffect(()=>{
+  if(!allowed)return;
+  const refresh=()=>{if(document.visibilityState==='visible')void load(true);};
+  const events=[VALUATION_EVENT,'solar-warehouse-changed','solar-notification','focus','online'];
+  for(const event of events)window.addEventListener(event,refresh);
+  document.addEventListener('visibilitychange',refresh);
+  const timer=setInterval(refresh,60000);
+  return()=>{clearInterval(timer);for(const event of events)window.removeEventListener(event,refresh);document.removeEventListener('visibilitychange',refresh);};
+ },[allowed,load]);
  useEffect(()=>{setLimit(PAGE_SIZE);},[query,filter]);
  const matches=useMemo(()=>{
   const needle=normalizeSearch(query);
-  return products.filter(row=>(!needle||normalizeSearch([row.name,row.code,row.brand,row.category].join(' ')).includes(needle))&&(filter==='active'?(drafts[row.id]?.enabled??row.enabled):filter==='changed'?wholesalePriceChanged(row,drafts[row.id]):true));
+  return products.filter(row=>(!needle||normalizeSearch([row.name,row.code,row.brand,row.category].join(' ')).includes(needle))&&(filter==='active'?(drafts[row.id]?.enabled??row.enabled):filter==='auto'?!(drafts[row.id]?.enabled??row.enabled):filter==='changed'?wholesalePriceChanged(row,drafts[row.id]):true));
  },[products,query,filter,drafts]);
  function changeRow(row,patch){
   if(frozen)return;
@@ -67,7 +85,7 @@ export default function WholesalePricing({profile}){
   try{
    const result=await saveRequest(signal=>supabase.rpc('solar_wholesale_pricing',{action:attempt.action,request_id:attempt.id,payload:attempt.payload}).abortSignal(signal));
    if(result.error)throw result.error;
-   if(!result.data?.canManage||result.data.currency!=='IQD'||!Array.isArray(result.data.products))throw new Error('لم يصل تأكيد كامل لحفظ أسعار الجملة.');
+   if(!result.data?.canManage||result.data.currency!=='IQD'||!Array.isArray(result.data.products))throw new Error('لم يصل تأكيد كامل لحفظ أسعار المواد.');
    if(['scope','configure'].includes(attempt.action)&&!hasScopeState(result.data))throw new Error('لم يصل تأكيد كامل لحفظ إعدادات الإلزام.');
    clearWholesalePriceAttempt(userId,attempt.id);
    if(!mounted.current||liveUser.current!==userId)return;
@@ -80,7 +98,7 @@ export default function WholesalePricing({profile}){
    if(!mounted.current||liveUser.current!==userId)return;
    const definitive=/^[0-9A-Z]{5}$/.test(failure.code||'');
    if(definitive){clearWholesalePriceAttempt(userId,attempt.id);setPending(null);if(['PT409','40001'].includes(failure.code))setConflict(true);}
-   setError(definitive?(['PT409','40001'].includes(failure.code)?'تغيّرت الأسعار بواسطة مستخدم آخر. تعديلاتك محفوظة أمامك؛ حدّث القائمة وراجع الأسعار قبل الحفظ.':failure.message||'تعذر حفظ أسعار الجملة.'):'لم يتأكد الحفظ بسبب الاتصال. أعد تأكيد الطلب نفسه أدناه لتجنب تكرار التغيير أو الإشعار.');
+   setError(definitive?(['PT409','40001'].includes(failure.code)?'تغيّرت الأسعار بواسطة مستخدم آخر. تعديلاتك محفوظة أمامك؛ حدّث القائمة وراجع الأسعار قبل الحفظ.':failure.message||'تعذر حفظ أسعار المواد.'):'لم يتأكد الحفظ بسبب الاتصال. أعد تأكيد الطلب نفسه أدناه لتجنب تكرار التغيير أو الإشعار.');
   }finally{lock.current=false;if(mounted.current&&liveUser.current===userId)setBusy(false);}
  }
  function save(event){
@@ -88,18 +106,18 @@ export default function WholesalePricing({profile}){
   if(Object.keys(rowErrors).length){setError('راجع أسعار المواد المشار إليها قبل الحفظ.');return;}
   void write('save',{items:wholesalePriceItems(products,drafts)});
  }
- if(!allowed)return <p className="wpAlert" role="alert">إدارة أسعار بيع الجملة غير متاحة ضمن صلاحيات حسابك.</p>;
- return <section className="wholesalePricing" aria-label="إدارة أسعار بيع الجملة">
+ if(!allowed)return <p className="wpAlert" role="alert">إدارة أسعار المواد غير متاحة ضمن صلاحيات حسابك.</p>;
+ return <section className="wholesalePricing" aria-label="إدارة أسعار المواد">
   {error&&<p className="wpAlert" role="alert">{error}</p>}{notice&&<p className="wpSuccess" role="status">{notice}</p>}
-  {pending&&<div className="wpPending" role="status"><span>يوجد طلب حفظ لم يتأكد بعد. تبقى بيانات الطلب ثابتة حتى تأكيد النتيجة.</span><button type="button" disabled={busy||loading} onClick={()=>write(pending.action,pending.payload)}>{busy?'جاري التأكيد…':'تأكيد حفظ أسعار الجملة السابق'}</button></div>}
+  {pending&&<div className="wpPending" role="status"><span>يوجد طلب حفظ لم يتأكد بعد. تبقى بيانات الطلب ثابتة حتى تأكيد النتيجة.</span><button type="button" disabled={busy||loading} onClick={()=>write(pending.action,pending.payload)}>{busy?'جاري التأكيد…':'تأكيد حفظ أسعار المواد السابق'}</button></div>}
   {isAdministrator(profile)&&<ProfitBasisUsers key={userId} actorId={userId}/>}
   {loading?<div className="wpLoading" role="status"><AppIcon name="refresh" size={19}/>جاري تحميل المواد والأسعار…</div>:!data?<div className="wpEmpty"><p>لم تُحمّل قائمة الأسعار.</p><button type="button" onClick={()=>void load()}><AppIcon name="refresh" size={17}/>إعادة التحميل</button></div>:<>
-   <section className={'wpPolicy wpUnifiedPolicy'+(data.enabled?' on':'')} aria-label="إعدادات إلزام أسعار الجملة">
+   <section className={'wpPolicy wpUnifiedPolicy'+(data.enabled?' on':'')} aria-label="إعدادات إلزام أسعار المواد">
     <header className="wpPolicyHead"><h2>إعدادات الإلزام</h2><span className="wpSavedStatus"><i className="wpPolicyDot"/>المحفوظ: {data.enabled?'مفعّل':'متوقف'}</span></header>
     {scopeReady?<fieldset className="wpConfiguration" disabled={frozen}>
      <legend className="wpVisuallyHidden">تشغيل الإلزام واختيار المستخدمين</legend>
      <label className="wpMasterSwitch"><span><b>تشغيل الإلزام</b><small>للمستخدمين المختارين أدناه</small></span><input type="checkbox" role="switch" aria-label="تشغيل الإلزام" checked={configuration.enabled} onChange={event=>changeConfiguration({enabled:event.target.checked})}/><span className="wpSwitchTrack" aria-hidden="true"/></label>
-     <div className="wpScopeListHead"><small>اختر المستخدمين · الشارات تعرض الحالة المحفوظة</small>{data.eligibleUsers.length>6&&<input aria-label="البحث في مستخدمي تسعير الجملة" value={usersQuery} onChange={event=>setUsersQuery(event.target.value)} placeholder="ابحث باسم المستخدم…"/>}</div>
+     <div className="wpScopeListHead"><small>اختر المستخدمين · الشارات تعرض الحالة المحفوظة</small>{data.eligibleUsers.length>6&&<input aria-label="البحث في مستخدمي تسعير المواد" value={usersQuery} onChange={event=>setUsersQuery(event.target.value)} placeholder="ابحث باسم المستخدم…"/>}</div>
      <div className="wpUnifiedChecklist">
       <label className="wpSelectAll"><input ref={allUsersInput} type="checkbox" aria-label="تحديد جميع المستخدمين" checked={configuration.mode==='all'} onChange={event=>changeConfiguration({mode:event.target.checked?'all':'selected',userIds:[]})}/><span>تحديد جميع المستخدمين<small>يشمل المستخدمين الجدد أيضاً</small></span><strong>{money(selectedCount)} / {money(data.eligibleUsers.length)}</strong></label>
       <div className="wpScopeUsers">{scopeUsers.map(user=>{const checked=configuration.mode==='all'||configuration.userIds.includes(user.id);return <label key={user.id} className={'wpScopeUser'+(checked?' checked':'')}>
@@ -111,23 +129,37 @@ export default function WholesalePricing({profile}){
      {configurationError&&<p className="wpScopeError" role="status">{configurationError}</p>}
      <div className="wpConfigurationSave"><span>{configurationDirty?'تعديلات غير محفوظة':!data.scopeConfigured?'احفظ لاعتماد اختيارك؛ الاستثناءات السابقة ما زالت سارية.':'الإعدادات محفوظة'}</span><div>{configurationDirty&&<button type="button" onClick={()=>setConfigurationDraft(null)}>إلغاء التعديل</button>}<button type="button" className="primary" disabled={!configurationNeedsSave||!!configurationError} onClick={saveConfiguration}>{busy&&pending?.action==='configure'?'جاري الحفظ…':'حفظ إعدادات الإلزام'}</button></div></div>
     </fieldset>:<p className="wpScopeEmpty">حدّث القائمة لتحميل إعدادات الإلزام.</p>}
-    <details className="wpPolicyDetails"><summary>كيف يُطبّق التسعير؟</summary><p>اختيارك في هذه القائمة هو المعتمد عند الحفظ، حتى للأدمن وأصحاب صلاحية البيع الحر. عند التشغيل يلتزم المحددون بالحد الأدنى المحفوظ للمواد، ويبقى غير المحددين على البيع الحر.</p></details><div className="wpPolicyMeta"><span>آخر تعديل: <b>{dateLabel(data.updatedAt)}</b></span>{data.updatedByName&&<span>بواسطة: <b>{data.updatedByName}</b></span>}</div>
+    <details className="wpPolicyDetails"><summary>كيف يُطبّق التسعير؟</summary><p>اختيارك في هذه القائمة هو المعتمد عند الحفظ، حتى للأدمن وأصحاب صلاحية البيع الحر. عند التشغيل يلتزم المستخدمون المحددون بالسعر اليدوي للمواد المفعّلة وبالكلفة الحالية لبقية المواد. يتحدّث السعر التلقائي عند تغيّر الكلفة أو سعر الصرف.</p></details><div className="wpPolicyMeta"><span>آخر تعديل: <b>{dateLabel(data.updatedAt)}</b></span>{data.updatedByName&&<span>بواسطة: <b>{data.updatedByName}</b></span>}</div>
    </section>
-   <div className="wpSummary"><div><span>المواد المتوفرة</span><strong>{money(products.length)}</strong></div><div><span>مواد بسعر محفوظ</span><strong>{money(products.filter(row=>row.minPrice!=null).length)}</strong></div><div><span>تعديلات غير محفوظة</span><strong>{money(dirtyCount)}</strong></div></div>
+   <div className="wpSummary"><div><span>المواد المتوفرة</span><strong>{money(products.length)}</strong></div><div><span>مواد بسعر يدوي معتمد</span><strong>{money(products.filter(row=>row.enabled&&Number(row.minPrice)>0).length)}</strong></div><div><span>تعديلات غير محفوظة</span><strong>{money(dirtyCount)}</strong></div></div>
    <form onSubmit={save}>
-    <section className="wpCatalog"><header className="wpCatalogHead"><h3>المواد المتوفرة</h3><div className="wpCatalogActions"><button type="button" className="wpCatalogRefresh" aria-label="تحديث أسعار الجملة" title="تحديث" disabled={busy||!!pending} onClick={reload}><AppIcon name="refresh" size={17}/></button><button type="submit" className="wpQuickSave" aria-label="حفظ الأسعار" disabled={frozen||!dirtyCount||Object.keys(rowErrors).length>0}><AppIcon name={busy?'refresh':'check'} size={17}/>{busy?'جاري الحفظ…':'حفظ'}</button></div></header>
+    <section className="wpCatalog"><header className="wpCatalogHead"><h3>المواد المتوفرة</h3><div className="wpCatalogActions"><button type="button" className="wpCatalogRefresh" aria-label="تحديث أسعار المواد" title="تحديث" disabled={busy||!!pending} onClick={reload}><AppIcon name="refresh" size={17}/></button><button type="submit" className="wpQuickSave" aria-label="حفظ الأسعار" disabled={frozen||!dirtyCount||Object.keys(rowErrors).length>0}><AppIcon name={busy?'refresh':'check'} size={17}/>{busy?'جاري الحفظ…':'حفظ'}</button></div></header>
+     <p className="wpFloorHint">فعّل «اعتماد سعر المادة اليدوي» لتثبيت سعر المادة. عند إلغاء التحديد يبقى السعر اليدوي محفوظاً ويُحسب سعر المادة من الكلفة الحالية حسب سعر الصرف.</p>
+     {refreshError&&<p className="wpScopeError" role="status">تعذّر تحديث الكلفة. <button type="button" onClick={()=>void load(true)}>إعادة المحاولة</button></p>}
      {reloadWarning&&<div className="wpReloadWarning"><span>تحديث القائمة يلغي تعديلاتك غير المحفوظة ويجلب آخر الأسعار المعتمدة.</span><div><button type="button" onClick={()=>void load()}>تحديث وإلغاء تعديلاتي</button><button type="button" onClick={()=>setReloadWarning(false)}>الاحتفاظ بتعديلاتي</button></div></div>}
-     <div className="wpFilters"><label className="wpSearch"><AppIcon name="search" size={18}/><input aria-label="البحث في أسعار بيع الجملة" value={query} onChange={event=>setQuery(event.target.value)} placeholder="ابحث باسم المادة أو الكود أو البراند…"/></label><label className="wpFilterSelect">عرض<select aria-label="تصفية مواد أسعار الجملة" value={filter} onChange={event=>setFilter(event.target.value)}><option value="available">المتوفر بالمخزن</option><option value="active">المحدد للتطبيق</option><option value="changed">التعديلات الحالية</option></select></label><span className="wpFilterCount">{money(matches.length)} مادة</span></div>
-     {!matches.length?<div className="wpEmpty"><AppIcon name="package" size={25}/><p>{query||filter!=='available'?'لا توجد مواد متوفرة مطابقة للبحث والتصفية.':'لا توجد مواد بكميات متوفرة ضمن مخازنك المسموحة.'}</p></div>:<div className="wpTableWrap"><table className="wpTable"><thead><tr><th scope="col">المادة</th><th scope="col">المتوفر</th><th scope="col">{personalPrices?'سعر الجملة المعتمد':'الكلفة'} · د.ع</th><th scope="col">سعر البيع الأدنى</th><th scope="col">التطبيق</th></tr></thead><tbody>{matches.slice(0,limit).map(row=>{
+     <div className="wpFilters"><label className="wpSearch"><AppIcon name="search" size={18}/><input aria-label="البحث في أسعار المواد" value={query} onChange={event=>setQuery(event.target.value)} placeholder="ابحث باسم المادة أو الكود أو البراند…"/></label><label className="wpFilterSelect">عرض<select aria-label="تصفية أسعار المواد" value={filter} onChange={event=>setFilter(event.target.value)}><option value="available">المتوفر بالمخزن</option><option value="active">سعر يدوي</option><option value="auto">تلقائي حسب الكلفة</option><option value="changed">التعديلات الحالية</option></select></label><span className="wpFilterCount">{money(matches.length)} مادة</span></div>
+     {!matches.length?<div className="wpEmpty"><AppIcon name="package" size={25}/><p>{query||filter!=='available'?'لا توجد مواد متوفرة مطابقة للبحث والتصفية.':'لا توجد مواد بكميات متوفرة ضمن مخازنك المسموحة.'}</p></div>:<div className="wpTableWrap"><table className="wpTable"><thead><tr><th scope="col">المادة</th><th scope="col">المتوفر</th><th scope="col">الحد الأدنى لسعر المادة</th><th scope="col">سعر المادة اليدوي · د.ع</th><th scope="col">اعتماد سعر المادة اليدوي</th></tr></thead><tbody>{matches.slice(0,limit).map(row=>{
       const draft=drafts[row.id]||wholesalePriceDraft(row),changed=wholesalePriceChanged(row,draft),disabled=frozen||(!changed&&dirtyCount>=WHOLESALE_PRICE_BATCH_LIMIT),inputId='wholesale-minimum-'+row.id;
-      const visibleCost=personalPrices?(row.enabled?row.minPrice:null):row.cost;
-      return <tr key={row.id} className={changed?'isDirty':''}><td><span className="wpProductName">{row.name}</span><span className="wpProductMeta">{[row.code&&'كود: '+row.code,row.brand,row.category].filter(Boolean).join(' · ')}</span>{row.updatedAt&&<small className="wpProductMeta">{dateLabel(row.updatedAt)}{row.updatedByName?' · '+row.updatedByName:''}</small>}{changed&&<span className="wpRowChanged">غير محفوظ</span>}</td><td data-label="المتوفر"><span className="wpQty" dir="ltr">{money(row.qty)}</span></td><td data-label={personalPrices?'سعر الجملة المعتمد':'الكلفة'}>{visibleCost==null?'غير محدد':<span className="wpCost" dir="ltr">{money(visibleCost)}<small>د.ع</small></span>}</td><td className="wpPriceCell"><label htmlFor={inputId} className="wpPriceLabel">سعر البيع الأدنى · د.ع</label><div className="wpPriceInput"><MoneyInput id={inputId} aria-label={'سعر البيع الأدنى — '+row.name} value={draft.minPrice} onChange={minPrice=>changeRow(row,{minPrice})} disabled={disabled} placeholder="غير محدد" aria-invalid={!!rowErrors[row.id]} aria-describedby={rowErrors[row.id]?'wholesale-error-'+row.id:undefined}/><span>د.ع</span></div>{rowErrors[row.id]&&<p className="wpRowError" id={'wholesale-error-'+row.id}>{rowErrors[row.id]}</p>}</td><td><label className="wpApply"><input type="checkbox" aria-label={'تطبيق الحد الأدنى — '+row.name} checked={draft.enabled} onChange={event=>changeRow(row,{enabled:event.target.checked})} disabled={disabled}/><span>تطبيق الحد الأدنى</span></label></td></tr>;
+      const restricted=personalPrices||row.personalPriceBasis===true;
+      const effective=wholesaleEffectivePrice(row,draft,restricted),automatic=effective.source==='cost';
+      return <tr key={row.id} className={changed?'isDirty':''} data-price-product={row.id}>
+       <td><span className="wpProductName">{row.name}</span><span className="wpProductMeta">{[row.code&&'كود: '+row.code,row.brand,row.category].filter(Boolean).join(' · ')}</span>{row.updatedAt&&<small className="wpProductMeta">{dateLabel(row.updatedAt)}{row.updatedByName?' · '+row.updatedByName:''}</small>}{changed&&<span className="wpRowChanged">غير محفوظ</span>}</td>
+       <td data-label="المتوفر"><span className="wpQty" dir="ltr">{money(row.qty)}</span></td>
+       <td className="wpEffective" data-label={changed?'السعر بعد الحفظ':'الحد الأدنى لسعر المادة'} data-floor-source={effective.source}>
+        <span>{effective.amount!=null&&<strong className="wpCost"><bdi dir="ltr">{money(effective.amount)}</bdi><small>د.ع</small></strong>}
+         <small className="wpFloorSource">{automatic?'تلقائي حسب الكلفة':'سعر يدوي'}</small>
+         {!automatic&&!restricted&&row.cost!=null&&<small className="wpCostNote">الكلفة الحالية <bdi>{money(row.cost)}</bdi> د.ع</small>}
+        </span>
+       </td>
+       <td className="wpPriceCell"><label htmlFor={inputId} className="wpPriceLabel">سعر المادة اليدوي · د.ع</label><div className="wpPriceInput"><MoneyInput id={inputId} aria-label={'سعر المادة اليدوي — '+row.name} value={draft.minPrice} onChange={minPrice=>changeRow(row,{minPrice})} disabled={disabled} placeholder="سعر اختياري" aria-invalid={!!rowErrors[row.id]} aria-describedby={rowErrors[row.id]?'wholesale-error-'+row.id:undefined}/><span>د.ع</span></div>{rowErrors[row.id]&&<p className="wpRowError" id={'wholesale-error-'+row.id}>{rowErrors[row.id]}</p>}</td>
+       <td><label className="wpApply"><input type="checkbox" aria-label={'اعتماد سعر المادة اليدوي — '+row.name} checked={draft.enabled} onChange={event=>changeRow(row,{enabled:event.target.checked})} disabled={disabled}/><span>اعتماد سعر المادة اليدوي</span></label></td>
+      </tr>;
      })}</tbody></table></div>}
      {matches.length>limit&&<button type="button" className="wpLoadMore" onClick={()=>setLimit(value=>value+PAGE_SIZE)}>عرض {Math.min(PAGE_SIZE,matches.length-limit)} مادة أخرى</button>}
     </section>
-    <div className="wpSaveBar"><div><b>{dirtyCount?dirtyCount+' مادة بانتظار الحفظ':'الأسعار المحفوظة جاهزة'}</b><small>{dirtyCount>=WHOLESALE_PRICE_BATCH_LIMIT?'احفظ هذه التعديلات قبل تعديل مواد أخرى.':'السعر الفارغ يبقى غير محدد حتى تختاره وتحفظه.'}</small></div><button type="submit" aria-label="حفظ الأسعار من أسفل القائمة" disabled={frozen||!dirtyCount||Object.keys(rowErrors).length>0}><AppIcon name={busy?'refresh':'check'} size={18}/>{busy?'جاري الحفظ…':'حفظ التعديلات'}</button></div>
+    <div className="wpSaveBar"><div><b>{dirtyCount?dirtyCount+' مادة بانتظار الحفظ':'الأسعار المحفوظة جاهزة'}</b><small>{dirtyCount>=WHOLESALE_PRICE_BATCH_LIMIT?'احفظ هذه التعديلات قبل تعديل مواد أخرى.':'يسري التعديل عند حفظ الأسعار.'}</small></div><button type="submit" aria-label="حفظ الأسعار من أسفل القائمة" disabled={frozen||!dirtyCount||Object.keys(rowErrors).length>0}><AppIcon name={busy?'refresh':'check'} size={18}/>{busy?'جاري الحفظ…':'حفظ التعديلات'}</button></div>
    </form>
-   <p className="wpPrivateNote">الكلفة المعروضة للمراجعة الداخلية. تغيير هذه الإعدادات لا يغيّر الفواتير السابقة.</p>
+   <p className="wpPrivateNote">تُطبّق أسعار المواد المحفوظة على العمليات الجديدة.</p>
   </>}
  </section>;
 }

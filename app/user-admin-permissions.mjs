@@ -12,7 +12,7 @@ export const permissionGroups=[
   ['sale','بيع جملة'],['system','بيع منظومات'],['salesHistory','المبيعات السابقة الخاصة به'],['deletionRequests','طلبات حذف الوصولات الخاصة به'],
   ['customerCreate','إضافة زبون جملة أو مفرد · لزبائنه فقط'],['customers','إدارة زبائنه · إضافة وتعديل وحذف'],
   ['customerPayment','تسديد جملة'],['systemPayment','تسديد منظومات'],['customerDebts','مدينون العملاء'],['customerStatement','كشف حساب عميل'],['customerReconcile','مطابقة حساب العميل'],
-  ['wholesalePricingManage','إدارة أسعار بيع الجملة وتشغيلها'],['wholesaleFreePricing','بيع الجملة بأي سعر ضمن نطاق الأسعار المسموح']]},
+  ['wholesalePricingManage','إدارة أسعار المواد وإلزام بيع الجملة'],['wholesaleFreePricing','بيع الجملة بأي سعر ضمن نطاق الأسعار المسموح']]},
  {title:'المشتريات والموردون',icon:'truck',options:[
   ['purchase','فاتورة شراء'],['suppliers','إضافة الموردين'],['supplierPayment','تسديد مورد'],['supplierStatement','كشف حساب مورد'],['supplierBalances','أرصدة الموردين']]},
  {title:'المخزون والتجهيز',icon:'warehouse',options:[

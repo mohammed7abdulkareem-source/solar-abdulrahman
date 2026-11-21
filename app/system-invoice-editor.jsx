@@ -1,10 +1,12 @@
 'use client';
 import {userDisplayName} from './user-name-utils.mjs';
 
-import {useMemo,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {useOperationStatus} from './operation-controls';
 import SystemPricingNotice from './system-pricing-notice';
-import {systemMinimumQuote,belowSystemMinimum,systemEditPricingPercent} from './system-pricing-utils.mjs';
+import {readSystemMaterialPrices,useSystemMaterialPrices} from './use-system-material-prices';
+import {salesAuthorizationKey} from './sales-read-scope.mjs';
+import {systemMinimumQuote,systemMaterialTotal,systemEditStock,systemEconomicsChanged,belowSystemMinimum,systemEditPricingPercent} from './system-pricing-utils.mjs';
 import InstallationCalendar from './installation-calendar';
 import {bookingSelectionKey} from './installation-utils.mjs';
 import {useWarehouseInventory,WarehouseField} from './warehouse-data';
@@ -16,25 +18,48 @@ import {warrantyPolicy,warrantyError} from './warranty-utils.mjs';
 import {invoiceError} from './review-utils.mjs';
 import {salesDocument} from './sales-document.mjs';
 import {money} from './supplier-utils.mjs';
-import {currentSaleItems,hasHiddenSaleCost,usesPersonalSalePrices} from './inventory-valuation.mjs';
+import {currentSaleItems,usesPersonalSalePrices} from './inventory-valuation.mjs';
 export default function SystemInvoiceEditor({profile,original,customers,staff,products:catalogProducts,onUpdate,onCancel,onSaved,a4,canEditExpenses=false}){
  const [installationAmount,setInstallationAmount]=useState(String(original.installationExpenses||0)),[scheduleEnabled,setScheduleEnabled]=useState(!!original.installDate&&!!original.installTime);
  const [draftItems,setItems]=useState(original.items),[query,setQuery]=useState(''),[party,setParty]=useState(original.currentCustomerName||customers.find(c=>String(c.id)===String(original.partyId))?.name||original.party),[partyId,setPartyId]=useState(original.partyId??null),[installerId,setInstallerId]=useState(original.installerId||''),[address,setAddress]=useState(original.customerAddress),[date,setDate]=useState(original.installDate||''),[time,setTime]=useState((original.installTime||'').slice(0,5)),[total,setTotal]=useState(String(original.total)),[notes,setNotes]=useState(original.notes||''),[warranty,setWarranty]=useState(original.warranty),[booking,setBooking]=useState(null),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const catalogVersion=useMemo(()=>JSON.stringify(catalogProducts||[]),[catalogProducts]);
  const inventory=useWarehouseInventory({versionKey:catalogVersion,initialWarehouseId:original.warehouseId});
  const personalPrices=usesPersonalSalePrices(profile);
- const items=currentSaleItems(draftItems,inventory.products,original.items,personalPrices,true);
- const hiddenCost=hasHiddenSaleCost(items);
- const serverMinimum=hiddenCost||(!personalPrices&&original.personalBasisAtSale===true);
- const products=inventory.products.map(p=>({...p,qty:Number(p.qty)+(original.items||[]).filter(i=>i.id===p.id).reduce((n,i)=>n+i.qty,0)}));
- const installationExpenses=canEditExpenses?Number(installationAmount||0):Number(original.installationExpenses||0),expenses=Number(original.expenses||0)+installationExpenses,cost=items.reduce((n,i)=>n+Number(i.qty||0)*Number(i.cost||0),0),installer=staff.find(s=>s.id===installerId);
+ const valuedItems=currentSaleItems(draftItems,inventory.products,original.items,personalPrices,true);
+ const sourceInvoice=systemEconomicsChanged(original,valuedItems,total)?null:original.id;
+ const materialPrices=useSystemMaterialPrices(valuedItems,sourceInvoice,salesAuthorizationKey(profile)),items=materialPrices.items;
+ const materialsTotal=systemMaterialTotal(items);
+ const products=useMemo(()=>systemEditStock(inventory.products,original.items),[inventory.products,original.items]);
+ const installationExpenses=canEditExpenses?Number(installationAmount||0):Number(original.installationExpenses||0),expenses=Number(original.expenses||0)+installationExpenses,installer=staff.find(s=>s.id===installerId);
  const {data:pricingStatus,error:pricingStatusError,reload:reloadPricing}=useOperationStatus(),pricingReady=!!pricingStatus&&!pricingStatusError&&typeof pricingStatus.systemFreePricing==='boolean';
- const requiredPercent=systemEditPricingPercent(pricingStatus,original,items,total),minimumQuote=serverMinimum||requiredPercent==null?null:systemMinimumQuote(items,requiredPercent,original.expenses||0,installationExpenses),belowMinimum=!!minimumQuote&&total!==''&&belowSystemMinimum(total,minimumQuote.minimum);
+ const requiredPercent=systemEditPricingPercent(pricingStatus,original,items,total),minimumQuote=materialsTotal===null||requiredPercent==null?null:systemMinimumQuote(items,requiredPercent,original.expenses||0,installationExpenses,'materialPrice'),belowMinimum=!!minimumQuote&&total!==''&&belowSystemMinimum(total,minimumQuote.minimum);
+ const minimumRequest=useRef(null),activeTerms=useRef(''),[checkingMinimum,setCheckingMinimum]=useState(false);
+ activeTerms.current=JSON.stringify([original.id,salesAuthorizationKey(profile),items.map(i=>[i.id,i.qty]),total,expenses,pricingStatus?.systemMarkupPercent,pricingStatus?.systemFreePricing]);
+ useEffect(()=>()=>minimumRequest.current?.abort(),[]);
+ async function useCurrentMinimum(){
+  if(!minimumQuote||pricingStatus.systemFreePricing||busy||checkingMinimum)return;
+  if(sourceInvoice===null){setTotal(String(minimumQuote.minimum));return;}
+  // Accepting a different total reprices the agreement. Read today's prices
+  // before filling that amount, even while the original terms are displayed.
+  const controller=new AbortController(),terms=activeTerms.current;
+  minimumRequest.current=controller;setCheckingMinimum(true);setError('');
+  const timeout=setTimeout(()=>controller.abort(),15000);
+  try{
+   const ids=[...new Set(items.map(item=>Number(item.id)))];
+   const {prices}=await readSystemMaterialPrices(ids,null,controller.signal);
+   if(terms!==activeTerms.current||controller.signal.aborted)return;
+   const fresh=items.map(item=>({...item,materialPrice:prices.get(String(item.id))}));
+   const quote=systemMinimumQuote(fresh,pricingStatus.systemMarkupPercent,original.expenses||0,installationExpenses,'materialPrice');
+   if(quote)setTotal(String(quote.minimum));
+   else setError('أدخل سعر المنظومة المتفق عليه. يتحقق النظام من الحد الأدنى عند الحفظ.');
+  }catch(failure){if(terms===activeTerms.current)setError(controller.signal.aborted?'تعذّر تحديث أسعار المواد. أعد المحاولة.':failure.message);}
+  finally{clearTimeout(timeout);minimumRequest.current=null;setCheckingMinimum(false);}
+ }
  const customer=partyId!=null?customers.find(c=>String(c.id)===String(partyId)):customers.find(c=>c.name===party);
- const changes={...original,...(canEditExpenses?{requestedInstallationExpenses:installationExpenses}:{}),valuationRevision:inventory.valuationRevision,items,party,partyId,saleCustomerId:partyId,installerId,customerAddress:address,customerPhone:customer?.phone??(party===original.party?original.customerPhone:''),installDate:scheduleEnabled?date:'',installTime:scheduleEnabled?time:'',total:Number(total),notes,warranty:warrantyPolicy(warranty,items),mode:original.cash?'cash':'credit'};
+ const changes={...original,systemMaterialPriceTokens:materialPrices.tokens,...(canEditExpenses?{requestedInstallationExpenses:installationExpenses}:{}),valuationRevision:inventory.valuationRevision,items,party,partyId,saleCustomerId:partyId,installerId,customerAddress:address,customerPhone:customer?.phone??(party===original.party?original.customerPhone:''),installDate:scheduleEnabled?date:'',installTime:scheduleEnabled?time:'',total:Number(total),notes,warranty:warrantyPolicy(warranty,items),mode:original.cash?'cash':'credit'};
  const d=salesDocument({...changes,draft:true,party_name:party,created_at:original.date,customer_address:address,customer_phone:changes.customerPhone,installerName:userDisplayName(installer),items:items.map(i=>({...i,product_name:i.name,brand_name:i.brand}))});
  async function save(){
-  if(busy)return;setError('');if(!pricingReady){setError('انتظر تأكيد سياسة تسعير المنظومات أو حدّث الحالة.');return;}if(belowMinimum){setError('أقل سعر بيع مسموح: '+money(minimumQuote.minimum)+' د.ع؛ الربح الكلي لا يقل عن '+minimumQuote.percent+'٪');return;}
+  if(busy)return;setError('');if(!materialPrices.ready){setError(materialPrices.error||'انتظر تحميل أسعار المواد.');return;}if(!pricingReady){setError('انتظر تأكيد سياسة تسعير المنظومات أو حدّث الحالة.');return;}if(belowMinimum){setError('أقل سعر بيع مسموح: '+money(minimumQuote.minimum)+' د.ع؛ الربح الكلي لا يقل عن '+minimumQuote.percent+'٪');return;}
   const invalid=canEditExpenses&&(!Number.isFinite(installationExpenses)||installationExpenses<0||installationExpenses>1e9)?'أدخل مصاريف تنصيب صحيحة':!inventory.ready?'انتظر تحميل المخزن':!party?'اختر الزبون':!installerId?'اختر مهندس التنصيب':!address.trim()?'اكتب عنوان التنصيب':scheduleEnabled&&(!date||!time)?'حدد يوم وساعة الموعد أو اختر بدون موعد':!Number.isFinite(Number(total))||Number(total)<=0?'اكتب سعر المنظومة':invoiceError(items.map(i=>({...i,price:0})),products,'system')||warrantyError(warranty,items);
   if(invalid){setError(invalid);return;}if(scheduleEnabled&&(booking?.key!==bookingSelectionKey(date,installerId,time,original.id)||!booking.valid)){setError(booking?.conflict?'الموعد محجوز؛ اختر وقتًا آخر.':'انتظر تحميل الحجوزات أو أعد تحديث الجدول.');return;}setBusy(true);try{if(await onUpdate(original,changes))await onSaved();}catch(e){setError(e.message||'تعذر حفظ التعديل.');}finally{setBusy(false);}
  }
@@ -45,8 +70,8 @@ export default function SystemInvoiceEditor({profile,original,customers,staff,pr
   {scheduleEnabled&&<><div className="deskDates"><InvoiceField label="موعد التنصيب · اختياري"><input aria-label="تاريخ تعديل التنصيب" type="date" value={date} onChange={e=>setDate(e.target.value)}/></InvoiceField><InvoiceField label="الساعة"><input aria-label="ساعة تعديل التنصيب" type="time" value={time} onChange={e=>setTime(e.target.value)}/></InvoiceField></div>
   <InstallationCalendar date={date} selectedInstallerId={installerId} selectedTime={time} excludeInvoiceId={original.id} onAvailability={setBooking} onEngineerChange={setInstallerId} onPick={v=>{setInstallerId(v.installerId);setDate(v.date);setTime(v.time);}}/></>}
   <div className="deskBody"><InvoiceCatalog availableOnly products={products} items={items} query={query} onQuery={setQuery} onAdd={p=>setItems(current=>current.some(i=>i.id===p.id)?current:[{...p,qty:''},...current])}/><InvoiceItems kind="system" products={products} items={items} onEdit={(id,key,value)=>setItems(current=>current.map(i=>i.id===id?{...i,[key]:value}:i))} onRemove={id=>setItems(current=>current.filter(i=>i.id!==id))}/></div>
-  <SystemPricingNotice status={pricingStatus} error={pricingStatusError} reload={reloadPricing} quote={minimumQuote} hiddenCost={serverMinimum} price={total} minimumActionLabel={minimumQuote&&minimumQuote.percent!==Number(pricingStatus?.systemMarkupPercent)?'استخدام نسبة الإدارة الحالية '+pricingStatus.systemMarkupPercent+'٪':undefined} onUseMinimum={minimumQuote?()=>setTotal(String(systemMinimumQuote(items,pricingStatus.systemMarkupPercent,original.expenses||0,installationExpenses)?.minimum??minimumQuote.minimum)):undefined}/><div className="deskFooterFields"><InvoiceField label="سعر بيع المنظومة · د.ع"><MoneyInput aria-label="تعديل سعر بيع المنظومة" value={total} onChange={setTotal}/></InvoiceField><InvoiceField label="ملاحظات الفاتورة"><textarea aria-label="ملاحظات تعديل المنظومة" value={notes} maxLength={4000} onChange={e=>setNotes(e.target.value)}/></InvoiceField></div>
+  <SystemPricingNotice status={pricingStatus} error={materialPrices.error||pricingStatusError} reload={()=>{materialPrices.refresh();void reloadPricing();}} quote={minimumQuote} hiddenCost={materialPrices.ready&&materialsTotal===null} price={total} minimumActionLabel={checkingMinimum?'جاري تحديث أسعار المواد…':sourceInvoice!==null?'استخدام الحد الأدنى الحالي للمنظومة':undefined} minimumActionDisabled={checkingMinimum||busy} onUseMinimum={minimumQuote?useCurrentMinimum:undefined}/><div className="deskFooterFields"><InvoiceField label="سعر المنظومة · د.ع"><MoneyInput aria-label="تعديل سعر المنظومة" value={total} onChange={setTotal}/></InvoiceField><InvoiceField label="ملاحظات الفاتورة"><textarea aria-label="ملاحظات تعديل المنظومة" value={notes} maxLength={4000} onChange={e=>setNotes(e.target.value)}/></InvoiceField></div>
   <section className="systemExpenseEditor"><h3>مصاريف التنصيب</h3>{canEditExpenses?<><InvoiceField label="مصاريف التنصيب المعتمدة · د.ع"><MoneyInput aria-label="تعديل مصاريف التنصيب المعتمدة" value={installationAmount} onChange={setInstallationAmount}/></InvoiceField><button type="button" className="workflowSecondary" disabled={busy} onClick={()=>setInstallationAmount('0')}>مسح المصاريف — يعتمد عند الحفظ</button><p>التخفيض يرجع فرق المصاريف إلى قاصة من دفعها، والزيادة تخصم فرق المبلغ فقط. الفارغ أو الصفر يلغي المصاريف عند حفظ التعديل.</p></>:<p>المصاريف المعتمدة: {money(installationExpenses)} د.ع. تعديلها يحتاج صلاحية اعتماد مصاريف التنصيب.</p>}<p>تغيير المواد يعيد مراجعة التجهيز والغلق؛ تُحفظ الفاتورة وتصحيح المصاريف معًا.</p></section>
-  <WarrantyEditor value={warranty} items={items} onChange={setWarranty}/><InvoiceSummary total={total} entries={[[personalPrices?"كلفة المواد المعتمدة":"كلفة المواد",hiddenCost?"—":money(cost)+' د.ع'],["المصاريف المحفوظة",money(expenses)+' د.ع']]}/>{error&&<p className="workflowError" role="alert">{error}</p>}<InvoiceActions saveDisabled={!inventory.ready||!pricingReady||belowMinimum} saving={busy} onSave={save} saveLabel="حفظ التعديل" onCancel={onCancel} documentHtml={a4(d.title,d.body,d.total,'مسودة تعديل غير محفوظة')} documentName={'تعديل-منظومة-'+original.receiptNo}/>
+  <WarrantyEditor value={warranty} items={items} onChange={setWarranty}/><InvoiceSummary total={total} entries={[["مجموع أسعار المواد",materialsTotal===null?"—":money(materialsTotal)+' د.ع'],["المصاريف المحفوظة",money(expenses)+' د.ع']]}/>{error&&<p className="workflowError" role="alert">{error}</p>}<InvoiceActions saveDisabled={checkingMinimum||!inventory.ready||!pricingReady||!materialPrices.ready||belowMinimum} saving={busy} onSave={save} saveLabel="حفظ التعديل" onCancel={onCancel} documentHtml={a4(d.title,d.body,d.total,'مسودة تعديل غير محفوظة')} documentName={'تعديل-منظومة-'+original.receiptNo}/>
  </InvoiceShell>;
 }

@@ -26,9 +26,16 @@ export async function recoverCurrencyInvoice(attempt){
 }
 export async function saveCurrencyInvoice(attempt,kind,meta,items,original){
  const uid=await invoiceUser();
- try{return await saveInvoiceAttempt(attempt,uid,invoicePayload(kind,meta,items,original),{
+ try{const result=await saveInvoiceAttempt(attempt,uid,invoicePayload(kind,meta,items,original),{
   currentUser:invoiceUser,resolve:resolveAttempt,
   send:record=>saveRequest(signal=>supabase.rpc('solar_invoice_save',{request_id:record.requestId,payload:record.payload}).abortSignal(signal))
- });}catch(error){if(error.code==='PT409')refreshValuation();if(!error.invoiceRecovery&&!/^[0-9A-Z]{5}$/.test(error.code||'')&&!/[\u0600-\u06ff]/.test(error.message||''))throw new Error('لم يصل تأكيد الحفظ. استخدم «التحقق من الحفظ السابق» قبل إعادة المحاولة.',{cause:error});throw error;}
+ });
+ if(kind==='purchase')refreshValuation();
+ return result;
+ }catch(error){if(error.code==='PT409')refreshValuation();if(!error.invoiceRecovery&&!/^[0-9A-Z]{5}$/.test(error.code||'')&&!/[\u0600-\u06ff]/.test(error.message||''))throw new Error('لم يصل تأكيد الحفظ. استخدم «التحقق من الحفظ السابق» قبل إعادة المحاولة.',{cause:error});throw error;}
 }
-export async function deleteCurrencyPurchase(invoice,profile){return requestReceiptDeletion(invoice.id,undefined,profile);}
+export async function deleteCurrencyPurchase(invoice,profile){
+ const result=await requestReceiptDeletion(invoice.id,undefined,profile);
+ refreshValuation();
+ return result;
+}

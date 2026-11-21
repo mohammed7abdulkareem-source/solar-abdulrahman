@@ -19,7 +19,7 @@ const h=await createHarness('profit-basis-users');
 try{
  const {page,ctx}=await h.open('admin','/?section=wholesalePricing');
  const panel=page.locator('details.wpBasisPanel');
- const checkbox=panel.getByRole('checkbox',{name:'أساس الربح بسعر الجملة — '+targetName,exact:true});
+ const checkbox=panel.getByRole('checkbox',{name:'أساس الربح بسعر المادة — '+targetName,exact:true});
  async function expand(){
   if(!(await panel.evaluate(el=>el.open)))await panel.locator('summary').click();
   const search=panel.getByRole('textbox',{name:'بحث في مستخدمي أساس الربح'});
@@ -85,7 +85,7 @@ try{
  assert.equal(state.users.find(u=>u.id===manager).enabled,true);
  await page.goto(base+'/?section=wholesalePricing');await expand();assert.equal(await checkbox.isChecked(),false);
  const user=(await h.open(manager,'/?section=wholesalePricing')).page;
- await user.getByRole('region',{name:'إدارة أسعار بيع الجملة'}).waitFor();
+ await user.getByRole('region',{name:'إدارة أسعار المواد'}).waitFor();
  assert.equal(await user.locator('details.wpBasisPanel').count(),0);
  assert.equal(h.calls.filter(c=>c.who===manager&&c.path.endsWith('/solar_profit_basis_users')).length,0);
  h.checks.accountBasis={sparseUpdate:true,retrySameRequest:true,conflictProtected:true,wizardSynced:true,pricingManagerCannotSelectUsers:true};

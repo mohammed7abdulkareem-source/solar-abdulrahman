@@ -24,22 +24,52 @@ export function wholesaleEconomicsChanged(items,originalItems){
  return !Array.isArray(originalItems)||lineSignature(items)!==lineSignature(originalItems);
 }
 
+export function wholesaleSuggestedPrice(price){
+ if(price==null||price===''||!Number.isFinite(Number(price))||Number(price)<0)return null;
+ const nearest=Math.round(Number(price)*100)/100;
+ return belowSystemMinimum(nearest,price)?Number((nearest+.01).toFixed(2)):nearest;
+}
+
 export function wholesaleLinePricing(state,productId,{historical=false}={}){
  const product=state?.products?.find(row=>String(row.id)===String(productId));
- const raw=product?.minPrice,minimum=raw==null||raw===''?null:Number(raw);
+ const automatic=product?.floorSource==='cost',marked=product?.enabled===true;
+ // Older servers expose only the configured price. An automatic row may carry
+ // an inactive saved override; it must never stand in for the current cost.
+ const raw=automatic||product?.floorSource==='configured'?product.effectiveMinPrice:product?.minPrice;
+ const minimum=raw==null||raw===''?null:Number(raw);
  const price=Number.isFinite(minimum)&&minimum>=0?minimum:null;
+ const suggested=wholesaleSuggestedPrice(price);
  return {
-  price,
-  marked:product?.enabled===true,
-  required:wholesalePolicyEnforced(state)&&product?.enabled===true&&!historical,
+  price,suggested,marked,automatic,
+  required:wholesalePolicyEnforced(state)&&(marked||automatic)&&!historical,
   historical,
-  reason:state?.enabled!==true?'disabled':product?.enabled!==true?'unmarked':!wholesaleAppliesToSubject(state)?'outside_scope':!wholesalePolicyEnforced(state)?'override':historical?'historical':'required',
+  reason:state?.enabled!==true?'disabled':!marked&&!automatic?'unmarked':!wholesaleAppliesToSubject(state)?'outside_scope':!wholesalePolicyEnforced(state)?'override':historical?'historical':'required',
  };
 }
 
 export function wholesalePriceDefault(state,productId){
  const rule=wholesaleLinePricing(state,productId);
- return rule.required&&rule.price!==null?String(rule.price):'';
+ return rule.required&&rule.suggested!==null?String(rule.suggested):'';
+}
+
+// Refresh a suggested line with the same policy snapshot used to validate and
+// submit it. A manual/negotiated price and an archived agreed price stay put.
+export function refreshWholesaleDefaults(items,state){
+ if(!state)return items;
+ return items.map(item=>{
+  if(!item.useWholesaleFloor)return item;
+  const rule=wholesaleLinePricing(state,item.id);
+  if(!rule.required)return item;
+  const price=rule.suggested==null?'':String(rule.suggested);
+  return item.price===price?item:{...item,price};
+ });
+}
+
+export function wholesaleFloorTokens(state,items,originalItems){
+ if(!wholesalePolicyEnforced(state)||!wholesaleEconomicsChanged(items,originalItems))return undefined;
+ const selected=new Set(items.map(i=>String(i.id??i.productId??i.product_id)));
+ const tokens=Object.fromEntries((state.products||[]).filter(row=>selected.has(String(row.id))&&typeof row.floorToken==='string'&&row.floorToken).map(row=>[String(row.id),row.floorToken]));
+ return Object.keys(tokens).length?tokens:undefined;
 }
 
 export function wholesalePricingIssues(state,items,originalItems){
@@ -48,8 +78,10 @@ export function wholesalePricingIssues(state,items,originalItems){
  return items.flatMap(item=>{
   const rule=wholesaleLinePricing(state,item.id??item.productId??item.product_id,{historical});
   if(!rule.required)return [];
+  // Protected users can enter a sale price; the server checks the private floor.
+  if(rule.price===null&&rule.automatic)return [];
   if(rule.price===null)return [{id:item.id,name:item.name,minimum:null,message:'السعر المقرر للمادة «'+(item.name||'المحددة')+'» غير متاح. حدّث الأسعار قبل الحفظ.'}];
   if(item.price===''||item.price==null)return [];
-  return belowSystemMinimum(item.price,rule.price)?[{id:item.id,name:item.name,minimum:rule.price}]:[];
+  return belowSystemMinimum(item.price,rule.price)?[{id:item.id,name:item.name,minimum:rule.suggested}]:[];
  });
 }

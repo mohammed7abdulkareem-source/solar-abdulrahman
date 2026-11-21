@@ -32,3 +32,12 @@ test('personal sales show only projected unit prices and keep private fallback c
  assert.equal(currentSaleItems(draft,[{id:1,cost:385}],[],true)[0].cost,null);
  assert.equal(currentSaleItems(draft,catalog,[{id:1,cost:399,personalPriceBasis:true}],true)[0].cost,399);
 });
+
+test('invoice retries retain the original pricing tokens without treating a refresh as new business input',()=>{
+ for(const [kind,key] of [['sale','wholesaleFloorTokens'],['system','systemMaterialPriceTokens']]){
+  const first=invoicePayload(kind,{[key]:{'1':'v1'},total:5000},[{id:1,qty:1,price:5000}]);
+  assert.deepEqual(first[key],{'1':'v1'});
+  assert.equal(invoiceAttemptSignature(first),invoiceAttemptSignature({...first,[key]:{'1':'v2'}}));
+  assert.equal(invoicePayload('purchase',{[key]:{'1':'v1'}},[])[key],undefined);
+ }
+});

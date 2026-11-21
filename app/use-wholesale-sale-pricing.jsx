@@ -1,6 +1,7 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from './supabase';
+import {VALUATION_EVENT} from './valuation-events.mjs';
 import {wholesalePricingReady} from './wholesale-invoice-pricing.mjs';
 
 export function useWholesaleSalePricing({userId,invoiceId=null,enabled=true}){
@@ -26,9 +27,9 @@ export function useWholesaleSalePricing({userId,invoiceId=null,enabled=true}){
   void reload();
   const refresh=()=>{if(document.visibilityState==='visible')void reload();};
   const offline=()=>{++sequence.current;controller.current?.abort();setLoading(false);setError('الاتصال غير متاح. حدّث أسعار بيع الجملة عند عودة الاتصال.');};
-  window.addEventListener('focus',refresh);window.addEventListener('online',refresh);window.addEventListener('offline',offline);window.addEventListener('solar-wholesale-pricing',refresh);window.addEventListener('solar-notification',refresh);
+  document.addEventListener('visibilitychange',refresh);window.addEventListener(VALUATION_EVENT,refresh);window.addEventListener('focus',refresh);window.addEventListener('online',refresh);window.addEventListener('offline',offline);window.addEventListener('solar-wholesale-pricing',refresh);window.addEventListener('solar-notification',refresh);
   const timer=setInterval(refresh,30000);
-  return()=>{++sequence.current;controller.current?.abort();clearInterval(timer);window.removeEventListener('focus',refresh);window.removeEventListener('online',refresh);window.removeEventListener('offline',offline);window.removeEventListener('solar-wholesale-pricing',refresh);window.removeEventListener('solar-notification',refresh);};
+  return()=>{++sequence.current;controller.current?.abort();clearInterval(timer);document.removeEventListener('visibilitychange',refresh);window.removeEventListener(VALUATION_EVENT,refresh);window.removeEventListener('focus',refresh);window.removeEventListener('online',refresh);window.removeEventListener('offline',offline);window.removeEventListener('solar-wholesale-pricing',refresh);window.removeEventListener('solar-notification',refresh);};
  },[enabled,userId,reload]);
  const data=enabled&&snapshot&&snapshot.userId===userId&&snapshot.subjectInvoice===subjectInvoice?snapshot.data:null;
  return {data,error,loading,ready:!enabled||!!data&&!error&&!loading,reload};

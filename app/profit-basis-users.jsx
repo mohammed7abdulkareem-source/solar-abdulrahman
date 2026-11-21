@@ -76,18 +76,18 @@ export default function ProfitBasisUsers({actorId}){
  const changedCount=Object.keys(changes).length,selected=users.filter(user=>user.enabled).length;
  const frozen=loading||saving||!!pending||conflict;
  return <details className="wpBasisPanel" aria-label="أساس ربح المستخدمين">
-  <summary><AppIcon name="users" size={19}/><span>أساس ربح المستخدمين</span>{state&&<small>{selected} بسعر الجملة</small>}<AppIcon name="chevron" size={16}/></summary>
+  <summary><AppIcon name="users" size={19}/><span>أساس ربح المستخدمين</span>{state&&<small>{selected} بسعر المادة</small>}<AppIcon name="chevron" size={16}/></summary>
   <div className="wpBasisBody">
-   <p>حدّد المستخدمين الذين تُحسب أرباحهم على سعر الجملة المحدد للمواد المفعّلة، في وصولات الجملة والمنظومات الجديدة. يُحسب ربح بقية المستخدمين على الكلفة الفعلية.</p>
+   <p>حدّد المستخدمين الذين تُحسب أرباحهم على سعر المادة اليدوي عند تفعيله، في وصولات الجملة والمنظومات الجديدة. يُحسب ربح بقية المستخدمين على الكلفة الفعلية.</p>
    {loading&&<p role="status">جاري تحميل المستخدمين…</p>}
    {error&&<p role="alert" className="wpAlert">{error}</p>}
    {message&&<p role="status" className="wpSuccess">{message}</p>}
    {state&&<>
     {users.length>6&&<label className="wpSearch wpBasisSearch"><AppIcon name="search" size={16}/><input aria-label="بحث في مستخدمي أساس الربح" value={query} onChange={e=>setQuery(e.target.value)} placeholder="ابحث باسم المستخدم…"/></label>}
-    <fieldset disabled={frozen} className="wpConfiguration"><legend className="wpVisuallyHidden">احتساب ربح المستخدم على سعر الجملة</legend><div className="wpUnifiedChecklist"><div className="wpScopeUsers">
+    <fieldset disabled={frozen} className="wpConfiguration"><legend className="wpVisuallyHidden">احتساب ربح المستخدم على سعر المادة</legend><div className="wpUnifiedChecklist"><div className="wpScopeUsers">
      {filtered.map(user=>{
       const checked=changes[user.id]??user.enabled;
-      return <label key={user.id} className={'wpScopeUser'+(checked?' checked':'')}><input type="checkbox" checked={checked} aria-label={'أساس الربح بسعر الجملة — '+user.name} onChange={e=>toggle(user,e.target.checked)}/><span className="wpScopeUserName">{user.name}{user.active===false&&<small>الحساب موقوف</small>}</span><span className={'wpScopeStatus '+(checked?'required':'free')}>{checked?'سعر الجملة':'الكلفة الفعلية'}</span></label>;
+      return <label key={user.id} className={'wpScopeUser'+(checked?' checked':'')}><input type="checkbox" checked={checked} aria-label={'أساس الربح بسعر المادة — '+user.name} onChange={e=>toggle(user,e.target.checked)}/><span className="wpScopeUserName">{user.name}{user.active===false&&<small>الحساب موقوف</small>}</span><span className={'wpScopeStatus '+(checked?'required':'free')}>{checked?'سعر المادة':'الكلفة الفعلية'}</span></label>;
      })}
      {!filtered.length&&<p className="wpScopeEmpty">{query?'لا يوجد مستخدم مطابق للبحث.':'لا توجد حسابات إدارية بصلاحيات محددة.'}</p>}
     </div></div></fieldset>

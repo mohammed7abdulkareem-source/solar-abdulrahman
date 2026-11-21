@@ -4,6 +4,19 @@ import AppIcon from './app-icons';
 import {formatMoney} from './money-format.mjs';
 import {notificationQuantity} from './notification-details.mjs';
 
+function PriceInfo({item}){
+ if(item.enabled===null)return <span className="structuredNoticePrice">حالة التسعير غير متاحة</span>;
+ if(item.minPrice!==null)return <>
+  <strong className="structuredNoticePrice"><bdi>{formatMoney(item.minPrice)}</bdi><small>د.ع</small></strong>
+  <span className="structuredNoticePriceState required">سعر يدوي مُفعّل</span>
+ </>;
+ return <>
+  <strong className="structuredNoticePrice">تلقائي</strong>
+  <span className="structuredNoticePriceState unknown">حسب متوسط كلفة الشراء</span>
+  {item.inactiveManualPrice!=null&&<small>سعر يدوي كان محفوظاً وغير مفعّل <bdi>{formatMoney(item.inactiveManualPrice)} د.ع</bdi></small>}
+ </>;
+}
+
 export default function StructuredNotification({notice,data,onRead}){
  const [expanded,setExpanded]=useState(false),id=useId();
  const label=data.purchase?'المواد المستلمة':'أسعار البيع المحدّثة';
@@ -15,11 +28,11 @@ export default function StructuredNotification({notice,data,onRead}){
   </button>
   {expanded&&<div id={id} className="structuredNoticeDetails" role="region" aria-label={'تفاصيل '+label}>
    {data.items===null?<p className="structuredNoticeUnavailable">تفاصيل المواد غير متاحة حاليًا. حدّث قائمة الإشعارات وأعد فتح الإشعار.</p>:!data.items.length?<p className="structuredNoticeUnavailable">لا توجد فقرات مواد في هذا الإشعار.</p>:<>
-    <table className="structuredNoticeTable"><caption>{label} · {data.items.length} فقرة</caption><colgroup><col/><col className="structuredNoticeValueColumn"/></colgroup><thead><tr><th scope="col">وصف المادة</th><th scope="col">{data.purchase?'العدد':'سعر البيع المقرر'}</th></tr></thead><tbody>{data.items.map((item,index)=><tr key={index} data-notification-item={index}>
+    <table className="structuredNoticeTable"><caption>{label} · {data.items.length} فقرة</caption><colgroup><col/><col className="structuredNoticeValueColumn"/></colgroup><thead><tr><th scope="col">وصف المادة</th><th scope="col">{data.purchase?'العدد':'مرجع سعر الجملة'}</th></tr></thead><tbody>{data.items.map((item,index)=><tr key={index} data-notification-item={index}>
      <td><strong className="structuredNoticeMaterial" dir="auto">{item.name}</strong><dl className="structuredNoticeIdentity"><div><dt>النوع</dt><dd dir="auto">{item.category||'غير محدد'}</dd></div><div><dt>البراند</dt><dd dir="auto">{item.brand||'غير محدد'}</dd></div></dl></td>
-     <td className="structuredNoticeValue">{data.purchase?<bdi className="structuredNoticeQuantity">{item.qty===null?'—':notificationQuantity(item.qty)}</bdi>:<><strong className="structuredNoticePrice">{item.minPrice===null?'غير محدد':<><bdi>{formatMoney(item.minPrice)}</bdi><small>د.ع</small></>}</strong><span className={'structuredNoticePriceState '+(item.enabled===true?'required':item.enabled===false?'free':'unknown')}>{item.enabled===true?'مشمول بالسعر المقرر':item.enabled===false?'بيع حر للمادة':'الحالة غير متاحة'}</span></>}</td>
+     <td className="structuredNoticeValue">{data.purchase?<bdi className="structuredNoticeQuantity">{item.qty===null?'—':notificationQuantity(item.qty)}</bdi>:<PriceInfo item={item}/>}</td>
     </tr>)}</tbody></table>
-    {!data.purchase&&<p className="structuredNoticeFootnote">الأسعار بالدينار العراقي. السعر المقرر حد أدنى للمواد المشمولة عند تشغيل الميزة، بحسب صلاحية المستخدم.</p>}
+    {!data.purchase&&<p className="structuredNoticeFootnote">عند تطبيق حد بيع الجملة، يعتمد السعر التلقائي متوسط كلفة الشراء بالدينار حسب سعر الصرف المعتمد وقت البيع.</p>}
    </>}
   </div>}
  </article>;

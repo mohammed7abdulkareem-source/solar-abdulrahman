@@ -1,3 +1,5 @@
+import {wholesaleSuggestedPrice} from './wholesale-invoice-pricing.mjs';
+
 export const WHOLESALE_PRICE_BATCH_LIMIT=100;
 
 // This is a settings view filter only. Keep the full server policy intact so an
@@ -19,7 +21,7 @@ export function wholesalePriceSaveNotice(action,payload,result){
   return 'تم تأكيد حفظ إعدادات الإلزام؛ الحالة الحالية: '+status+'.'+(changed>0&&notified?' تم إرسال إشعار بالتغيير المحفوظ.':'');
  }
  if(changed===0)return action==='save'?'الأسعار مطابقة للمحفوظ؛ لا توجد تغييرات جديدة.':'حالة الأسعار الإلزامية مطابقة للمحفوظ.';
- if(action==='save')return changed===null?'تم حفظ أسعار بيع الجملة.':'تم تحديث أسعار '+changed+' مادة'+(notified?' وإرسال إشعار للمستخدمين.':'.');
+ if(action==='save')return changed===null?'تم حفظ أسعار المواد.':'تم تحديث أسعار '+changed+' مادة'+(notified?' وإرسال إشعار للمستخدمين.':'.');
  if(action==='scope')return 'تم حفظ المستخدمين المشمولين بالأسعار الإلزامية'+(changed!==null&&notified?' وإرسال إشعار للمستخدمين.':'.');
  const message=payload.enabled?'تم تشغيل الأسعار الإلزامية':'تم إيقاف الأسعار الإلزامية مع الاحتفاظ بالأسعار المحفوظة';
  return message+(changed!==null&&notified?' وإرسال إشعار للمستخدمين.':'.');
@@ -69,6 +71,33 @@ export function wholesaleConfigurationUser(draft,id,checked,eligibleUsers){
  return {...draft,mode:eligible.every(value=>selected.has(value))?'all':'selected',userIds:eligible.every(value=>selected.has(value))?[]:[...selected].sort()};
 }
 
+// Use the database quote for the saved automatic floor. A manager previewing an
+// unchecked override needs the current cost because its saved floor is manual.
+export function wholesaleEffectivePrice(row,draft,personalPrices=false){
+ const enabled=draft?.enabled??row.enabled;
+ const amount=Number(draft?.minPrice??row.minPrice);
+ if(enabled&&amount>0)return {source:'configured',amount};
+ if(personalPrices||row.personalPriceBasis)return {source:'cost',amount:null};
+ const cost=row.floorSource==='cost'?row.effectiveMinPrice:row.cost;
+ return {source:'cost',amount:wholesaleSuggestedPrice(cost)};
+}
+
+export function refreshWholesalePricing(previous,latest,editing){
+ if(!editing||!previous)return latest;
+ // Keep the settings/revisions the administrator actually edited. Refresh only
+ // valuation fields so a concurrent override still requires conflict review.
+ const liveRows=new Map(latest.products.map(row=>[row.id,row]));
+ const products=previous.products.map(row=>{
+  const live=liveRows.get(row.id);
+  if(!live)return row;
+  const custom=row.enabled&&Number(row.minPrice)>0;
+  const liveCost=live.floorSource==='cost'?live.effectiveMinPrice:live.cost;
+  return {...row,cost:live.cost,personalPriceBasis:live.personalPriceBasis,
+   floorSource:custom?'configured':'cost',effectiveMinPrice:custom?row.minPrice:live.personalPriceBasis?null:liveCost};
+ });
+ return {...previous,products};
+}
+
 export function wholesalePriceDraft(row){
  return {minPrice:row.minPrice==null?'':String(row.minPrice),enabled:row.enabled===true};
 }
@@ -80,9 +109,9 @@ export function wholesalePriceChanged(row,draft){
 }
 
 export function wholesalePriceValidation(draft){
- if(draft.minPrice==='')return draft.enabled?'حدد سعر البيع الأدنى قبل تطبيقه على المادة.':'';
+ if(draft.minPrice==='')return draft.enabled?'أدخل السعر اليدوي أو ألغِ التحديد لاستخدام الكلفة الحالية.':'';
  const value=Number(draft.minPrice);
- if(!/^\d*(?:\.\d{1,2})?$/.test(draft.minPrice)||!Number.isFinite(value)||value<=0||value>1e12)return 'أدخل سعراً صحيحاً أكبر من صفر، أو اتركه فارغاً بدون تطبيق الحد.';
+ if(!/^\d*(?:\.\d{1,2})?$/.test(draft.minPrice)||!Number.isFinite(value)||value<=0||value>1e12)return 'أدخل سعراً يدوياً أكبر من صفر أو امسح الحقل لاستخدام الكلفة الحالية.';
  return '';
 }
 
