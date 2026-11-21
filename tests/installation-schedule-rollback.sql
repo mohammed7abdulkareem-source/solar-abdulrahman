@@ -66,13 +66,16 @@ do $$begin
 end$$;
 update transactions set warehouse_status='ready',warehouse_prepared_at=now() where id=current_setting('test.job')::bigint;
 set local role authenticated;
+-- The assigned engineer submits the field report before the office can close.
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003663',true);
+select public.solar_installation_action(current_setting('test.job')::bigint,0,'start');
+select public.solar_installation_action(current_setting('test.job')::bigint,1,'complete','{"notes":"تم فحص المنظومة","checks":{"materials":true,"tested":true,"handover":true},"expenses":[]}');
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003661',true);
--- Owner is allowed to close from pending; engineer and office must see one state.
-select public.solar_installation_action(current_setting('test.job')::bigint,0,'close','{"amount":0}');
+select public.solar_installation_action(current_setting('test.job')::bigint,2,'close','{"amount":0}');
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003663',true);
 do $$declare j jsonb;begin
  select x into j from jsonb_array_elements(public.solar_installation_jobs()) x where(x->>'id')::bigint=current_setting('test.job')::bigint;
- if j->>'installationStatus'<>'closed' or(j->>'installationRevision')::int<>1 or j->>'installationClosedAt' is null then raise exception 'FAIL engineer stale closure';end if;
+ if j->>'installationStatus'<>'closed' or(j->>'installationRevision')::int<>3 or j->>'installationClosedAt' is null then raise exception 'FAIL engineer stale closure';end if;
  begin perform public.solar_installation_action(current_setting('test.job')::bigint,0,'start');raise exception 'FAIL stale engineer stage';exception when sqlstate 'PT409' then null;end;
 end$$;
 reset role;
@@ -83,12 +86,12 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003661',true);
 do $$begin
  begin perform public.solar_invoice_save(gen_random_uuid(),current_setting('test.payload')::jsonb);raise exception 'FAIL closed appointment released too early';exception when sqlstate 'PT409' then null;end;
- perform public.solar_installation_action(current_setting('test.job')::bigint,1,'reopen');
+ perform public.solar_installation_action(current_setting('test.job')::bigint,3,'reopen');
 end$$;
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000003663',true);
 do $$declare j jsonb;begin
  select x into j from jsonb_array_elements(public.solar_installation_jobs()) x where(x->>'id')::bigint=current_setting('test.job')::bigint;
- if j->>'installationStatus'<>'completed' or(j->>'installationRevision')::int<>2 then raise exception 'FAIL reopened engineer state';end if;
+ if j->>'installationStatus'<>'completed' or(j->>'installationRevision')::int<>4 then raise exception 'FAIL reopened engineer state';end if;
 end$$;
 reset role;
 -- Live permission changes and specialized roles override stale admin flags.

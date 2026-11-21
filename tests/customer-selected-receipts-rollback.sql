@@ -152,5 +152,19 @@ do $$begin
   and not has_function_privilege('authenticated','solar_private.assigned_customer_receipt(bigint,bigint)','execute')
   and not has_table_privilege('authenticated','solar_private.customer_receipt_responsibility','select,insert,update,delete'),'Delegation bypasses protected RPCs';
 end$$;
+-- Moving the account back alone must not give its original seller the other
+-- employee's expense editor. Their own historical sale editor still works.
+set local role authenticated;
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000422501',true);
+select public.solar_customer_save('transfer_owner',gen_random_uuid(),
+ pg_temp.payload('00000000-0000-0000-0000-000000422502','[]')-'receiptToken'-'receiptIds')->>'ownerId';
+select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000422502',true);
+do $$declare original_editor jsonb:=public.solar_statement_sale_for_edit(-422501,42250101);begin
+ assert original_editor->>'created_by'='00000000-0000-0000-0000-000000422502'
+  and original_editor->>'operationalOwnerId'='00000000-0000-0000-0000-000000422504'
+  and original_editor ? 'invoice_account' and not(original_editor ? 'assignedReceipt'),
+  'Original seller confused with current operational owner after account-only transfer';
+end$$;
+reset role;
 set constraints all immediate;
 rollback;

@@ -73,7 +73,8 @@ try{
  assert.equal(await panel.locator('.jobSalePrice,.approvalForm').count(),0);
  await filter('upcoming').click();await matches(panel,[job.future]);
  await filter('in_progress').click();await matches(panel,[job.started]);
- await filter('archive').click();await matches(panel,[job.submitted,job.closed]);
+ await filter('completed').click();await matches(panel,[job.submitted]);
+ await filter('archive').click();await matches(panel,[job.closed]);
  await filter('all').click();await matches(panel,Object.values(job).filter(id=>id!==job.peer));
  const calendar=panel.getByRole('button',{name:/جدول مواعيدي/});await calendar.click();
  assert.equal(await panel.getByText('مهمة تخص مهندساً آخر',{exact:true}).count(),0);
@@ -102,7 +103,7 @@ try{
  await form.getByLabel('مبلغ المصروف 1').fill('١٬٢٣٤٫٥٠');
  const response=p.waitForResponse(r=>r.url().endsWith('/rpc/solar_installation_action')&&r.request().postDataJSON()?.action==='complete');
  await submit.click();assert.equal((await response).status(),204);
- await filter('archive').click();await card(panel,job.ready).waitFor();
+ await filter('completed').click();await card(panel,job.ready).waitFor();
  const done=(await getJobs()).find(x=>Number(x.id)===job.ready);
  assert.equal(done.installationStatus,'completed');assert.equal(done.installationReport.notes,notes);
  assert.equal(Number(done.installationReport.expenseTotal),1234.5);

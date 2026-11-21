@@ -7,7 +7,7 @@ process.env.SOLAR_FIXTURE_API ||= 'http://127.0.0.1:3300';
 process.env.SOLAR_APP_URL ||= 'http://127.0.0.1:3301';
 process.env.SOLAR_ARTIFACT_DIR ||= '/workspace/solar-review/v4122/release-browser';
 const {api,db,ids,cash,scalar,sql,rpc,tokenFor,createHarness}=await import('./version4-browser-support.mjs');
-assert.equal(db,'solar_v4122_installation_handoff_browser');
+assert.ok(['solar_v4122_installation_handoff_browser','solar_v4123_installation_report_browser'].includes(db));
 const partyId=Date.now(),productId=partyId+1;
 const party='عميل تسليم المنظومات '+partyId;
 const a=randomUUID(),b=randomUUID(),c=randomUUID();
@@ -50,6 +50,11 @@ async function seed(){
  }
  // Place all three real invoices at the same ready-for-installation stage.
  sql('update public.transactions set warehouse_status=\'ready\' where id in ('+docs.map(r=>r.id).join(',')+')');
+ // Both files exercise the assigned engineer's report before the responsible user closes them.
+ for(const doc of docs.slice(0,2)){
+  await act(ids.installer,doc.id,'start');
+  await act(ids.installer,doc.id,'complete',{checks:{materials:true,tested:true,handover:true},notes:'تم اختبار المنظومة وتسليمها.',expenses:[]});
+ }
  await act(a,docs[0].id,'close',{amount:40000,notes:'نفقة قبل التحويل'});
  return docs;
 }
@@ -174,6 +179,8 @@ try{
  assert.equal(recordProfit(closed.id),550000-100000-65000);
  await act(b,closed.id,'close',{amount:65000},409,priorRev);
  financialCheck(b,balances[1]-25000);
+ // Resume the list when the last decision keeps the first file focused.
+ await button(employee,'الكل').click();
  const freshAmount=fresh.getByLabel('المصاريف النهائية للمنظومة',{exact:true});
  await freshAmount.fill('30000');
  await button(fresh,'اعتماد المصاريف وإغلاق الملف').click();

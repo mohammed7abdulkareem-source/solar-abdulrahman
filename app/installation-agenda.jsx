@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import AppIcon from './app-icons';
+import InstallationHandoff,{installationReviewer,installationStageLabel} from './installation-handoff';
 import InstallationCalendar from './installation-calendar';
 import PhoneActions from './phone-actions';
 import MoneyInput from './money-input';
@@ -8,19 +9,25 @@ import {amountInput} from './customer-utils.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 import WarehouseBadge from './warehouse-badge';
 import {receiptNumber} from './supplier-utils.mjs';
-import {hasInstallationAppointment,installationDailyTask,installationIndex,installationLocalDay,installationStages} from './installation-utils.mjs';
+import {hasInstallationAppointment,installationDailyTask,installationLocalDay} from './installation-utils.mjs';
 
-const filters=[['today','أعمال اليوم'],['in_progress','قيد التنفيذ'],['upcoming','القادمة'],['archive','الأرشيف'],['all','كل المهام']];
+const filters=[['today','أعمال اليوم'],['in_progress','قيد التنفيذ'],['upcoming','القادمة'],['completed','بانتظار المراجعة'],['archive','الأرشيف'],['all','كل المهام']];
 const dayFormat=new Intl.DateTimeFormat('ar-IQ',{weekday:'long',day:'numeric',month:'short',year:'numeric',timeZone:'Asia/Baghdad'});
 const timestamp=new Intl.DateTimeFormat('ar-IQ',{dateStyle:'short',timeStyle:'short',timeZone:'Asia/Baghdad'});
 const fmt=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const blankDraft={checks:{materials:false,tested:false,handover:false},notes:'',expenses:[]};
+function previousDraft(job){
+ const report=job.installationReport;
+ if(job.installationReview?.status!=='returned'||!report?.submittedAt)return blankDraft;
+ return {checks:{...blankDraft.checks,...report.checks},notes:report.notes||'',
+  expenses:(report.expenses||[]).map(row=>({description:row.description||'',amount:String(row.amount??'')}))};
+}
 const dayLabel=day=>dayFormat.format(new Date(day+'T12:00:00Z'));
 function matches(job,filter,today){
  const status=job.installationStatus;
  if(filter==='today')return status==='in_progress'||installationDailyTask(job,today);
  if(filter==='upcoming')return status==='pending'&&hasInstallationAppointment(job)&&job.installDate>today;
- if(filter==='archive')return status==='completed'||status==='closed';
+ if(filter==='archive')return status==='closed';
  return filter==='all'||filter===status;
 }
 function queueOrder(a,b){
@@ -39,11 +46,12 @@ function appointmentLabel(job,today){
 }
 
 export default function InstallerAgenda({jobs,installerId,selectedJob,loading,busy,error,message,onRefresh,onChange}){
- const [filter,setFilter]=useState('today'),[query,setQuery]=useState(''),[focusedId,setFocusedId]=useState(selectedJob);
+ const [filter,setFilter]=useState('today'),[query,setQuery]=useState(''),[focusedId,setFocusedId]=useState(selectedJob?.id||'');
  const [calendar,setCalendar]=useState(false),[reportId,setReportId]=useState(''),[drafts,setDrafts]=useState({});
  const today=installationLocalDay(Date.now()),own=jobs.filter(job=>String(job.installerId)===String(installerId)),term=normalizeSearch(query);
- useEffect(()=>{if(selectedJob){setFocusedId(String(selectedJob));setQuery('');setCalendar(false);}},[selectedJob]);
- const activeFilter=focusedId||term?'all':filter;
+ useEffect(()=>{if(selectedJob?.id){setFocusedId(selectedJob.id);setQuery('');setCalendar(false);}},[selectedJob]);
+ const focused=focusedId?own.find(job=>String(job.id)===String(focusedId)):null;
+ const activeFilter=focused?.installationStatus==='completed'?'completed':focused?.installationStatus==='closed'?'archive':focusedId||term?'all':filter;
  function selectFilter(value){setFilter(value);setFocusedId('');setQuery('');setCalendar(false);}
  const visible=own.filter(job=>{
   if(focusedId)return String(job.id)===String(focusedId);
@@ -54,7 +62,7 @@ export default function InstallerAgenda({jobs,installerId,selectedJob,loading,bu
   const ok=await onChange(job,action,payload);
   if(ok&&action==='start')setReportId(String(job.id));
   if(ok&&action==='complete'){
-   setReportId('');
+   setReportId('');setFocusedId(String(job.id));setQuery('');setCalendar(false);
    setDrafts(previous=>{const next={...previous};delete next[draftKey(job)];return next;});
   }
   return ok;
@@ -76,39 +84,36 @@ export default function InstallerAgenda({jobs,installerId,selectedJob,loading,bu
    {activeFilter!=='all'&&<button type="button" className="installerControl" onClick={()=>selectFilter('all')}>عرض كل المهام</button>}</div>:
    <div className="installerCards">{visible.map(job=><FieldJob key={job.id} job={job} today={today} busy={busy} onChange={act}
      reportOpen={reportId===String(job.id)} toggleReport={()=>setReportId(reportId===String(job.id)?'':String(job.id))}
-     draft={drafts[draftKey(job)]||blankDraft} setDraft={draft=>setDrafts(previous=>({...previous,[draftKey(job)]:draft}))}/>)}</div>}
+     draft={drafts[draftKey(job)]||previousDraft(job)} setDraft={draft=>setDrafts(previous=>({...previous,[draftKey(job)]:draft}))}/>)}</div>}
  </section>;
 }
 
 function FieldJob({job,today,busy,onChange,reportOpen,toggleReport,draft,setDraft}){
- const status=job.installationStatus,stage=installationStages[installationIndex(status)][1];
+ const status=job.installationStatus,stage=installationStageLabel(job);
  const report=job.installationReport||{},items=job.items||[];
  return <article className="workflowJob installerJob" aria-label={'تنصيب '+(job.party||'منظومة')+' رقم '+receiptNumber(job)} data-job-id={job.id} data-job-status={status}>
   <header><div><small>ملف #{receiptNumber(job)}</small><h3>{job.party||'عميل منظومة'}</h3></div><span className={'workflowStatus '+status}>{stage}</span></header>
+  <InstallationHandoff job={job} field/>
   <dl className="installerVisit"><div><dt>موعد التنصيب</dt><dd><AppIcon name="calendar" size={16}/><bdi>{appointmentLabel(job,today)}</bdi></dd></div>
    <div><dt>العنوان</dt><dd>{job.customerAddress||'لم يُسجّل عنوان'}</dd></div></dl>
   <div className="installerContact">{job.customerPhone?<PhoneActions phone={job.customerPhone} label={'بالزبون '+(job.party||'')}/>:<small>رقم الزبون غير متوفر</small>}
    <WarehouseBadge status={job.warehouseStatus} compact/></div>
   {status==='pending'&&<button type="button" className="workflowPrimary" disabled={busy||job.warehouseStatus!=='ready'} onClick={()=>onChange(job,'start')}>{job.warehouseStatus==='ready'?'بدء التنصيب':'بانتظار تجهيز المخزن'}</button>}
-  {status==='in_progress'&&<><button type="button" className="workflowPrimary" aria-expanded={reportOpen} onClick={toggleReport}>{reportOpen?'إخفاء تقرير الإنجاز':'تقرير الإنجاز'}</button>
-   {reportOpen&&<CompletionReport busy={busy} draft={draft} setDraft={setDraft} onSubmit={payload=>onChange(job,'complete',payload)}/>}</>}
-  {status==='completed'&&<p className="installerOutcome"><AppIcon name="document" size={16}/>أُرسل التقرير وينتظر مراجعة الإدارة</p>}
-  {status==='closed'&&<p className="installerOutcome"><AppIcon name="check" size={16}/>أغلقت الإدارة ملف التنصيب</p>}
+  {status==='in_progress'&&<><button type="button" className="workflowPrimary" aria-expanded={reportOpen} onClick={toggleReport}>{reportOpen?'إخفاء تقرير الإنجاز':job.installationReview?.status==='returned'?'تصحيح تقرير الإنجاز':'تقرير الإنجاز'}</button>
+   {reportOpen&&<CompletionReport reviewer={installationReviewer(job)} busy={busy} draft={draft} setDraft={setDraft} onSubmit={payload=>onChange(job,'complete',payload)}/>}</>}
   <details className="installerJobDetail"><summary>تفاصيل المهمة والمواد <span>{items.length} مادة</span></summary>
-   <dl className="installerVisit"><div><dt>المستخدم المسؤول</dt><dd>{job.responsibleName||job.creatorName||'غير محدد'}</dd>
-     <PhoneActions phone={job.responsibleId?job.responsiblePhone:job.creatorPhone} label={'بالمسؤول '+(job.responsibleName||job.creatorName||'')}/></div>
-    <div><dt>مخزن التجهيز</dt><dd>{job.warehouseName||'غير محدد'}</dd></div></dl>
+   <dl className="installerVisit"><div><dt>مخزن التجهيز</dt><dd>{job.warehouseName||'غير محدد'}</dd></div></dl>
    {items.length>0?<ul className="installerMaterials">{items.map((item,i)=><li key={item.id||i}><span><span>{item.name}</span>{item.brand&&<small>{item.brand}</small>}</span><b>× <bdi>{item.qty}</bdi></b></li>)}</ul>:<p>لا توجد مواد مسجلة</p>}
    <dl className="installerTimeline">{[['installationStartedAt','بدء العمل'],['installationCompletedAt','إرسال التقرير'],['installationClosedAt','إغلاق الملف']].filter(([key])=>job[key]).map(([key,label])=><div key={key}><dt>{label}</dt><dd>{timestamp.format(new Date(job[key]))}</dd></div>)}</dl>
    {report.submittedAt&&<section className="jobReport"><h4>تقرير الإنجاز المرسل</h4><p>{report.notes}</p>{(report.expenses||[]).map((row,i)=><div key={i}><span>{row.description}</span><b>{fmt(row.amount)} د.ع</b></div>)}<div><span>إجمالي مصاريف التقرير</span><b>{fmt(report.expenseTotal)} د.ع</b></div></section>}
   </details>
  </article>;
 }
-function CompletionReport({busy,draft,setDraft,onSubmit}){
+function CompletionReport({busy,draft,setDraft,onSubmit,reviewer}){
  const {checks,notes,expenses}=draft;
  const [error,setError]=useState('');
  const total=expenses.reduce((s,e)=>s+(Number(amountInput(e.amount))||0),0);
- const submit=async e=>{e.preventDefault();setError('');if(!Object.values(checks).every(Boolean)||!notes.trim())return setError('أكمل الفحص واكتب ملخص التنفيذ.');const entered=expenses.filter(x=>amountInput(x.amount)!=='');if(entered.some(x=>!Number.isFinite(Number(amountInput(x.amount)))||Number(amountInput(x.amount))<0||Number(amountInput(x.amount))>1e9))return setError('أدخل مبلغاً صحيحاً للمصروف.');const actual=entered.filter(x=>Number(amountInput(x.amount))>0).map(x=>({description:x.description.trim()||'مصروف',amount:Number(amountInput(x.amount))}));if(!confirm('إرسال التقرير وتأكيد اكتمال التنصيب؟'))return;await onSubmit({checks,notes:notes.trim(),expenses:actual});};
+ const submit=async e=>{e.preventDefault();setError('');if(!Object.values(checks).every(Boolean)||!notes.trim())return setError('أكمل الفحص واكتب ملخص التنفيذ.');const entered=expenses.filter(x=>amountInput(x.amount)!=='');if(entered.some(x=>!Number.isFinite(Number(amountInput(x.amount)))||Number(amountInput(x.amount))<0||Number(amountInput(x.amount))>1e9))return setError('أدخل مبلغاً صحيحاً للمصروف.');const actual=entered.filter(x=>Number(amountInput(x.amount))>0).map(x=>({description:x.description.trim()||'مصروف',amount:Number(amountInput(x.amount))}));if(!confirm('تأكيد انتهاء التنصيب وإرسال التقرير إلى '+reviewer+'؟'))return;await onSubmit({checks,notes:notes.trim(),expenses:actual});};
  return <form className="completionForm" aria-label="تقرير إنجاز التنصيب" onSubmit={submit}><h4>تقرير إنجاز التنصيب</h4><fieldset disabled={busy}><legend>فحص وتسليم المنظومة</legend>{[['materials','تمت مطابقة وتركيب المواد'],['tested','تم فحص التشغيل والسلامة'],['handover','تم شرح التشغيل وتسليم المنظومة للزبون']].map(([key,label])=><label className="workflowCheck" key={key}><input type="checkbox" checked={checks[key]} onChange={e=>setDraft({...draft,checks:{...checks,[key]:e.target.checked}})}/><span>{label}</span></label>)}
  <label className="workflowField">ملخص التنفيذ والملاحظات<textarea required maxLength={4000} value={notes} onChange={e=>setDraft({...draft,notes:e.target.value})} placeholder="اكتب الأعمال المنجزة ونتيجة فحص التشغيل…"/></label>
  <h4>مصاريف المهمة</h4><p className="workflowHint">أضف المصاريف الفعلية لمراجعتها من الإدارة. إذا ماكو مصاريف، اترك القائمة فارغة.</p>

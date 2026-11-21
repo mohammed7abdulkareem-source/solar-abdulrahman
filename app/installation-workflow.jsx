@@ -8,7 +8,9 @@ import WarehouseBadge from './warehouse-badge';
 import {useCallback,useEffect,useRef,useState} from 'react';
 import InstallationCalendar from './installation-calendar';
 import InstallerAgenda from './installation-agenda';
-import {installationStages as stages,installationIndex,installationLocalDay,installationMatchesStatus,installationFlexibleTask,hasInstallationAppointment} from './installation-utils.mjs';
+import InstallationHandoff,{installationReviewer,installationStageLabel} from './installation-handoff';
+import {normalizeSearch} from './party-search-utils.mjs';
+import {installationStages as stages,installationLocalDay,installationMatchesStatus,installationFlexibleTask,hasInstallationAppointment} from './installation-utils.mjs';
 import {saveRequest} from './save-request.mjs';
 import {unlockNotificationSound,playNotificationSound} from './notification-sound.mjs';
 import {supabase} from './supabase';
@@ -16,30 +18,33 @@ import {receiptNumber} from './supplier-utils.mjs';
 import {approvedExpenseValue,installationPaidExpense,installationExpenseDifference} from './expense-review.mjs';
 const fmt=n=>Number(n||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const dateText=value=>value?new Date(value).toLocaleString('ar-IQ',{timeZone:'Asia/Baghdad',dateStyle:'short',timeStyle:'short'}):'';
-export default function InstallationWorkflow({profile,onChanged,selectedJob=''}){
+export default function InstallationWorkflow({profile,onChanged,selectedJob=null}){
  return <InstallationQueue key={[profile?.id,profile?.user_type,profile?.is_admin,profile?.permissions?.installations,profile?.permissions?.system].join('|')} profile={profile} onChanged={onChanged} selectedJob={selectedJob}/>;
 }
 function InstallationQueue({profile,onChanged,selectedJob}){
- const [jobs,setJobs]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[status,setStatus]=useState(selectedJob?'all':'open'),[query,setQuery]=useState(selectedJob),[busy,setBusy]=useState(null),[message,setMessage]=useState(''),[toast,setToast]=useState(false);
+ const [jobs,setJobs]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[status,setStatus]=useState(selectedJob?'all':'open'),[query,setQuery]=useState(''),[busy,setBusy]=useState(null),[message,setMessage]=useState(''),[toast,setToast]=useState(false);
  const engineer=profile?.user_type==='installer';
  useEffect(()=>{if(!toast)return;const timer=setTimeout(()=>setToast(false),6500);return()=>clearTimeout(timer);},[toast]);
  const request=useRef({seq:0,controller:null}),actionBusy=useRef(false),resultsHeading=useRef(null);
- const [showCalendar,setShowCalendar]=useState(!selectedJob);
+ const [showCalendar,setShowCalendar]=useState(!selectedJob),[focusedId,setFocusedId]=useState(selectedJob?.id||'');
  const refresh=useCallback(async()=>{
   request.current.controller?.abort();const controller=new AbortController(),seq=++request.current.seq;request.current.controller=controller;const timer=setTimeout(()=>controller.abort(),12000);
-  try{const {data,error}=await supabase.rpc('solar_installation_jobs').abortSignal(controller.signal);if(seq!==request.current.seq)return;if(error)throw error;setJobs(data||[]);}finally{clearTimeout(timer);if(seq===request.current.seq)request.current.controller=null;}
+  try{const {data,error}=await supabase.rpc('solar_installation_jobs').abortSignal(controller.signal);if(seq!==request.current.seq)return;if(error)throw error;setJobs(data||[]);return data||[];}finally{clearTimeout(timer);if(seq===request.current.seq)request.current.controller=null;}
  },[]);
- useEffect(()=>{if(selectedJob){setQuery(String(selectedJob));setStatus('all');}},[selectedJob]);
+ useEffect(()=>{if(selectedJob?.id){setFocusedId(selectedJob.id);setQuery('');setStatus('all');setShowCalendar(false);}},[selectedJob]);
  useEffect(()=>{let live=true;refresh().catch(()=>{if(live)setError('تعذر تحميل المهام. اضغط تحديث للمحاولة مجدداً.');}).finally(()=>{if(live)setLoading(false);});return()=>{live=false;request.current.seq++;request.current.controller?.abort();};},[refresh]);
  async function change(job,action,payload={}){
   if(actionBusy.current)return false;actionBusy.current=true;setBusy(job.id);setError('');setMessage('');void unlockNotificationSound();
   try{
    const {error}=await saveRequest(signal=>supabase.rpc('solar_installation_action',{job_id:job.id,expected_revision:job.installationRevision,action,payload}).abortSignal(signal));
    if(error)throw error;
-   setMessage({start:'تم بدء التنصيب وتحديث المرحلة للجميع.',complete:'تم إنهاء التنصيب وإرسال التقرير للمراجعة.',close:'تم إغلاق الملف وتحديث المرحلة عند المهندس.',reopen:'تمت إعادة فتح الملف للمراجعة.',clear_expenses:'تم إلغاء المصاريف وإرجاع المدفوع إلى قاصة صاحبه وتحديث الربح.'}[action]);
+   setMessage({start:'تم بدء التنصيب وتحديث المرحلة للجميع.',complete:'تم إرسال تقرير الوصل #'+receiptNumber(job)+' للمراجعة.',return_report:'أُعيد تقرير الوصل #'+receiptNumber(job)+' إلى '+(job.installerName||'مهندس التنصيب')+' للتصحيح.',close:'تم إغلاق الملف وتحديث المرحلة عند المهندس.',reopen:'تمت إعادة فتح الملف للمراجعة.',clear_expenses:'تم إلغاء المصاريف وإرجاع المدفوع إلى قاصة صاحبه وتحديث الربح.'}[action]);
    if(action==='close')setToast(true);
+   if(!engineer&&['return_report','close','reopen'].includes(action)){setFocusedId(String(job.id));setStatus('all');setQuery('');setShowCalendar(false);}
    void playNotificationSound();
-   await refresh().catch(()=>setError('تم حفظ الخطوة. تعذر تحديث القائمة؛ اضغط تحديث لرؤية آخر حالة.'));
+   const updated=await refresh().catch(()=>setError('تم حفظ الخطوة. تعذر تحديث القائمة؛ اضغط تحديث لرؤية آخر حالة.'));
+   const submitted=action==='complete'&&updated?.find(row=>row.id===job.id&&row.installationStatus==='completed');
+   if(submitted)setMessage('تم إرسال تقرير الوصل #'+receiptNumber(submitted)+' إلى '+installationReviewer(submitted)+' للمراجعة.');
    if(onChanged)void Promise.resolve().then(onChanged).catch(()=>{});
    return true;
   }catch(e){setError(['40001','PT409'].includes(e.code)?'تغيّرت حالة الملف. تم تحديث المهام؛ راجعها وأعد المحاولة.':e.message?.includes('لم يصل تأكيد')?'لم يصل تأكيد العملية. حدّث المهام للتحقق من المرحلة قبل إعادة المحاولة.':'تعذر تنفيذ العملية. حدّث المهام وتأكد من الصلاحية والمرحلة الحالية.');await refresh().catch(()=>{});return false;}
@@ -54,42 +59,51 @@ function InstallationQueue({profile,onChanged,selectedJob}){
   loading={loading} busy={busy!==null} error={error} message={message} onRefresh={reload} onChange={change}/>;
  const today=installationLocalDay(Date.now());
  const summaries=[['today','أعمال اليوم'],['in_progress','قيد التنفيذ'],['completed','بانتظار المراجعة'],['closed','مكتملة ومغلقة']].map(([key,label])=>({key,label,count:jobs.filter(j=>installationMatchesStatus(j,key,today)).length}));
- const resultsTitle=summaries.find(s=>s.key===status)?.label||stages.find(([key])=>key===status)?.[1]||(status==='all'?'جميع التنصيبات':'التنصيبات المفتوحة');
- function selectSummary(key){setStatus(key);setQuery('');setShowCalendar(false);requestAnimationFrame(()=>{resultsHeading.current?.focus({preventScroll:true});resultsHeading.current?.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});});}
- const visible=jobs.filter(j=>installationMatchesStatus(j,status,today)&&(!query||[j.party,j.customerPhone,j.customerAddress,j.installerName,j.responsibleName,j.creatorName,String(j.receiptNo),String(j.id)].join(' ').includes(query.trim())));
+ const resultsTitle=focusedId?'ملف التنصيب المحدد':summaries.find(s=>s.key===status)?.label||stages.find(([key])=>key===status)?.[1]||(status==='all'?'جميع التنصيبات':'التنصيبات المفتوحة');
+ function selectSummary(key){setStatus(key);setQuery('');setFocusedId('');setShowCalendar(false);requestAnimationFrame(()=>{resultsHeading.current?.focus({preventScroll:true});resultsHeading.current?.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});});}
+ const term=normalizeSearch(query);
+ const visible=jobs.filter(j=>focusedId?String(j.id)===focusedId:installationMatchesStatus(j,status,today)&&(!term||normalizeSearch([j.party,j.customerPhone,j.customerAddress,j.installerName,j.responsibleName,j.creatorName,j.receiptNo,j.id].join(' ')).includes(term)));
  return <div className="workflow installationRefresh">
   {toast&&createPortal(<div className="installationActionToast" role="status"><AppIcon name="check" size={22}/><div><b>تم الغلق</b><span>تم اعتماد المصاريف وإغلاق ملف التنصيب بنجاح.</span></div><button type="button" aria-label="إغلاق تنبيه الغلق" onClick={()=>setToast(false)}>×</button></div>,document.body)}
   <div className="workflowHero"><div><small>متابعة التنفيذ خطوة بخطوة</small><h2>إدارة التنصيبات</h2><p>جدول مشترك ومراحل موحّدة مع مهندس التنصيب</p></div><span aria-hidden="true"><AppIcon name="tools" size={26}/></span></div>
   <div className="workflowStats" role="group" aria-label="ملخص حالات التنصيب">{summaries.map(({key,label,count})=><button type="button" key={key} aria-pressed={status===key} disabled={loading} onClick={()=>selectSummary(key)}><b>{loading?'—':fmt(count)}</b><span>{label}</span></button>)}</div>
   <button className="installationCalendarToggle" aria-expanded={showCalendar} onClick={()=>setShowCalendar(v=>!v)}><AppIcon name="calendar" size={19}/> جدول مواعيد المهندسين <span>{showCalendar?'إخفاء':'عرض الحجوزات'}</span></button>
-  {showCalendar&&<InstallationCalendar onOpenJob={j=>{setQuery(String(j.id));setStatus('today');setShowCalendar(false);}}/>}
-  <div className="workflowSearch"><input aria-label="بحث بالتنصيبات" value={query} onChange={e=>setQuery(e.target.value)} placeholder="بحث بالزبون، المستخدم أو الهاتف…"/><button disabled={loading||busy!==null} onClick={reload}>تحديث</button></div>
-  <div className="statusTabs" aria-label="تصفية المهام">{[['open','المفتوحة'],...stages,['all','الكل']].map(([value,label])=><button key={value} aria-pressed={status===value} onClick={()=>setStatus(value)}>{label}</button>)}</div>
+  {showCalendar&&<InstallationCalendar onOpenJob={j=>{setFocusedId(String(j.id));setQuery('');setStatus('all');setShowCalendar(false);}}/>}
+  <div className="workflowSearch"><input aria-label="بحث بالتنصيبات" value={query} onChange={e=>{setFocusedId('');setQuery(e.target.value);}} placeholder="رقم الوصل أو اسم الزبون أو المهندس…"/><button disabled={loading||busy!==null} onClick={reload}>تحديث</button></div>
+  <div className="statusTabs" aria-label="تصفية المهام">{[['open','المفتوحة'],...stages,['all','الكل']].map(([value,label])=><button key={value} aria-pressed={status===value} onClick={()=>{setFocusedId('');setStatus(value);}}>{label}</button>)}</div>
   {error&&<div className="workflowError" role="alert">{error}</div>}{message&&<div className="workflowSuccess" role="status">{message}</div>}
-  <div className="installationResultsHeading"><h3 ref={resultsHeading} tabIndex={-1}>{resultsTitle}</h3><span aria-live="polite">{loading?'جاري التحميل…':visible.length+' ملف'}</span></div>
+  <div className="installationResultsHeading"><h3 ref={resultsHeading} tabIndex={-1}>{resultsTitle}</h3>{focusedId?<button type="button" className="installerControl" onClick={()=>selectSummary('open')}>العودة إلى القائمة</button>:<span aria-live="polite">{loading?'جاري التحميل…':visible.length+' ملف'}</span>}</div>
   {loading?<div className="empty">جاري تحميل المهام…</div>:!visible.length?<div className="workflowEmpty"><span>✓</span><h3>لا توجد مهام ضمن هذا الاختيار</h3><p>يمكن إسناد مهمة من فاتورة بيع المنظومة.</p></div>:visible.map(job=><JobCard key={job.id} job={job} busy={busy!==null} change={change}/>)}
  </div>;
 }
 function JobCard({job,busy,change}){
- const index=installationIndex(job.installationStatus),report=job.installationReport||{};
+ const report=job.installationReport||{};
  const flexible=installationFlexibleTask(job,installationLocalDay(Date.now())),carried=flexible&&hasInstallationAppointment(job);
- return <article className="workflowJob">
-  <header><div><small>ملف #{receiptNumber(job)}</small><h3>{job.party||'عميل منظومة'}</h3>{job.warehouseName&&<small className="orderWarehouseLabel">{job.warehouseName}</small>}</div><span className={'workflowStatus '+job.installationStatus}>{stages[index][1]}</span></header>
+ return <article className="workflowJob" data-job-id={job.id} data-job-status={job.installationStatus}>
+  <header><div><small>ملف #{receiptNumber(job)}</small><h3>{job.party||'عميل منظومة'}</h3>{job.warehouseName&&<small className="orderWarehouseLabel">{job.warehouseName}</small>}</div><span className={'workflowStatus '+job.installationStatus}>{installationStageLabel(job)}</span></header>
   {job.sellingPrice!=null&&Number.isFinite(Number(job.sellingPrice))&&<div className="jobSalePrice"><span>سعر بيع المنظومة</span><strong><bdi>{fmt(job.sellingPrice)}</bdi> <small>د.ع</small></strong></div>}
-  <div className="jobResponsible"><AppIcon name="user" size={17}/><span>المستخدم المسؤول <b>{job.responsibleName||job.creatorName||'غير محدد'}</b></span><PhoneActions phone={job.responsibleId?job.responsiblePhone:job.creatorPhone} label={'بالمسؤول '+(job.responsibleName||job.creatorName||'')}/></div>
-  <ol className="workflowSteps" aria-label="مراحل التنصيب">{stages.map(([stage,label],i)=><li key={stage} className={i<=index?'reached':''} aria-current={i===index?'step':undefined}><span>{i<index||job.installationStatus==='closed'?'✓':i+1}</span><small>{label}</small></li>)}</ol>
+  <InstallationHandoff job={job}/>
   <WarehouseBadge status={job.warehouseStatus} compact/>
   {flexible&&<p className={'installationNoAppointment'+(carried?' carried':'')}>{carried?'مرحّل إلى أعمال اليوم · يُنفّذ حسب الوقت المتاح':'بدون موعد · ضمن أعمال كل يوم إلى أن يُنجز'}</p>}
-  <div className="jobDetails"><div><small>{carried?'الموعد السابق':'موعد التنصيب'}</small><b>{hasInstallationAppointment(job)?job.installDate+' • '+job.installTime.slice(0,5):'بدون موعد محدد'}</b></div><div><small>مهندس التنصيب</small><b>{job.installerName||'غير مسند'}</b></div><div className="jobAddress"><small>العنوان</small><b>{job.customerAddress||'العنوان غير محدد'}</b></div></div>
+  <div className="jobDetails"><div><small>{carried?'الموعد السابق':'موعد التنصيب'}</small><b>{hasInstallationAppointment(job)?job.installDate+' • '+job.installTime.slice(0,5):'بدون موعد محدد'}</b></div><div className="jobAddress"><small>العنوان</small><b>{job.customerAddress||'العنوان غير محدد'}</b></div></div>
   <div className="jobContact">{job.customerPhone?<PhoneActions phone={job.customerPhone} label={'بالزبون '+job.party}/>:<span>رقم الهاتف غير متوفر</span>}</div>
   <details className="jobMaterials" open><summary>مواد التنصيب <span>{job.items?.length||0} مادة</span></summary>{job.items?.length?job.items.map((item,i)=><div key={item.id||i}><span>{item.name}{item.brand&&<small>{item.brand}</small>}</span><b>× {fmt(item.qty)}</b></div>):<p>لا توجد مواد مسجلة</p>}</details>
   <div className="jobTimes">{job.installationStartedAt&&<span>بدء العمل: {dateText(job.installationStartedAt)}</span>}{job.installationCompletedAt&&<span>إرسال التقرير: {dateText(job.installationCompletedAt)}</span>}{job.installationClosedAt&&<span>إغلاق الملف: {dateText(job.installationClosedAt)}</span>}</div>
   {report.submittedAt&&<div className="jobReport"><h4>تقرير المهندس</h4><p>{report.notes}</p>{(report.expenses||[]).map((e,i)=><div key={i}><span>{e.description}</span><b>{fmt(e.amount)} د.ع</b></div>)}<div><span>المصاريف المرفوعة للمراجعة</span><b>{fmt(report.expenseTotal)} د.ع</b></div></div>}
   {job.canManage&&job.installationStatus!=='closed'&&(installationPaidExpense(job)>0||Number(job.installationExpenses)>0)&&<div className="cancelInstallationExpenses"><p>مصاريف التنصيب المدفوعة: {fmt(installationPaidExpense(job))} د.ع</p><button type="button" className="workflowSecondary" disabled={busy} onClick={()=>confirm('إلغاء مصاريف التنصيب وإرجاع المدفوع إلى قاصة صاحبه؟')&&change(job,'clear_expenses',{notes:'إلغاء مصاريف التنصيب المعتمدة'})}>إلغاء مصاريف التنصيب وإرجاعها للقاصة</button></div>}
-  {job.canManage&&job.warehouseStatus==='ready'&&job.installationStatus!=='closed'&&<ApproveInstallation job={job} busy={busy} onSubmit={payload=>change(job,'close',payload)}/>}
+  {job.canManage&&job.canCloseFile&&job.warehouseStatus==='ready'&&job.installationStatus!=='closed'&&<ApproveInstallation job={job} busy={busy} onSubmit={payload=>change(job,'close',payload)}/>}
+  {job.canManage&&job.canReturnReport&&<ReturnReport key={job.installationRevision} busy={busy} onSend={payload=>change(job,'return_report',payload)}/>}
   {job.canManage&&job.warehouseStatus!=='ready'&&job.installationStatus!=='closed'&&<p className="workflowNotice">بانتظار تجهيز المخزن. يظهر اعتماد المصاريف والغلق بعد التجهيز.</p>}
   {job.canManage&&job.installationStatus==='closed'&&<div className="jobFinancials"><div><small>المصاريف المعتمدة</small><b>{fmt(job.installationExpenses)} د.ع</b></div><div><small>الكلفة النهائية</small><b>{fmt(Number(job.cost||0)+Number(job.expenses||0)+Number(job.installationExpenses||0))} د.ع</b></div><div><small>الربح النهائي</small><b>{fmt(Number(job.total||0)-Number(job.cost||0)-Number(job.expenses||0)-Number(job.installationExpenses||0))} د.ع</b></div>{job.installationExpenseNotes&&<p>{job.installationExpenseNotes}</p>}<button disabled={busy} onClick={()=>confirm('إعادة فتح الملف للمراجعة؟ فتح الملف لا يلغي المصاريف؛ يمكنك إلغاءها أو تعديلها بعد الفتح.')&&change(job,'reopen')}>إعادة فتح للمراجعة</button></div>}
  </article>;
+}
+function ReturnReport({busy,onSend}){
+ const [notes,setNotes]=useState('');
+ return <details className="installationReturn"><summary><AppIcon name="exchange" size={16}/>إرجاع التقرير للتعديل</summary>
+  <form onSubmit={event=>{event.preventDefault();if(!busy&&notes.trim())void onSend({notes:notes.trim()});}}>
+   <label>سبب إعادة التقرير للمهندس<textarea required maxLength={4000} value={notes} onChange={event=>setNotes(event.target.value)} disabled={busy}/></label>
+   <button type="submit" className="workflowSecondary" disabled={busy||!notes.trim()}>إعادة التقرير للمهندس</button>
+  </form></details>;
 }
 function ApproveInstallation({job,busy,onSubmit}){
  const [amount,setAmount]=useState(()=>approvedExpenseValue(job)),[notes,setNotes]=useState(job.installationExpenseNotes||''),[error,setError]=useState(''),[draftRevision,setDraftRevision]=useState(job.installationRevision);

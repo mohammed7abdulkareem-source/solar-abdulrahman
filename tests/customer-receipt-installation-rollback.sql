@@ -11,7 +11,7 @@ insert into customers(id,name,customer_type,owner_id) values
 insert into transactions(id,kind,party_id,party_name,party_type,created_by,cashbox_user_id,installer_id,warehouse_id,warehouse_status,
  installation_status,total,cost,profit,install_date,install_time) values
  (-412211,'system',-412211,'عميل اختبار مسؤول التنصيب','customer','00000000-0000-0000-0000-000000412201','00000000-0000-0000-0000-000000412201',
- '00000000-0000-0000-0000-000000412203',1,'ready','pending',1000,300,700,'2037-11-21','09:00'),
+ '00000000-0000-0000-0000-000000412203',1,'ready','completed',1000,300,700,'2037-11-21','09:00'),
  (-412212,'system',-412211,'عميل اختبار مسؤول التنصيب','customer','00000000-0000-0000-0000-000000412201','00000000-0000-0000-0000-000000412201',
  '00000000-0000-0000-0000-000000412203',1,'ready','pending',1000,300,700,'2037-11-22','09:00');
 select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000412201',true);

@@ -1,0 +1,30 @@
+.installationHandoff {
+ --handoff-ink:#225b68;--handoff-bg:#eff6f8;
+ margin:9px 0;border:1px solid #d2e2e3;border-radius:12px;background:white;overflow:hidden;min-width:0;
+}
+.installationHandoff[data-handoff-state=completed]{--handoff-ink:#745419;--handoff-bg:#fff7e2;}
+.installationHandoff[data-handoff-state=returned]{--handoff-ink:#804752;--handoff-bg:#fff1ef;}
+.installationHandoff[data-handoff-state=closed]{--handoff-ink:#226240;--handoff-bg:#edf7ef;}
+.installationParties {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;margin:0;}
+.installationParties>div {min-width:0;padding:8px 11px;}
+.installationParties>div+div {border-inline-start:1px solid #dde7e8;}
+.installationParties dt,.installationHandoffContact>span {display:flex;align-items:center;gap:5px;color:#4d6970;font-size:.77rem;line-height:1.5;}
+.installationParties dd {margin:2px 0 0;color:#193e48;font-weight:700;overflow-wrap:anywhere;}
+.installationNextStep {display:grid;gap:2px;padding:8px 11px;background:var(--handoff-bg);color:var(--handoff-ink);overflow-wrap:anywhere;}
+.installationNextStep>span,.installationNextStep small {font-size:.76rem;}
+.installationNextStep strong {font-size:.91rem;}
+.installationNextStep p {margin:3px 0;color:inherit;font-size:.85rem;white-space:pre-wrap;}
+.installationHandoffContact {display:flex;align-items:center;justify-content:space-between;gap:5px 12px;flex-wrap:wrap;padding:6px 11px;border-top:1px solid #dfebeb;}
+.installationReturn {border:1px solid #dacbd0;border-radius:10px;background:#fffaf9;margin:10px 0;}
+.installationReturn>summary {display:flex;align-items:center;gap:7px;min-height:44px;padding:5px 12px;font-weight:650;color:#764650;cursor:pointer;}
+.installationReturn form {display:grid;gap:8px;padding:0 12px 12px;}
+.installationReturn label {display:grid;gap:4px;font-size:.87rem;color:#543d46;}
+.installationReturn textarea {width:100%;padding:8px;min-height:64px;border:1px solid #d6c9ce;border-radius:8px;font:inherit;}
+.installationReturn button {justify-self:start;min-height:44px;}
+@media(max-width:650px){
+ .installerAgenda .installerFilters {grid-template-columns:repeat(3,minmax(0,1fr));}
+ .installerAgenda .installerFilters button {flex-direction:row;gap:5px;}
+}
+.installationRefresh .installationHandoff .workflowSteps {display:flex;margin:0;padding:8px 10px;}
+.installationRefresh .installationHandoff .workflowSteps li {flex:1;}
+.installationRefresh .installationHandoff .jobResponsible {margin:0;padding:6px 11px;background:transparent;border:0;border-radius:0;border-top:1px solid #dfebeb;}
