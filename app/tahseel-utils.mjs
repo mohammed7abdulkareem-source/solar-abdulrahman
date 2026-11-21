@@ -3,7 +3,7 @@ import {refreshMaterialBrands} from './current-brand.mjs';
 import {iconSvg} from './ui-icons.mjs';
 import {quotationDemandArt,quotationProductArt} from './quotation-art.mjs';
 // Commercial quotation rules supplied by the shop; not an electrical design model.
-export const BATTERY_CAPACITIES = [5, 7.5, 10, 15, 25, 30];
+export const BATTERY_CAPACITIES = [5, 7.5, 10, 15, 16, 25, 30, 32];
 // Older saved quotations used a fixed 15-kilo battery.
 export const batteryCapacity = form => form.batteryCapacity ?? (form.schema === 1 ? '15' : '');
 // Missing quantities in older drafts mean one inverter; an entered invalid

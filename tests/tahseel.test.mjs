@@ -47,7 +47,7 @@ test('new quotations start with empty day, night and capacity',()=>{
  const f=newQuote();assert.equal(f.day,'');assert.equal(f.night,'');assert.equal(f.batteryCapacity,'');assert.ok(calculateQuote(f).errors.length);
 });
 test('all shop battery combinations and rounding use the selected capacity',()=>{
- for(const [night,batteryCapacity,qty] of [[5,5,1],[7.5,7.5,1],[20,10,2],[50,25,2],[30,30,1],[30,15,2],[45,15,3],[16,7.5,3]]){
+ for(const [night,batteryCapacity,qty] of [[5,5,1],[7.5,7.5,1],[20,10,2],[50,25,2],[30,30,1],[30,15,2],[45,15,3],[16,7.5,3],[16,16,1],[32,32,1],[32,16,2],[32.01,32,2]]){
   const q=calculateQuote({...complete(),night:String(night),batteryCapacity:String(batteryCapacity)});
   assert.equal(q.batteryQty,qty);assert.equal(q.materials[1].total,qty*2000000);assert.deepEqual(q.errors,[]);
  }
