@@ -39,7 +39,7 @@ export function useSystemMaterialPrices(items,invoiceId,scope){
   void load();
   return ()=>{current=false;clearTimeout(timeout);controller.abort();};
  },[key,ids,invoiceId,request]);
- const active=snapshot?.key===key?snapshot:null;
+ const active=snapshot?.key===key&&snapshot.request===request?snapshot:null;
  const priced=useMemo(()=>items.map(item=>({...item,materialPrice:active?.prices?.get(String(item.id))??null})),[items,active]);
- return {items:priced,tokens:invoiceId==null?active?.tokens:undefined,ready:ids==='[]'||!!active?.prices&&active.request===request,error:active?.error,refresh};
+ return {items:priced,tokens:invoiceId==null?active?.tokens:undefined,ready:ids==='[]'||!!active?.prices,error:active?.error,refresh};
 }

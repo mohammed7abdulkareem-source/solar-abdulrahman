@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {systemMinimumQuote,belowSystemMinimum,systemEditPricingPercent,systemMaterialPriceMap,systemMaterialTotal,systemEditStock,systemEconomicsChanged} from '../app/system-pricing-utils.mjs';
+import {systemMinimumQuote,formatMaterialUnitPrice,belowSystemMinimum,systemEditPricingPercent,systemMaterialPriceMap,systemMaterialTotal,systemEditStock,systemEconomicsChanged} from '../app/system-pricing-utils.mjs';
 
 test('the minimum is markup on complete frozen cost, with expenses, and higher prices remain valid',()=>{
  const quote=systemMinimumQuote([{id:1,qty:2,cost:500}],25,100,100);
@@ -58,4 +58,15 @@ test('an archived receipt keeps its reserved material editable when the current 
  assert.equal(available.find(i=>i.id===1).qty,5);
  assert.equal(available.find(i=>i.id===2).qty,3);
  assert.equal(stock[0].qty,1);
+});
+
+test('approved automatic unit prices preserve true zero and FX precision on both invoice screens',()=>{
+ for(const [price,expected] of [[0,'0'],[120050.000001,'120,050.000001'],['125050.45','125,050.45'],[null,'—']]){
+  assert.equal(formatMaterialUnitPrice(price),expected);
+  if(price!=null){
+   const snapshot=systemMaterialPriceMap({items:[{productId:7,materialPrice:price,priceSource:'cost',priceHidden:false,priceToken:'new'}]},[7]);
+   assert.equal(snapshot.prices.get('7'),Number(price));
+   assert.deepEqual(snapshot.tokens,{'7':'new'});
+  }
+ }
 });

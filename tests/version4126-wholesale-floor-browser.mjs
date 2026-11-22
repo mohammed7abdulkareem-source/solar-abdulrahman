@@ -1,16 +1,16 @@
-// Phase one (--seed-legacy) runs against an isolated 4.1.25 database. Apply migrations, then run phase two.
+// Seed settled receipts on the previous release with --seed-legacy, apply migrations, then run without arguments.
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {readFileSync,writeFileSync,mkdirSync} from 'node:fs';
 import {join} from 'node:path';
-process.env.SOLAR_FIXTURE_DB ||= 'solar_v4126_wholesale_verified_browser';
-process.env.SOLAR_FIXTURE_API ||= 'http://127.0.0.1:3354';
-process.env.SOLAR_APP_URL ||= 'http://127.0.0.1:3353';
-process.env.SOLAR_ARTIFACT_DIR ||= '/workspace/solar-review/v4126/integration/verified';
+process.env.SOLAR_FIXTURE_DB ||= 'solar_v4130_material_prices_final_browser';
+process.env.SOLAR_FIXTURE_API ||= 'http://127.0.0.1:3392';
+process.env.SOLAR_APP_URL ||= 'http://127.0.0.1:3393';
+process.env.SOLAR_ARTIFACT_DIR ||= '/workspace/solar-review/v4130/integration/final';
 const {db,sql,rpc,createHarness,fingerprint}=await import('./version4-browser-support.mjs');
-assert.match(db,/^solar_v4126_wholesale_[a-z0-9_]+_browser$/);
-const fixturePath=process.env.SOLAR_V4126_LEGACY_FIXTURE||join(process.env.SOLAR_ARTIFACT_DIR,'prior-receipt.json');
-const state=who=>rpc(who,'solar_wholesale_pricing',{action:'state'});
+assert.match(db,/^solar_(v4126_wholesale_[a-z0-9_]+|v4130_[a-z0-9_]+)_browser$/);
+const fixturePath=join(process.env.SOLAR_ARTIFACT_DIR,'prior-receipt.json');
+const state=(who,payload={})=>rpc(who,'solar_wholesale_pricing',{action:'state',payload});
 async function rate(value){const r=await rpc('admin','solar_exchange_rate_get',{});return rpc('admin','solar_exchange_rate_set',{rate:value,expected_revision:r.revision});}
 async function seed(){
 const sample=Date.now(),seller=randomUUID(),hidden=randomUUID(),outside=randomUUID();
@@ -27,14 +27,14 @@ async function configure(enabled){const revision=(await state('admin')).revision
 const buy=(ccy,price,qty,fx)=>({kind:'purchase',mode:'credit',warehouseId:1,partyId:supplier,party:vendorName,sourceCurrency:ccy,cashCurrency:'IQD',marketRate:fx,exchangeRate:ccy==='USD'?fx:1,accountRevision:0,expenses:0,items:[{id:item,qty,price}]});
 const sale=(id,price,idx=0)=>({kind:'sale',mode:'credit',warehouseId:1,partyId:party+idx,party:customerName+idx,sourceCurrency:'IQD',exchangeRate:1,items:[{id,price,qty:1}]});
 const save=(who,payload,request_id=randomUUID())=>rpc(who,'solar_invoice_save',{request_id,payload});
-assert.ok(!(await state('admin')).products.some(p=>Object.hasOwn(p,'effectiveMinPrice')),'seed the historical sale on the pre-upgrade database');
-await rate(1500);await configure(true);
+await rate(1500);await configure(false);
 const q1=await save('admin',buy('IQD',142591,10,1500));
 const q2=await save('admin',buy('USD',100,10,1500));
 const value=()=>Number(sql('select solar_private.current_unit_cost(id,cost_basis,cost) from public.products where id='+item));
 assert.equal(value(),146295.5,'mixed basis at 1500');
 const legacyNonce=randomUUID(),legacy=await save(seller,sale(item,145000),legacyNonce);
 const basis=await rpc('admin','solar_profit_basis_users',{action:'state'});await rpc('admin','solar_profit_basis_users',{action:'save',request_id:randomUUID(),payload:{token:basis.token,changes:[{id:hidden,enabled:true}]}});
+await configure(true);
 const fixture={seller,hidden,outside,item,custom,party,supplier,productName,customName,customerName,vendorName,sample,legacy,legacyNonce,usdPurchase:q2.id};
 console.log({item,q1:q1.id,q2:q2.id,legacy:legacy.id,firstFloor:value()});
 mkdirSync(process.env.SOLAR_ARTIFACT_DIR,{recursive:true});
@@ -45,7 +45,8 @@ async function seedHistoricalSystem(f){
  sql("insert into public.profiles(id,username,display_name,user_type,active,permissions,phone) values('"+engineer+"','sys_"+engineer+"','مهندس اختبار مادة المنظومة','installer',true,'{}','07700000000');update public.profiles set permissions=permissions||'{\"system\":true}'::jsonb where id in('"+f.seller+"','"+f.hidden+"');insert into public.customers(id,name,owner_id,customer_type) values("+customer+",'"+systemName+"','"+f.seller+"','system'),("+(customer+1)+",'"+systemName+" خاص','"+f.hidden+"','system');");
  const body={kind:'system',mode:'credit',warehouseId:1,partyId:customer,party:systemName,installerId:engineer,customerAddress:'عنوان الوصل السابق',total:450000,items:[{id:f.item,qty:1,price:0},{id:f.custom,qty:1,price:0}]};
  const request_id=randomUUID(),receipt=await rpc(f.seller,'solar_invoice_save',{request_id,payload:body});
- Object.assign(f,{engineer,systemName,systemCustomer:customer,priorSystem:receipt.id,priorSystemRequest:{request_id,payload:body}});
+ const privateReceipt=await rpc(f.hidden,'solar_invoice_save',{request_id:randomUUID(),payload:{...body,partyId:customer+1,party:systemName+' خاص'}});
+ Object.assign(f,{engineer,systemName,systemCustomer:customer,priorSystem:receipt.id,priorPersonalSystem:privateReceipt.id,priorSystemRequest:{request_id,payload:body}});
  writeFileSync(fixturePath,JSON.stringify(f));
 }
 async function run(h){
@@ -71,6 +72,11 @@ async function run(h){
  assert.equal(Number((await policy(hidden,custom)).effectiveMinPrice),checkedValue,'personal users must see checked floors');
  const personal=await policy(hidden,item);
  assert.equal(personal.floorSource,'cost');assert.equal(personal.effectiveMinPrice,null);assert.equal(personal.cost,null);assert.ok(personal.floorToken);
+ const catalog=await rpc(hidden,'solar_inventory',{action:'catalog'});
+ const ordinaryItem=catalog.find(p=>p.id===item);assert.equal(ordinaryItem.cost,null);assert.ok(!Object.hasOwn(ordinaryItem,'cost_basis'));
+ await rpc(hidden,'solar_wholesale_pricing',{action:'state',payload:{invoiceId:legacy.id,saleMaterialPrices:true}},403);
+ const personalInvoice=product(await state(hidden,{saleMaterialPrices:true}),item);
+ assert.equal(personalInvoice.effectiveMinPrice,146295.5);assert.equal(personalInvoice.cost,null);
  const blockedFingerprint=fingerprint();
  await invoice(seller,sale(item,146295.49),422);
  const secret=await invoice(hidden,sale(item,146295.49,1),422);
@@ -118,13 +124,18 @@ async function run(h){
  await field.fill('151295.49');assert.equal(await field.getAttribute('aria-invalid'),'true');
  await field.fill('151295.50');assert.notEqual(await field.getAttribute('aria-invalid'),'true');await h.layout(page,'visible-floor',show);
  const {page:personalPage}=await h.open(hidden,'/?section=sale');
- await personalPage.getByRole('textbox',{name:'البحث عن مادة',exact:true}).fill(productName);
- await personalPage.getByRole('button',{name:'إضافة '+productName,exact:true}).click();
- const privateField=personalPage.getByLabel('سعر المادة — '+productName,{exact:true});
- const personalText=(await personalPage.locator('.invoiceWorkspace').innerText()).replaceAll(',','');
- assert.ok(!personalText.includes('151295')&&!personalText.includes('146295'));
- assert.notEqual(Number((await privateField.inputValue()).replaceAll(',','')),151295.5);
- await h.layout(personalPage,'hidden-floor',privateField);
+ await addMaterial(personalPage,productName);
+ await displayedPrice(personalPage,'approved-material-price-'+item,151295.5);
+ assert.equal(await fieldPrice(personalPage,productName),151295.5);
+ await addMaterial(personalPage,f.customName);
+ await displayedPrice(personalPage,'approved-material-price-'+custom,checkedValue);
+ assert.ok(!(await personalPage.locator('.invoiceWorkspace').innerText()).replaceAll(',','').includes('72000'));
+ await h.layout(personalPage,'personal-sale-material-price',personalPage.getByTestId('approved-material-price-'+item));
+ await configure(false);
+ await personalPage.reload();await addMaterial(personalPage,productName);
+ await displayedPrice(personalPage,'approved-material-price-'+item,151295.5);
+ assert.equal(await fieldPrice(personalPage,productName),null,'Free price is entered by seller');
+ await configure(true);
  await systemCoverage(h,f,151295.5,checkedValue);
  h.checks.accounting={from:146295.5,to:151295.5,fixed:checkedValue,corrected:128000,scoped:true,legacyNotesUnchanged:true,replayUnchanged:true,protectedEmployee:true};
 }
@@ -137,7 +148,10 @@ async function systemCoverage(h,f,mixedUnit,customUnit){
  const row=(q,id)=>q.items.find(p=>Number(p.productId)===id);
  const prices=await quote(seller),privatePrices=await quote(hidden);
  assert.equal(Number(row(prices,item).materialPrice),mixedUnit);assert.equal(Number(row(prices,custom).materialPrice),customUnit);
- assert.equal(row(privatePrices,item).materialPrice,null);assert.equal(row(privatePrices,item).priceHidden,true);
+ assert.equal(row(privatePrices,item).materialPrice,mixedUnit);assert.equal(row(privatePrices,item).priceHidden,false);
+ const priorPrivate=await quote(hidden,f.priorPersonalSystem);
+ assert.equal(row(priorPrivate,item).materialPrice,null);assert.equal(row(priorPrivate,item).priceHidden,true);
+ await rpc(hidden,'solar_system_material_prices',{product_ids:[item],invoice_id:f.priorSystem},403);
  assert.equal(Number(row(privatePrices,custom).materialPrice),customUnit);
  const old=await quote(seller,f.priorSystem);
  assert.equal(Number(row(old,item).materialPrice),146295.5);assert.equal(Number(row(old,custom).materialPrice),72000);
@@ -184,7 +198,57 @@ async function systemCoverage(h,f,mixedUnit,customUnit){
  assert.equal(Number(row(await quote(seller,id),item).materialPrice),mixedUnit+5000,'economic edit kept old material prices');
  assert.equal(Number(sql('select total from public.transactions where id='+id)),325000);
  assert.equal(Number(row(await quote(seller,f.priorSystem),item).materialPrice),146295.5);
+ await personalMaterialCases(h,f,customUnit);
  h.checks.system={customUnit,mixedUnit,afterFx:mixedUnit+5000,minimum:min,oneClickCurrentMinimum:liveMinimum,trueBook,replayAndOriginalPriceFrozen:true};
+}
+async function addMaterial(page,name){
+ await page.getByRole('textbox',{name:'البحث عن مادة',exact:true}).fill(name);
+ await page.getByRole('button',{name:'إضافة '+name,exact:true}).click();
+}
+async function displayedPrice(page,testId,amount){
+ await page.waitForFunction(({testId,amount})=>{
+  const badge=document.querySelector('[data-testid="'+testId+'"]');
+  const digits=badge?.textContent.replaceAll(',','').match(/[0-9]+(?:\.[0-9]+)?/);
+  return digits&&Number(digits[0])===amount;
+ },{testId,amount});
+}
+async function fieldPrice(page,name){
+ const input=await page.getByLabel('سعر المادة — '+name,{exact:true}).inputValue();
+ return input===''?null:Number(input.replaceAll(',',''));
+}
+async function personalMaterialCases(h,f,manual){
+ const fraction=f.sample+51,zero=f.sample+52;
+ const fractionName='مادة كسرية '+fraction,zeroName='مادة مجانية '+zero;
+ sql("insert into public.products(id,code,name,qty,cost,cost_basis) values ("+fraction+",'F-"+fraction+"','"+fractionName+"',25,901,'{\"currencyComponents\":{\"iqd\":1.001234,\"usd\":0.1}}'),("+zero+",'Z-"+zero+"','"+zeroName+"',25,0,'{}')");
+ const ids=[fraction,zero,f.custom];
+ const current=async()=>rpc(f.hidden,'solar_system_material_prices',{product_ids:ids,invoice_id:null});
+ const prices=result=>Object.fromEntries(result.items.map(p=>[p.productId,p.materialPrice]));
+ assert.deepEqual(prices(await current()),{[fraction]:171.001234,[zero]:0,[f.custom]:manual});
+ for(const user of ['warehouse','installer']){
+  await rpc(user,'solar_system_material_prices',{product_ids:ids,invoice_id:null},403);
+  await rpc(user,'solar_wholesale_pricing',{action:'state',payload:{saleMaterialPrices:true}},403);
+ }
+ const {page}=await h.open(f.hidden,'/?section=sale');await addMaterial(page,fractionName);await addMaterial(page,zeroName);
+ await displayedPrice(page,'approved-material-price-'+fraction,171.001234);
+ await displayedPrice(page,'approved-material-price-'+zero,0);
+ assert.equal(await fieldPrice(page,fractionName),171.01);
+ assert.equal(await fieldPrice(page,zeroName),0);
+ await rate(1500);await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
+ await displayedPrice(page,'approved-material-price-'+fraction,151.001234);
+ assert.equal(await fieldPrice(page,fractionName),151.01);
+ const system=(await h.open(f.hidden,'/?section=system')).page;
+ for(const [name,id,expected] of [[fractionName,fraction,151.001234],[zeroName,zero,0],[f.customName,f.custom,manual]]){
+  await addMaterial(system,name);await displayedPrice(system,'system-material-price-'+id,expected);
+ }
+ await h.layout(system,'personal-system-mandatory',system.getByTestId('system-material-price-'+fraction));
+ const status=await rpc('admin','solar_operation_status',{});
+ await rpc('admin','solar_operation_control',{request_id:randomUUID(),payload:{kind:'system_pricing',freePricing:true,markupPercent:15,expectedRevision:status.revision}});
+ await system.reload();await addMaterial(system,fractionName);await addMaterial(system,f.customName);
+ await displayedPrice(system,'system-material-price-'+fraction,151.001234);
+ await displayedPrice(system,'system-material-price-'+f.custom,manual);
+ assert.equal(await system.getByTestId('system-minimum-price').count(),0);
+ await h.layout(system,'personal-system-free',system.getByTestId('system-material-price-'+fraction));
+ h.checks.personalInvoicePrices={manual,originalExact:171.001234,afterFx:151.001234,roundedDefault:151.01,zero:0,restrictedRolesDenied:true,previousReceiptStillMasked:true};
 }
 if(process.argv.includes('--seed-legacy'))await seed();
 else{

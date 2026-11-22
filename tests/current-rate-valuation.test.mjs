@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {currentSaleItems,hasHiddenSaleCost,invoiceAttemptSignature} from '../app/inventory-valuation.mjs';
+import {currentSaleItems,hasHiddenSaleCost,invoiceAttemptSignature,newSaleItemWithApprovedPrice} from '../app/inventory-valuation.mjs';
 import {invoicePayload} from '../app/currency-utils.mjs';
 
 test('new sale quotes follow catalog FX without losing entered quantities/prices',()=>{
@@ -40,4 +40,18 @@ test('invoice retries retain the original pricing tokens without treating a refr
   assert.equal(invoiceAttemptSignature(first),invoiceAttemptSignature({...first,[key]:{'1':'v2'}}));
   assert.equal(invoicePayload('purchase',{[key]:{'1':'v1'}},[])[key],undefined);
  }
+});
+
+test('only new personal sale profit uses the effective approved unit returned for the invoice',()=>{
+ const [selected]=currentSaleItems([{id:12,qty:2,price:'150',cost:9999}],[{id:12,personalPriceBasis:true,cost:null}],[],true);
+ for(const price of[0,132.493001]){
+  const priced=newSaleItemWithApprovedPrice(selected,price);
+  assert.equal(priced.cost,price);
+  assert.equal(priced.price,'150');
+  assert.equal(hasHiddenSaleCost([priced]),false);
+ }
+ assert.equal(newSaleItemWithApprovedPrice(selected,null).cost,null);
+ assert.equal(selected.cost,null);
+ const [ordinary]=currentSaleItems([{id:12}],[{id:12,cost:37}]);
+ assert.strictEqual(newSaleItemWithApprovedPrice(ordinary,200),ordinary);
 });

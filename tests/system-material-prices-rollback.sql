@@ -71,7 +71,7 @@ do $$declare id bigint:=current_setting('test.system_material_id')::bigint;q jso
  q:=public.solar_system_material_prices(array[-412652],id);
  assert(q#>>'{items,0,priceHidden}')::boolean and q#>'{items,0,materialPrice}'='null'::jsonb;
  q:=public.solar_system_material_prices(array[-412652]);
- assert(q#>>'{items,0,priceHidden}')::boolean and q#>'{items,0,materialPrice}'='null'::jsonb and length(q#>>'{items,0,priceToken}')>=32;
+ assert q#>'{items,0,priceHidden}'='false'::jsonb and (q#>>'{items,0,materialPrice}')::numeric=100 and length(q#>>'{items,0,priceToken}')>=32;
  begin perform public.solar_invoice_save(gen_random_uuid(),pg_temp.system_invoice(750));raise exception 'private floor ignored';exception when sqlstate 'PT422' then assert sqlerrm!~'[0-9]','automatic cost disclosed';end;
 end $$;
 reset role;

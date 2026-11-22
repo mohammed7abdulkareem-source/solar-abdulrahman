@@ -151,3 +151,21 @@ test('hidden automatic minima never prefill book cost or an inactive saved overr
  assert.equal(wholesaleLinePricing({...restricted,canOverride:true},10).required,false);
  assert.equal(wholesaleLinePricing(restricted,10,{historical:true}).required,false);
 });
+
+test('approved unit references follow the quote for free and bound sellers without repricing the customer field',()=>{
+ const products=[
+  {id:1,enabled:true,minPrice:140000,floorSource:'configured',effectiveMinPrice:140000,cost:null},
+  {id:2,enabled:false,minPrice:990000,floorSource:'cost',effectiveMinPrice:125050.000001,cost:null},
+  {id:3,enabled:false,minPrice:null,floorSource:'cost',effectiveMinPrice:0,cost:null}
+ ];
+ for(const enforced of[false,true]){
+  const policy=scoped({products,appliesToCurrentUser:enforced,appliesToSubject:enforced,effectiveEnforced:enforced});
+  const values=products.map(row=>wholesaleLinePricing(policy,row.id));
+  assert.deepEqual(values.map(v=>v.price),[140000,125050.000001,0]);
+  assert.deepEqual(values.map(v=>v.suggested),[140000,125050.01,0]);
+  assert.deepEqual(values.map(v=>v.required),[enforced,enforced,enforced]);
+  assert.deepEqual(products.map(row=>wholesalePriceDefault(policy,row.id)),enforced?['140000','125050.01','0']:['','','']);
+  const typed={id:2,qty:'1',price:'12345.67',useWholesaleFloor:false};
+  assert.strictEqual(refreshWholesaleDefaults([typed],policy)[0],typed);
+ }
+});

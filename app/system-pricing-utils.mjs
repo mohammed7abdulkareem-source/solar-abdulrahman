@@ -15,6 +15,11 @@ function materialPriceCents(items,unitKey){
  const denominator=10n**BigInt(sum.scale);
  return (sum.units*100n*2n+denominator)/(2n*denominator);
 }
+const materialUnitFormat=new Intl.NumberFormat('en-US',{maximumFractionDigits:6});
+export function formatMaterialUnitPrice(value){
+ const price=value==null||value===''?null:Number(value);
+ return Number.isFinite(price)&&price>=0?materialUnitFormat.format(price):'—';
+}
 export function systemMaterialTotal(items){
  const cents=materialPriceCents(items,'materialPrice');
  return cents===null?null:Number(cents)/100;

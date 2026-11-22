@@ -6,6 +6,12 @@ export function usesPersonalSalePrices(profile){
 }
 export const hasHiddenSaleCost=items=>items.some(item=>item.personalPriceBasis&&item.cost==null);
 
+// The invoice quote is the source for a new personal receipt's margin, even
+// when the warehouse catalog hides its automatic or unconfigured unit price.
+export function newSaleItemWithApprovedPrice(item,approvedPrice){
+ return item.personalPriceBasis?{...item,cost:approvedPrice??null}:item;
+}
+
 export function currentSaleItems(items,products,originalItems=[],personalPrices=false,editing=false){
  const catalog=new Map(products.map(p=>[String(p.id),p]));
  const original=new Map(originalItems.map(p=>[String(p.id),p]));
