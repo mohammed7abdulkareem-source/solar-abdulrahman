@@ -8,11 +8,10 @@ import {cashKind} from './cash-utils.mjs';
 import {cashDate,cashMovementBody,paymentMode,transferStatus} from './cash-movement-utils.mjs';
 import {formatMoney as money,currencyUnit as unit} from './money-format.mjs';
 import ReportActions from './report-actions';
-import {canOpenPage} from './access-utils.mjs';
+import {canRequestReceiptDeletion} from './access-utils.mjs';
 import {requestReceiptDeletion} from './receipt-deletion.mjs';
 
 export default function CashMovementDetail({movementId,profile,a4,onClose,onChanged}){
- const canRequest=canOpenPage(profile,'deletionRequests');
  const panel=useRef(null),deleteLock=useRef(false),[editing,setEditing]=useState(false),[deleting,setDeleting]=useState(false),[deleteError,setDeleteError]=useState(''),[deleteMessage,setDeleteMessage]=useState('');
  useEffect(()=>{panel.current?.scrollIntoView({block:'start',behavior:'smooth'});},[]);
  const [data,setData]=useState(null),[error,setError]=useState(''),[retry,setRetry]=useState(0);
@@ -21,6 +20,7 @@ export default function CashMovementDetail({movementId,profile,a4,onClose,onChan
   supabase.rpc('solar_cash_movement_detail',{movement_id:movementId}).abortSignal(controller.signal).then(({data,error})=>{if(error)throw error;if(live){setData(data);if(data.deletion?.pendingRequestId)setDeleteError('');}}).catch(e=>{if(live)setError(e.code?e.message:'تعذر تحميل تفاصيل الحركة. أعد المحاولة.');}).finally(()=>clearTimeout(timer));
   return()=>{live=false;clearTimeout(timer);controller.abort();};
  },[movementId,retry]);
+ const canRequest=canRequestReceiptDeletion(profile,data?.kind);
  const label=data?.reconciliation?.mode==='zero'?'تصفير القاصة':cashKind(data?.kind);
  async function requestDeletion(){if(!canRequest||deleteLock.current||!data?.deletion?.canRequest)return;deleteLock.current=true;setDeleting(true);setDeleteError('');setDeleteMessage('');try{
   const r=await requestReceiptDeletion(data.deletion.invoiceId,undefined,profile);if(r){setDeleteMessage('أُرسل طلب الحذف إلى الإدارة. تبقى الحركة محسوبة حتى الموافقة.');setRetry(n=>n+1);}

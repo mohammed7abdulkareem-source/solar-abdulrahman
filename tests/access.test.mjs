@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {cashBalance,cashRowsFor,canOpenPage,canSeeCash,isAdministrator,canDeleteSale} from '../app/access-utils.mjs';
+import {cashBalance,cashRowsFor,canOpenPage,canSeeCash,isAdministrator,canDeleteSale,canDeletePurchase,canRequestReceiptDeletion} from '../app/access-utils.mjs';
 const rows=[
  {id:1,cash:true,createdBy:'admin',cashboxUserId:'staff',kind:'cash_income',total:500},
  {id:2,cash:true,createdBy:'staff',cashboxUserId:'staff',kind:'cash_expense',total:70},
@@ -17,6 +17,17 @@ test('sales grants allow browsing and direct deletion of the seller’s own rece
  for(const profile of [{...p,active:false},{...p,user_type:'warehouse',is_admin:true},{...p,user_type:'installer',is_admin:true}]){
   assert.equal(canOpenPage(profile,'salesHistory'),false);assert.equal(canDeleteSale(profile,'owner'),false);
  }
+});
+test('only admins can delete previously posted purchase debt',()=>{
+ const staff={active:true,permissions:{purchase:true}},admin={active:true,is_admin:true};
+ const purchase={kind:'purchase',cash:false,accountAmount:20,total:30000};
+ assert.equal(canDeletePurchase(staff,purchase),false);
+ assert.equal(canDeletePurchase(staff,{...purchase,accountAmount:0}),false);
+ assert.equal(canDeletePurchase(staff,{...purchase,total:0}),false);
+ assert.equal(canDeletePurchase(staff,{...purchase,accountAmount:0,total:0}),true);
+ assert.equal(canDeletePurchase(staff,{...purchase,cash:true}),true);
+ assert.equal(canDeletePurchase(admin,purchase),true);
+ assert.equal(canDeletePurchase({...staff,permissions:{}},{...purchase,cash:true}),false);
 });
 test('staff cash includes admin deposits into their box, excludes other boxes and credit',()=>{
  assert.equal(cashBalance(rows,'staff'),430);
@@ -80,4 +91,20 @@ test('quote and warranty alone never open financial pages, prior sales, or recei
  assert.equal(canOpenPage(sale,'deletionRequests'),false);
  assert.equal(canOpenPage({...sale,permissions:{sale:true,salesHistory:false}},'salesHistory'),false);
  assert.equal(canOpenPage({...profile,permissions:{deletionRequests:true}},'deletionRequests'),true);
+});
+
+test('supplier payments require an active office admin, independently of statement and deletion access',()=>{
+ const legacy={id:'staff',active:true,user_type:'admin_staff',permissions:{supplierPayment:true}};
+ assert.equal(canOpenPage(legacy,'supplierPayment'),false);
+ assert.equal(canOpenPage(legacy,'paymentHistory'),false);
+ const reader={...legacy,permissions:{...legacy.permissions,supplierStatement:true,deletionRequests:true,purchase:true}};
+ for(const page of ['supplierStatement','paymentHistory','purchase'])assert.ok(canOpenPage(reader,page));
+ assert.ok(canRequestReceiptDeletion(reader,'customer_payment'));
+ for(const role of [reader,{...reader,is_admin:true,active:false},{...reader,is_admin:true,user_type:'warehouse'},{...reader,is_admin:true,user_type:'installer'}]){
+  assert.equal(canOpenPage(role,'supplierPayment'),false);
+  assert.equal(canRequestReceiptDeletion(role,'supplier_payment'),false);
+ }
+ const admin={...reader,is_admin:true,permissions:{}};
+ assert.ok(canOpenPage(admin,'supplierPayment'));
+ assert.ok(canRequestReceiptDeletion(admin,'supplier_payment'));
 });

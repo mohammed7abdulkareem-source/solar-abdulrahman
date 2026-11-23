@@ -16,11 +16,13 @@ export async function runDeletionAttempt(userId,options){
  });
  return executeDeletionAttempt(userId,options);
 }
-async function executeDeletionAttempt(userId,{prepare,send,currentUser,invoiceId,store=storage()}){
+async function executeDeletionAttempt(userId,{prepare,send,currentUser,invoiceId,canResume,store=storage()}){
  if(active.has(userId))throw new Error('جاري تأكيد الحذف؛ انتظر النتيجة.');
  active.add(userId);notify();
  try{
   let row=readDeletionAttempt(userId,store);
+  // A retired permission must not leave a local retry blocking other receipts.
+  if(row&&canResume&&!canResume(row)){store.removeItem(key(userId));row=null;notify();}
   if(row&&invoiceId!=null&&row.invoiceId!==Number(invoiceId))throw new Error('يوجد حذف سابق لم يتأكد. أكّد نتيجة الطلب السابق أولًا.');
   if(!row){row=await prepare();if(!row)return null;row={...row,userId};
    // Do not send an irreversible request without a recoverable request ID.

@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import SupplierPaymentHistory from './supplier-payment-history';
+import {isAdministrator} from './access-utils.mjs';
 import PartySearch from './party-search';
 import MoneyInput from './money-input';
 import {fullPaymentAmount} from './payment-amount.mjs';
@@ -11,7 +12,11 @@ import {fxRead,fxSave} from './fx-store.mjs';
 import {loadExchangeRate} from './currency-store.mjs';
 import {convertAmount,currencyLabel as unit} from './fx-utils.mjs';
 const reasons=[['charge_extra_expense','مصروف إضافي'],['charge_old_balance','حساب قديم'],['charge_other','إضافة أخرى']];
-export default function SupplierPayment({profile,suppliers,onChanged,initial=null,initialParty='',onCancel,a4,canEditRate=false}){
+export default function SupplierPayment(props){
+ if(!isAdministrator(props.profile))return null;
+ return <SupplierPaymentForm {...props}/>;
+}
+function SupplierPaymentForm({profile,suppliers,onChanged,initial=null,initialParty='',onCancel,a4,canEditRate=false}){
  const [party,setParty]=useState(initial?.party||initialParty),[amount,setAmount]=useState(initial?String(Math.abs(initial.sourceSubtotal??initial.total)):''),[note,setNote]=useState(initial?.notes||''),[direction,setDirection]=useState(initial&&supplierIsCharge(initial)?'charge':'cash'),[reason,setReason]=useState(initial?.mode?.startsWith('charge_')?initial.mode:'charge_extra_expense');
  const [currency,setCurrency]=useState(initial?.sourceCurrency||'IQD'),[rate,setRate]=useState(initial?.marketRate>1?String(initial.marketRate):''),[saving,setSaving]=useState(false),[error,setError]=useState(''),[last,setLast]=useState(null),[account,setAccount]=useState(null),[loading,setLoading]=useState(false),[refresh,setRefresh]=useState(0),[draftDate,setDraftDate]=useState(()=>initial?.date||new Date().toISOString());
  const [historyOpen,setHistoryOpen]=useState(false),[historyId,setHistoryId]=useState(null);

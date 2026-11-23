@@ -82,6 +82,27 @@ test('snapshot fetches only shared data consumed by the granted office workspace
  const admin=cloudSnapshotAccess(office({}, {is_admin:true}));assert.equal(admin.transactionKinds,null);assert.equal(admin.cashEntries,true);assert.equal(admin.fxHistory,true);assert.equal(admin.staff,true);
 });
 
+test('purchase-only staff load every page of the minimal supplier picker without querying the directory',async t=>{
+ const profile=office({purchase:true}),tables=[],ranges=[];
+ t.mock.method(supabase.auth,'getSession',async()=>({data:{session:{user:{id:profile.id}}}}));
+ t.mock.method(supabase,'from',table=>{
+  tables.push(table);
+  return {select(){return this},eq(){return this},single:async()=>({data:profile}),in(){return this},order(){return this},range:async()=>({data:[]})};
+ });
+ t.mock.method(supabase,'rpc',name=>{
+  if(name!=='solar_purchase_suppliers')return Promise.resolve({data:[]});
+  return {order(column){assert.equal(column,'id');return this},range:async(start,end)=>{
+   ranges.push([start,end]);
+   return {data:Array.from({length:start===0?1000:1},(_,i)=>({id:start+i+1,name:'مورد',account_currency:'USD',currency_revision:2}))};
+  }};
+ });
+ const snapshot=await loadCloud({fresh:true});
+ assert.equal(tables.includes('suppliers'),false);
+ assert.deepEqual(ranges,[[0,999],[1000,1999]]);
+ assert.equal(snapshot.suppliers.length,1001);
+ assert.deepEqual(snapshot.suppliers.at(-1),{id:1001,name:'مورد',phone:'',accountCurrency:'USD',currencyRevision:2});
+});
+
 test('personal pricing paginates receipts through their protected projection and preserves hidden costs',async t=>{
  const profile=office({sale:true,profitUsesWholesalePrice:true}),queries=[],pages=[];
  t.mock.method(supabase.auth,'getSession',async()=>({data:{session:{user:{id:profile.id}}}}));

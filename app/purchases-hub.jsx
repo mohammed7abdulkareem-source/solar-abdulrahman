@@ -1,6 +1,7 @@
 'use client';
 import {useMemo,useState} from 'react';
 import AppIcon from './app-icons';
+import {canDeletePurchase} from './access-utils.mjs';
 import {matchesReceipt,receiptNumber} from './supplier-utils.mjs';
 import {purchaseCorrectionNumber as preciseNumber} from './purchase-correction.mjs';
 import {currencyUnit,formatMoney,purchaseDisplayTotal,purchaseUnitPrice} from './money-format.mjs';
@@ -28,12 +29,12 @@ function PurchaseReceipt({row,onEdit,onDelete,renderExport}){
    })}</tbody></table></div>}
    {row.expenses>0&&<p>مصاريف إضافية <bdi>{formatMoney(row.expenses)} د.ع</bdi></p>}
    {row.notes&&<p>{row.notes}</p>}
-   <div className="purchaseHubReceiptActions">{!row.personalCostHidden&&<button type="button" aria-label={'تعديل الوصل رقم '+number} onClick={()=>onEdit(row)}><AppIcon name="edit" size={16}/>تعديل الوصل</button>}<button type="button" className="purchaseHubDelete" aria-label={'حذف الوصل رقم '+number} onClick={()=>onDelete(row)}><AppIcon name="trash" size={16}/>حذف الوصل</button>{renderExport(row)}</div>
+   <div className="purchaseHubReceiptActions">{!row.personalCostHidden&&<button type="button" aria-label={'تعديل الوصل رقم '+number} onClick={()=>onEdit(row)}><AppIcon name="edit" size={16}/>تعديل الوصل</button>}{onDelete&&<button type="button" className="purchaseHubDelete" aria-label={'حذف الوصل رقم '+number} onClick={()=>onDelete(row)}><AppIcon name="trash" size={16}/>حذف الوصل</button>}{renderExport(row)}</div>
   </div>}
  </article>;
 }
 
-export default function PurchasesHub({history,onNew,onMaterial,onEdit,onDelete,onRefresh,refreshing,renderExport}){
+export default function PurchasesHub({profile,history,onNew,onMaterial,onEdit,onDelete,onRefresh,refreshing,renderExport}){
  const [query,setQuery]=useState(''),[limit,setLimit]=useState(pageSize);
  const ordered=useMemo(()=>history.slice().sort((a,b)=>new Date(b.date)-new Date(a.date)||b.id-a.id),[history]);
  const filtered=useMemo(()=>ordered.filter(row=>matchesReceipt(row,query)),[ordered,query]);
@@ -45,7 +46,7 @@ export default function PurchasesHub({history,onNew,onMaterial,onEdit,onDelete,o
   <section className="purchaseHubArchive" aria-labelledby="purchase-archive-title">
    <header><div><h2 id="purchase-archive-title">المشتريات السابقة</h2><small>{history.length.toLocaleString('ar-IQ')} فاتورة شراء</small></div><button type="button" className="purchaseHubRefresh" onClick={onRefresh} disabled={refreshing} aria-label="تحديث المشتريات"><AppIcon name="refresh" size={19}/></button></header>
    <label className="purchaseHubSearch"><AppIcon name="search" size={18}/><input type="search" aria-label="بحث المشتريات السابقة" placeholder="ابحث برقم الوصل أو اسم المورد" value={query} onChange={e=>{setQuery(e.target.value);setLimit(pageSize);}}/></label>
-   {filtered.length?filtered.slice(0,limit).map(row=><PurchaseReceipt key={row.id} row={row} onEdit={onEdit} onDelete={onDelete} renderExport={renderExport}/>):<p className="purchaseHubEmpty" role="status">{query?'لا توجد فواتير مطابقة للبحث.':'لا توجد فواتير شراء محفوظة.'}</p>}
+   {filtered.length?filtered.slice(0,limit).map(row=><PurchaseReceipt key={row.id} row={row} onEdit={onEdit} onDelete={canDeletePurchase(profile,row)?onDelete:null} renderExport={renderExport}/>):<p className="purchaseHubEmpty" role="status">{query?'لا توجد فواتير مطابقة للبحث.':'لا توجد فواتير شراء محفوظة.'}</p>}
    {filtered.length>limit&&<button type="button" className="purchaseHubMore" onClick={()=>setLimit(n=>n+pageSize)}>عرض المزيد <AppIcon name="chevron" size={16}/></button>}
   </section>
  </section>;

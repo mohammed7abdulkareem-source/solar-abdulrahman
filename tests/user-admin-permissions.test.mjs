@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {canOpenPage} from '../app/access-utils.mjs';
-import {accountPermissions,changeAccountPermission,resetAccountPermissions} from '../app/user-admin-permissions.mjs';
+import {accountPermissions,changeAccountPermission,resetAccountPermissions,permissionGroups} from '../app/user-admin-permissions.mjs';
 
 const office=permissions=>({id:'test-office',active:true,user_type:'admin_staff',is_admin:false,permissions});
 
@@ -50,4 +50,12 @@ test('resetting module permissions preserves the configured material price basis
  const actual=changeAccountPermission(reduced,'profitUsesWholesalePrice',false);
  assert.equal(actual.profitUsesWholesalePrice,false);
  assert.equal(canOpenPage(office(actual),'sale'),false);
+});
+
+test('staff permission editor removes the retired supplier payment grant without changing statement access',()=>{
+ const saved={supplierPayment:true,supplierStatement:true,suppliers:true};
+ const edited=accountPermissions(saved);
+ assert.ok(!Object.hasOwn(edited,'supplierPayment'));
+ assert.ok(edited.supplierStatement&&edited.suppliers);
+ assert.ok(!permissionGroups.some(group=>group.options.some(([key])=>key==='supplierPayment')));
 });

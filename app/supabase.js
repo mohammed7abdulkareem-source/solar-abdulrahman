@@ -48,16 +48,21 @@ export async function verifyResetPassword(password){
 
 
 // Financial totals and customer search must not stop at the API's 1,000-row cap.
-async function allRows(table,select='*',filter=null){
+async function allPages(makeQuery){
  const rows=[];
  for(let offset=0;;offset+=1000){
-  let query=supabase.from(table).select(select);
-  if(filter)query=query.in(filter.column,filter.values);
-  const result=await query.order('id').range(offset,offset+999);
+  const result=await makeQuery().order('id').range(offset,offset+999);
   if(result.error)return result;
   rows.push(...result.data);
   if(result.data.length<1000)return {data:rows,error:null};
  }
+}
+
+function allRows(table,select='*',filter=null){
+ return allPages(()=>{
+  const query=supabase.from(table).select(select);
+  return filter?query.in(filter.column,filter.values):query;
+ });
 }
 
 async function personalReceiptRows(kinds){
@@ -95,7 +100,8 @@ const loadSnapshot=createLatestLoader(async userId=>{
   access.brands?allRows('brands','id,name'):empty,
   access.catalog?supabase.rpc('solar_inventory',{action:'catalog'}):empty,
   access.customers?allRows('customers','id,name,phone,customer_type,owner_id'):empty,
-  access.suppliers?allRows('suppliers','id,name,phone,account_currency,currency_revision'):empty,
+  access.purchaseSupplierLookupOnly?allPages(()=>supabase.rpc('solar_purchase_suppliers')):
+   access.suppliers?allRows('suppliers','id,name,phone,account_currency,currency_revision'):empty,
   access.transactions?allRows('transactions',transactionColumns,kindFilter(access.transactionKinds)):empty,
   access.items&&!personal?allRows('transaction_items',access.itemKinds?'*,receipt:transactions!inner(kind)':'*',
    access.itemKinds?{column:'receipt.kind',values:access.itemKinds}:null):empty,

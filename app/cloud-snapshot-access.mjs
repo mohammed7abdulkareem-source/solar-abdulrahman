@@ -5,6 +5,7 @@ export function cloudSnapshotAccess(profile){
  const can=page=>office&&canOpenPage(profile,page);
  const admin=office&&isAdministrator(profile);
  const purchases=can('purchase');
+ const supplierDirectory=can('suppliers')||can('supplierStatement')||can('supplierBalances')||admin;
  const kinds=[];
  if(can('sale'))kinds.push('sale');
  if(can('system'))kinds.push('system');
@@ -20,7 +21,8 @@ export function cloudSnapshotAccess(profile){
   catalog:inventory?'inventory':can('tahseel')?'quote':null,
   brands:can('products')||can('brands'),
   customers:can('sale')||can('system')||can('customers')||can('customerDebts'),
-  suppliers:purchases||can('suppliers')||can('supplierPayment')||can('supplierStatement'),
+  suppliers:purchases||can('suppliers')||can('supplierStatement')||admin,
+  purchaseSupplierLookupOnly:purchases&&!supplierDirectory,
   staff:admin||can('system'),
   transactions:admin||kinds.length>0,transactionKinds:admin?null:kinds,
   items:admin||invoiceKinds.length>0,itemKinds:admin?null:invoiceKinds,
