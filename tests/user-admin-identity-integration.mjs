@@ -78,9 +78,15 @@ const originalEmail=sql("select email from auth.users where id='"+uid+"'");
 assert.equal(originalEmail,username+'@solar-user.local');
 assert.equal(await principal(okay(await login(originalEmail,password)).access_token),uid);
 const resumed=await current(uid);assert.equal(resumed.token,updated.token);
+// Both old editors could append an autofilled password to unrelated profile changes.
+for(const action of ['save_details','update']){
+ refused(await edge({...update,action,request_id:randomUUID(),token:resumed.token,phone:'07701111000',password:nextPassword,role:'user'}));
+ assert.equal((await current(uid)).token,resumed.token);
+}
+assert.equal(await principal(okay(await login(renamed,password)).access_token),uid);
 refused(await edge(finalize(saved,{active:false})));
 assert.equal((await current(uid)).active,true);
-const rekey={...update,request_id:randomUUID(),token:resumed.token,password:nextPassword};
+const rekey={...update,request_id:randomUUID(),token:resumed.token,changePassword:true,password:nextPassword};
 const pwdResult=okay(await edge(rekey)).user;
 refused(await login(renamed,password));
 assert.equal(await principal(okay(await login(renamed,nextPassword)).access_token),uid);

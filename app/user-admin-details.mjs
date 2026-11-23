@@ -13,6 +13,7 @@ export function userDetailsRequest(info,target,changePassword=false){
  if(!target||changePassword){
   if(typeof info.password!=='string'||info.password.length<6)throw new Error('أدخل كلمة مرور من ست خانات على الأقل.');
   body.password=info.password;
+  if(target)body.changePassword=true;
  }
  return body;
 }

@@ -5,9 +5,10 @@ import {fxCloudRows} from './fx-utils.mjs';
 import {refreshMaterialBrands} from './current-brand.mjs';
 import {createLatestLoader} from './data-refresh.mjs';
 import {changedRows} from './review-utils.mjs';
-import {createClient} from '@supabase/supabase-js';
-import {createSessionFetch,guardSessionAdoption} from './auth-session-fetch.mjs';
+import {createClient,navigatorLock} from '@supabase/supabase-js';
+import {createSessionFetch,guardSessionAdoption,passwordSessionLock} from './auth-session-fetch.mjs';
 import {requestPasswordSession} from './password-login.mjs';
+import {createRefreshFetch} from './auth-refresh-fetch.mjs';
 import {cashBalanceSnapshot} from './cash-read-balances.mjs';
 import {cloudSnapshotAccess} from './cloud-snapshot-access.mjs';
 import {canManageQuotes} from './access-utils.mjs';
@@ -16,15 +17,19 @@ import {salesAuthorizationKey} from './sales-read-scope.mjs';
 
 const url='https://afxxaafsuscwyjzrnagc.supabase.co';
 const key='sb_publishable_NWfk9al_gjcSnI6NBQX6GA_CGiQ2-Jy';
-export const supabase=createClient(url,key,{global:{fetch:createSessionFetch()}});
+const browserAuth=typeof window!=='undefined'&&globalThis.navigator?.locks?{lock:passwordSessionLock(navigatorLock)}:{};
+const refreshFetch=createRefreshFetch();
+export const watchRefreshThrottle=refreshFetch.watchThrottle;
+export const supabase=createClient(url,key,{auth:browserAuth,global:{fetch:createSessionFetch(refreshFetch)}});
 
 export async function loginWithPassword(login,password,signal){
  const tokens=await requestPasswordSession(url+'/functions/v1/solar-login',key,{login,password},signal);
  if(signal.aborted)return;
  try{
-  const {data,error}=await guardSessionAdoption(tokens.access_token,signal,()=>supabase.auth.setSession(tokens));
+  const {data,error}=await guardSessionAdoption(tokens.access_token,signal,()=>supabase.auth.setSession(tokens),{passwordLogin:true});
   if(error||!data?.session)throw new Error();
- }catch{
+ }catch(e){
+  if(!signal.aborted&&e?.code==='login_lock_timeout')throw e;
   if(!signal.aborted)throw new Error('تم التحقق من كلمة المرور، وتعذّر فتح الجلسة على هذا الجهاز. حاول تسجيل الدخول مرة ثانية.');
  }
 }

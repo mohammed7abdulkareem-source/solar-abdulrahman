@@ -138,6 +138,13 @@ try{
  const {chromium}=await import(process.env.SOLAR_PLAYWRIGHT_MODULE||'playwright-core');
  browser=await chromium.launch({executablePath:'/usr/bin/chromium',headless:true,args:['--no-sandbox']});
  const first=await open(),other=await open(),page=first.page;
+ await page.getByRole('checkbox',{name:'إظهار كلمة المرور'}).check();
+ for(const field of[username(page),secret(page)]){
+  assert.equal(await field.getAttribute('autocorrect'),'off');
+  assert.equal(await field.getAttribute('autocapitalize'),'none');
+  assert.equal(await field.getAttribute('spellcheck'),'false');
+ }
+ await page.getByRole('checkbox',{name:'إظهار كلمة المرور'}).uncheck();
  const wrong='Different-'+randomUUID();
  const bad=await loginError(page,legacy.username,wrong,/غير صحيحة/);
  assert.equal(await loginError(page,'missing_'+suffix,wrong,/غير صحيحة/),bad);
@@ -150,6 +157,21 @@ try{
  sql(`update profiles set active=true where id='${modern.id}'`);
  checks.inactiveEmailAndInvalidSessionAdoption=true;
  checks.errorMessages={wrongOrUnknownIndistinguishable:true,offline:true,rate:true,upstreamUnavailable:true};
+ const lockTab=await first.context.newPage();
+ try{
+  await lockTab.goto(endpoints.app+'/manifest.webmanifest');
+  await lockTab.evaluate(key=>new Promise(ready=>{
+   void navigator.locks.request('lock:'+key,()=>new Promise(release=>{window.releaseLoginFixture=release;ready();}));
+  }),tokenKey);
+  await submit(page,legacy.username,password);
+  await page.locator('.loginError').filter({hasText:'أغلق أي تبويب آخر'}).waitFor({timeout:35000});
+  assert.equal(await storageId(page),null);
+  await lockTab.evaluate(()=>window.releaseLoginFixture());
+  // Acquire the same lock again, behind any work that might still be queued.
+  await lockTab.evaluate(key=>navigator.locks.request('lock:'+key,()=>{}),tokenKey);
+  assert.equal(await storageId(page),null,'abandoned login must never install a late session');
+ }finally{await lockTab.close();}
+ checks.lockContentionAllowsRetryWithoutLateAdoption=true;
  await submit(page,'  '+legacy.username.toUpperCase()+'  ',password,true);await signedIn(page,legacy);
  assert.equal(actualHash(),initialHash);
  await submit(other.page,legacy.email.toUpperCase(),password);await signedIn(other.page,legacy);

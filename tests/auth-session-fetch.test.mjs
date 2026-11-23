@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createSessionFetch,guardSessionAdoption} from '../app/auth-session-fetch.mjs';
+import {createSessionFetch,guardSessionAdoption,passwordSessionLock} from '../app/auth-session-fetch.mjs';
 
 const url='https://auth-fixture.test/auth/v1/user';
 const auth=token=>({headers:{Authorization:'Bearer '+token}});
@@ -128,4 +128,28 @@ test('revoked-session error on Auth user or any non-logout request is never chan
 test('logout network failures propagate without pretending the server revoked a session',async()=>{
  const failure=new TypeError('fixture network unavailable'),request=createSessionFetch(async()=>{throw failure;});
  await assert.rejects(request('https://auth-fixture.test/auth/v1/logout',{method:'POST'}),error=>error===failure);
+});
+
+test('only an active password login bounds the SDK’s unbounded browser lock request',async()=>{
+ const seen=[],signal=new AbortController().signal;
+ const lock=passwordSessionLock(async(name,wait,fn)=>{seen.push([name,wait]);return fn();},19);
+ const acquire=wait=>lock('fixture',wait,async()=>true);
+ await acquire(-1);
+ await guardSessionAdoption('password-change',signal,()=>acquire(-1));
+ await guardSessionAdoption('new-login',signal,async()=>{
+  await acquire(-1);await acquire(0);await acquire(4);
+ },{passwordLogin:true});
+ await acquire(-1);
+ assert.deepEqual(seen.map(([,wait])=>wait),[-1,-1,19,0,4,-1]);
+ assert.ok(seen.every(([name])=>name==='fixture'));
+});
+
+test('only a timeout before acquiring the browser lock gets the login contention message',async()=>{
+ const aborted=new DOMException('fixture lock timeout','AbortError');
+ const before=passwordSessionLock(async()=>{throw aborted;},9);
+ const after=passwordSessionLock(async(name,timeout,operation)=>operation(),9);
+ const adopt=fn=>guardSessionAdoption('fixture',new AbortController().signal,fn,{passwordLogin:true});
+ await assert.rejects(adopt(()=>before('lock',-1,()=>assert.fail('unacquired grant ran'))),{code:'login_lock_timeout'});
+ await assert.rejects(adopt(()=>after('lock',-1,()=>{throw aborted;})),error=>error===aborted);
+ await assert.rejects(before('lock',-1,()=>{}),error=>error===aborted);
 });

@@ -2,9 +2,24 @@ import {tokenSessionId} from './auth-lifecycle.mjs';
 // Bound the fresh session adopted after a password change. Treat logout of an
 // explicitly revoked session as complete so this SDK clears its local session.
 const guards=new Map();
-export async function guardSessionAdoption(token,signal,operation){
- const guard={signal};guards.set(token,guard);
+export async function guardSessionAdoption(token,signal,operation,{passwordLogin=false}={}){
+ const guard={signal,passwordLogin};guards.set(token,guard);
  try{return await operation();}finally{if(guards.get(token)===guard)guards.delete(token);}
+}
+// setSession acquires the shared browser lock before it makes the user
+// validation request. Bound this wait in the SDK itself so a timed-out grant
+// cannot acquire the lock later and install an abandoned session.
+export function passwordSessionLock(sdkLock,timeoutMs=15000){
+ return async(name,wait,operation)=>{
+  if(wait>=0||!guards.size||![...guards.values()].some(guard=>guard.passwordLogin))return sdkLock(name,wait,operation);
+  let acquired=false;
+  try{return await sdkLock(name,timeoutMs,()=>{acquired=true;return operation();});}
+  catch(error){
+   if(!acquired&&(error?.name==='AbortError'||error?.isAcquireTimeout))
+    throw Object.assign(new Error('تم التحقق من كلمة المرور. أغلق أي تبويب آخر للبرنامج على هذا الجهاز وحاول الدخول مرة ثانية.'),{code:'login_lock_timeout'});
+   throw error;
+  }
+ };
 }
 let localSignOut=null;
 export async function signOutDevice(auth,session,isCurrent){
