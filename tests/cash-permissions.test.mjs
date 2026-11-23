@@ -74,3 +74,12 @@ test('a restored administrative cash attempt requires current admin authority be
  assert.equal(attempt.id,'saved-request-id');
  assert.equal(attempt.payload.mode,'capital_withdraw');
 });
+
+test('external profit retry stays on the current cashbox after an admin becomes staff',()=>{
+ const staff={...user,id:'staff',permissions:{cashExternalProfit:true}};
+ const saved=ownerId=>({payload:{ownerId,mode:'external_profit'}});
+ assert.ok(canRetryCashAttempt(staff,saved('staff')));
+ assert.equal(canRetryCashAttempt(staff,saved('other')),false);
+ assert.equal(canRetryCashAttempt({...staff,is_admin:true},saved('other')),true);
+ assert.equal(canRetryCashAttempt({...staff,permissions:{cashExpense:true}},saved('staff')),false);
+});

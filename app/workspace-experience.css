@@ -60,33 +60,33 @@ body.premiumSolar .smoothFrame.premiumExperience .sectionsTopButton{color:#d4dfe
 .smoothFrame .appMobileBar [aria-current=page] svg{color:inherit!important}
 
 @media screen and (max-width:900px) {
- body.premiumSolar .smoothFrame.invoiceFrame {
-  --invoice-header-height: calc(65px + env(safe-area-inset-top, 0px));
+ body.premiumSolar .smoothFrame {
+  --workspace-header-height: calc(65px + env(safe-area-inset-top, 0px));
  }
- body.premiumSolar .smoothFrame.invoiceFrame > .appContent {
-  padding-top: var(--invoice-header-height);
+ body.premiumSolar .smoothFrame > .appContent {
+  padding-top: var(--workspace-header-height);
  }
- body.premiumSolar .smoothFrame.invoiceFrame .premiumTopbar {
+ body.premiumSolar .smoothFrame > .appContent > .premiumTopbar {
   box-sizing: border-box;
   position: fixed;
   inset-inline: 0;
   top: var(--workspace-viewport-top, 0px);
-  height: var(--invoice-header-height);
+  height: var(--workspace-header-height);
   padding-top: env(safe-area-inset-top, 0px);
  }
- body.premiumSolar .smoothFrame.invoiceFrame > .appMobileBar {
+ body.premiumSolar .smoothFrame > .appMobileBar {
   bottom: var(--workspace-viewport-bottom, 0px);
  }
- body.premiumSolar .smoothFrame.invoiceFrame.workspaceKeyboard > .appMobileBar {
+ body.premiumSolar .smoothFrame.workspaceKeyboard > .appMobileBar {
   display: none;
  }
- body.premiumSolar .smoothFrame.invoiceFrame .invoicePage {
+ body.premiumSolar .smoothFrame .invoicePage {
   padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px)) !important;
  }
 }
 @layer solarRefresh {
  @media screen and (max-width:900px) {
-  .invoiceFrame .invoiceWorkspace :is(input, select, textarea):not([type=checkbox]):not([type=radio]) {
+  .smoothFrame > .appContent > main :is(input, select, textarea):not([type=checkbox]):not([type=radio]) {
    font-size: 16px !important;
   }
  }
