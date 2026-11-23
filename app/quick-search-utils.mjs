@@ -1,4 +1,4 @@
-import {canOpenPage,isAdministrator,isEngineer,isWarehouse} from './access-utils.mjs';
+import {canAccessSupplier,canOpenPage,isAdministrator,isEngineer,isWarehouse} from './access-utils.mjs';
 import {normalizeSearch} from './party-search-utils.mjs';
 
 export function searchCategories(profile){
@@ -14,7 +14,7 @@ export function scopedSearchResults(profile,category,response){
  const visible={customers:[],products:[],suppliers:[],more:{}};
  for(const key of allowed){
   if(key==='all'||(category!=='all'&&key!==category)||!Array.isArray(response?.[key]))continue;
-  visible[key]=response[key];
+  visible[key]=key==='suppliers'?response[key].filter(row=>canAccessSupplier(profile,row)):response[key];
   visible.more[key]=response.more?.[key]===true;
  }
  return visible;

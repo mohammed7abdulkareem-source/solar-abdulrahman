@@ -5,7 +5,7 @@ import AppIcon from './app-icons';
 import {reloadVerifiedApp,watchAppVersion} from './app-update-client.mjs';
 import './app-update.css';
 
-export const APP_VERSION='4.1.33';
+export const APP_VERSION='4.1.34';
 export default function AppUpdate(){
  const [busy,setBusy]=useState(false),[available,setAvailable]=useState(''),[error,setError]=useState(''),[statusArea,setStatusArea]=useState(null);
  const refresh=useRef(null);

@@ -78,6 +78,7 @@ test('snapshot fetches only shared data consumed by the granted office workspace
   const s=cloudSnapshotAccess(office(flags));assert.equal(s.transactions,false);assert.equal(s.cashBalances,false);assert.equal(s.catalog,null);
  }
  const purchase=cloudSnapshotAccess(office({purchase:true}));assert.deepEqual(purchase.transactionKinds,['purchase']);assert.equal(purchase.suppliers,true);assert.equal(purchase.customers,false);
+ const payer=cloudSnapshotAccess(office({supplierPayment:true}));assert.equal(payer.suppliers,true);assert.deepEqual(payer.transactionKinds,['supplier_payment']);assert.equal(payer.purchaseSupplierLookupOnly,false);
  const receiver=cloudSnapshotAccess(office({financeReceive:true}));assert.equal(receiver.cashBalances,true);assert.equal(receiver.transactions,false);assert.equal(receiver.fxHistory,false);
  const admin=cloudSnapshotAccess(office({}, {is_admin:true}));assert.equal(admin.transactionKinds,null);assert.equal(admin.cashEntries,true);assert.equal(admin.fxHistory,true);assert.equal(admin.staff,true);
 });
@@ -93,14 +94,15 @@ test('purchase-only staff load every page of the minimal supplier picker without
   if(name!=='solar_purchase_suppliers')return Promise.resolve({data:[]});
   return {order(column){assert.equal(column,'id');return this},range:async(start,end)=>{
    ranges.push([start,end]);
-   return {data:Array.from({length:start===0?1000:1},(_,i)=>({id:start+i+1,name:'مورد',account_currency:'USD',currency_revision:2}))};
+   return {data:Array.from({length:start===0?1000:1},(_,i)=>({id:start+i+1,name:'مورد',admin_only:start===0&&i===0,account_currency:'USD',currency_revision:2}))};
   }};
  });
  const snapshot=await loadCloud({fresh:true});
  assert.equal(tables.includes('suppliers'),false);
  assert.deepEqual(ranges,[[0,999],[1000,1999]]);
- assert.equal(snapshot.suppliers.length,1001);
- assert.deepEqual(snapshot.suppliers.at(-1),{id:1001,name:'مورد',phone:'',accountCurrency:'USD',currencyRevision:2});
+ assert.equal(snapshot.suppliers.length,1000);
+ assert.ok(!snapshot.suppliers.some(s=>s.id===1));
+ assert.deepEqual(snapshot.suppliers.at(-1),{id:1001,adminOnly:false,name:'مورد',phone:'',accountCurrency:'USD',currencyRevision:2});
 });
 
 test('personal pricing paginates receipts through their protected projection and preserves hidden costs',async t=>{

@@ -8,7 +8,7 @@ import {cashKind} from './cash-utils.mjs';
 import {cashDate,cashMovementBody,paymentMode,transferStatus} from './cash-movement-utils.mjs';
 import {formatMoney as money,currencyUnit as unit} from './money-format.mjs';
 import ReportActions from './report-actions';
-import {canRequestReceiptDeletion} from './access-utils.mjs';
+import {canAccessSupplier,canRequestReceiptDeletion} from './access-utils.mjs';
 import {requestReceiptDeletion} from './receipt-deletion.mjs';
 
 export default function CashMovementDetail({movementId,profile,a4,onClose,onChanged}){
@@ -17,10 +17,10 @@ export default function CashMovementDetail({movementId,profile,a4,onClose,onChan
  const [data,setData]=useState(null),[error,setError]=useState(''),[retry,setRetry]=useState(0);
  useEffect(()=>{let live=true;const controller=new AbortController();setData(null);setError('');
   const timer=setTimeout(()=>controller.abort(),10000);
-  supabase.rpc('solar_cash_movement_detail',{movement_id:movementId}).abortSignal(controller.signal).then(({data,error})=>{if(error)throw error;if(live){setData(data);if(data.deletion?.pendingRequestId)setDeleteError('');}}).catch(e=>{if(live)setError(e.code?e.message:'تعذر تحميل تفاصيل الحركة. أعد المحاولة.');}).finally(()=>clearTimeout(timer));
+  supabase.rpc('solar_cash_movement_detail',{movement_id:movementId}).abortSignal(controller.signal).then(({data,error})=>{if(error)throw error;if(['supplier_payment','purchase'].includes(data?.kind)&&!canAccessSupplier(profile,data))throw new Error('هذه الحركة غير متاحة.');if(live){setData(data);if(data.deletion?.pendingRequestId)setDeleteError('');}}).catch(e=>{if(live)setError(e.code?e.message:'تعذر تحميل تفاصيل الحركة. أعد المحاولة.');}).finally(()=>clearTimeout(timer));
   return()=>{live=false;clearTimeout(timer);controller.abort();};
- },[movementId,retry]);
- const canRequest=canRequestReceiptDeletion(profile,data?.kind);
+ },[movementId,retry,profile]);
+ const canRequest=canRequestReceiptDeletion(profile,data?.kind,data);
  const label=data?.reconciliation?.mode==='zero'?'تصفير القاصة':cashKind(data?.kind);
  async function requestDeletion(){if(!canRequest||deleteLock.current||!data?.deletion?.canRequest)return;deleteLock.current=true;setDeleting(true);setDeleteError('');setDeleteMessage('');try{
   const r=await requestReceiptDeletion(data.deletion.invoiceId,undefined,profile);if(r){setDeleteMessage('أُرسل طلب الحذف إلى الإدارة. تبقى الحركة محسوبة حتى الموافقة.');setRetry(n=>n+1);}

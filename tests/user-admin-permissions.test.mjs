@@ -52,10 +52,11 @@ test('resetting module permissions preserves the configured material price basis
  assert.equal(canOpenPage(office(actual),'sale'),false);
 });
 
-test('staff permission editor removes the retired supplier payment grant without changing statement access',()=>{
+test('staff permission editor preserves and independently grants payment access for ordinary suppliers',()=>{
  const saved={supplierPayment:true,supplierStatement:true,suppliers:true};
  const edited=accountPermissions(saved);
- assert.ok(!Object.hasOwn(edited,'supplierPayment'));
+ assert.equal(edited.supplierPayment,true);
+ assert.equal(changeAccountPermission(edited,'supplierPayment',false).supplierPayment,false);
  assert.ok(edited.supplierStatement&&edited.suppliers);
- assert.ok(!permissionGroups.some(group=>group.options.some(([key])=>key==='supplierPayment')));
+ assert.ok(permissionGroups.some(group=>group.options.some(([key])=>key==='supplierPayment')));
 });

@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {supabase} from './supabase';
 import {saveRequest} from './save-request.mjs';
-import {canOpenPage} from './access-utils.mjs';
+import {canAccessSupplier,canOpenPage} from './access-utils.mjs';
 import {requestReceiptDeletion} from './receipt-deletion.mjs';
 import MoneyInput from './money-input';
 import {refreshAfterSave} from './data-refresh.mjs';
@@ -14,8 +14,8 @@ export default function SupplierPaymentHistory({profile,initialId,initialAction=
  const [query,setQuery]=useState(initialQuery),[offset,setOffset]=useState(0),[rows,setRows]=useState([]),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[refresh,setRefresh]=useState(0),[selected,setSelected]=useState(null),[action,setAction]=useState('update'),[amount,setAmount]=useState(''),[rate,setRate]=useState(''),[notes,setNotes]=useState(''),[error,setError]=useState(''),[result,setResult]=useState(null);
  const [requestMessage,setRequestMessage]=useState('');
  const attempt=useRef(null),opening=useRef(false),editor=useRef(null);
- useEffect(()=>{let live=true;setLoading(true);const timer=setTimeout(async()=>{try{const r=await supabase.rpc('solar_supplier_payment_manage',{action:'list',payload:{query,offset}});if(r.error)throw r.error;if(live)setRows(r.data.rows||[]);}catch(e){if(live)setError(e.message);}finally{if(live)setLoading(false);}},query?180:0);return()=>{live=false;clearTimeout(timer);};},[query,offset,refresh]);
- const open=useCallback(async(id,operation)=>{if(opening.current||attempt.current||(operation==='delete'&&!canRequest))return;opening.current=true;setBusy(true);setError('');setResult(null);try{const r=await supabase.rpc('solar_supplier_payment_manage',{action:'get',payload:{id}});if(r.error)throw r.error;setSelected(r.data);setAction(operation);setAmount(String(r.data.amount));setRate(String(r.data.rate));setNotes(r.data.notes||'');}catch(e){setError(e.message);}finally{opening.current=false;setBusy(false);}},[canRequest]);
+ useEffect(()=>{let live=true;setLoading(true);const timer=setTimeout(async()=>{try{const r=await supabase.rpc('solar_supplier_payment_manage',{action:'list',payload:{query,offset}});if(r.error)throw r.error;if(live)setRows((r.data.rows||[]).filter(row=>canAccessSupplier(profile,row)));}catch(e){if(live)setError(e.message);}finally{if(live)setLoading(false);}},query?180:0);return()=>{live=false;clearTimeout(timer);};},[query,offset,refresh,profile]);
+ const open=useCallback(async(id,operation)=>{if(opening.current||attempt.current||(operation==='delete'&&!canRequest))return;opening.current=true;setBusy(true);setError('');setResult(null);try{const r=await supabase.rpc('solar_supplier_payment_manage',{action:'get',payload:{id}});if(r.error)throw r.error;if(!canAccessSupplier(profile,r.data))throw new Error('الوصل غير متاح');setSelected(r.data);setAction(operation);setAmount(String(r.data.amount));setRate(String(r.data.rate));setNotes(r.data.notes||'');}catch(e){setError(e.message);}finally{opening.current=false;setBusy(false);}},[canRequest,profile]);
  useEffect(()=>{if(initialId)open(initialId,initialAction);},[initialId,initialAction,open]);
  useEffect(()=>{if(selected)editor.current?.scrollIntoView({block:'start',behavior:'smooth'});},[selected]);
  const value=action==='delete'?0:Number(amount),newAccount=selected?convertAmount(value,selected.currency,selected.accountCurrency,Number(rate))*(selected.cash?1:-1):0,afterBalance=Number(selected?.balance||0)+Number(selected?.accountAmount||0)-newAccount,newCash=selected?.cash?convertAmount(value,selected.currency,selected.cashCurrency,Number(rate)):0,afterCash=Number(selected?.cashBalance||0)+Number(selected?.cashAmount||0)-newCash;

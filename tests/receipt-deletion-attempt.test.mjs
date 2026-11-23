@@ -24,12 +24,12 @@ test('switching accounts during a deletion response leaves the original result r
  assert.equal(readDeletionAttempt('owner',store).id,row.id);assert.equal(readDeletionAttempt('other',store),null);
 });
 
-test('a retired supplier deletion retry does not replay or block an unrelated allowed receipt',async()=>{
+test('a protected supplier deletion retry does not replay or block an unrelated allowed receipt',async()=>{
  const store=storage(),currentUser=async()=>'owner';
- const obsolete={...row,kind:'supplier_payment',action:'request'};
+ const obsolete={...row,kind:'supplier_payment',action:'request',adminOnly:true};
  await assert.rejects(runDeletionAttempt('owner',{store,currentUser,prepare:async()=>obsolete,send:async()=>{throw Error('offline');}}));
  const next={...row,invoiceId:5,id:'00000000-0000-0000-0000-000000000005'};
- const result=await runDeletionAttempt('owner',{store,currentUser,invoiceId:5,canResume:r=>r.kind!=='supplier_payment',prepare:async()=>next,
+ const result=await runDeletionAttempt('owner',{store,currentUser,invoiceId:5,canResume:r=>!r.adminOnly,prepare:async()=>next,
   send:async r=>{assert.equal(r.id,next.id);return {data:{direct:true}};}});
  assert.ok(result.direct);
  assert.equal(readDeletionAttempt('owner',store),null);

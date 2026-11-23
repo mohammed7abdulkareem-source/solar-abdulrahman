@@ -11,7 +11,7 @@ export function canReadPaymentKind(profile,kind){
  if(!profile?.active||['installer','warehouse'].includes(profile.user_type))return false;
  if(profile.is_admin)return true;
  const p=profile.permissions||{};
- return (kind==='supplier_payment'?['supplierStatement']:kind==='system_payment'?['systemPayment','customerStatement','customers','customerCreate']:kind==='customer_payment'?['customerPayment','customerStatement','customers','customerCreate']:[]).some(key=>p[key]===true);
+ return (kind==='supplier_payment'?['supplierPayment','supplierStatement']:kind==='system_payment'?['systemPayment','customerStatement','customers','customerCreate']:kind==='customer_payment'?['customerPayment','customerStatement','customers','customerCreate']:[]).some(key=>p[key]===true);
 }
 export const paymentKinds=[['customer_payment','تسديد جملة'],['system_payment','تسديد منظومات'],['supplier_payment','تسديد مورد']];
 export function recordPage(index,count,size=30){

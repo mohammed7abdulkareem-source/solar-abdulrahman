@@ -35,3 +35,11 @@ test('a live downgrade discards already returned entity results, including count
  assert.deepEqual(scopedSearchResults(restricted,'all',reply),{customers:[],products:[],suppliers:[],more:{}});
  assert.deepEqual(scopedSearchResults(restricted,'products',reply),{customers:[],products:[],suppliers:[],more:{}});
 });
+
+test('supplier search filters protected records while retaining an unprotected namesake',async()=>{
+ const {scopedSearchResults}=await import('../app/quick-search-utils.mjs');
+ const staff={id:'abdulrahman',active:true,permissions:{suppliers:true}};
+ const reply={suppliers:[{id:1,name:'عبدالرحمن',admin_only:true},{id:2,name:'عبدالرحمن'}]};
+ assert.deepEqual(scopedSearchResults(staff,'suppliers',reply).suppliers,[reply.suppliers[1]]);
+ assert.deepEqual(scopedSearchResults({...staff,is_admin:true},'suppliers',reply).suppliers,reply.suppliers);
+});

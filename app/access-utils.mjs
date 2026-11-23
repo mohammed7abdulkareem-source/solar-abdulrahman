@@ -19,7 +19,7 @@ export function canOpenPage(profile, page) {
   const permissions=profile.permissions||{};
   const has=key=>permissions[key]===true;
   const quoteAccess=permissions.tahseel===undefined?has('system'):has('tahseel');
-  if (['users','userActivity','updates','operationControl','supplierPayment'].includes(page)) return false;
+  if (['users','userActivity','updates','operationControl'].includes(page)) return false;
   if (page==='exchangeRate') return has('exchangeRate')||has('exchangeRateEdit');
   if (page==='warranty') return permissions.warranty===undefined?quoteAccess||has('sale')||has('system'):has('warranty');
   if (page==='salesHistory') return permissions.salesHistory===undefined?has('sale')||has('system'):has('salesHistory');
@@ -35,13 +35,17 @@ export function canOpenPage(profile, page) {
   if (page==='paymentHistory') return paymentKinds.some(([kind])=>canReadPaymentKind(profile,kind));
   return has(page);
 }
-export const canRequestReceiptDeletion = (profile,kind) => canOpenPage(profile,'deletionRequests') &&
-  (kind!=='supplier_payment'||isAdministrator(profile));
+// Visibility follows the supplier record through renames and across user accounts.
+export function canAccessSupplier(profile,record) {
+  return !!profile?.active && !isWarehouse(profile) && !isEngineer(profile) && !!record &&
+    (isAdministrator(profile) || !(record.admin_only === true || record.adminOnly === true));
+}
+export const canRequestReceiptDeletion = (profile,kind,record={}) => canOpenPage(profile,'deletionRequests') &&
+  (kind!=='supplier_payment' || (canOpenPage(profile,'supplierPayment') && canAccessSupplier(profile,record)));
 export const canDeleteSale = (profile,ownerId,kind) => isAdministrator(profile) ||
   !!(ownerId&&profile?.id===ownerId&&(kind?['sale','system'].includes(kind)&&canOpenPage(profile,kind):canOpenPage(profile,'sale')||canOpenPage(profile,'system')));
 export function canDeletePurchase(profile,receipt) {
-  if (!canOpenPage(profile,'purchase') || receipt?.kind!=='purchase') return false;
-  return isAdministrator(profile) || receipt.cash || !(Number(receipt.accountAmount)||Number(receipt.total));
+  return canOpenPage(profile,'purchase') && receipt?.kind==='purchase' && canAccessSupplier(profile,receipt);
 }
 export const canSeeCash = profile => !isEngineer(profile) && canOpenPage(profile,'cash');
 

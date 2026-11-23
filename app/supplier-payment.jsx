@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';
 import SupplierPaymentHistory from './supplier-payment-history';
-import {isAdministrator} from './access-utils.mjs';
+import {canAccessSupplier,canOpenPage} from './access-utils.mjs';
 import PartySearch from './party-search';
 import MoneyInput from './money-input';
 import {fullPaymentAmount} from './payment-amount.mjs';
@@ -13,8 +13,8 @@ import {loadExchangeRate} from './currency-store.mjs';
 import {convertAmount,currencyLabel as unit} from './fx-utils.mjs';
 const reasons=[['charge_extra_expense','مصروف إضافي'],['charge_old_balance','حساب قديم'],['charge_other','إضافة أخرى']];
 export default function SupplierPayment(props){
- if(!isAdministrator(props.profile))return null;
- return <SupplierPaymentForm {...props}/>;
+ if(!canOpenPage(props.profile,'supplierPayment'))return null;
+ return <SupplierPaymentForm {...props} suppliers={props.suppliers.filter(row=>canAccessSupplier(props.profile,row))}/>;
 }
 function SupplierPaymentForm({profile,suppliers,onChanged,initial=null,initialParty='',onCancel,a4,canEditRate=false}){
  const [party,setParty]=useState(initial?.party||initialParty),[amount,setAmount]=useState(initial?String(Math.abs(initial.sourceSubtotal??initial.total)):''),[note,setNote]=useState(initial?.notes||''),[direction,setDirection]=useState(initial&&supplierIsCharge(initial)?'charge':'cash'),[reason,setReason]=useState(initial?.mode?.startsWith('charge_')?initial.mode:'charge_extra_expense');
@@ -38,7 +38,7 @@ function SupplierPaymentForm({profile,suppliers,onChanged,initial=null,initialPa
  {last?<section className="supplierMovementSaved"><span className="supplierSavedCheck">✓</span><div role="status">تم {initial?'تعديل':'حفظ'} {supplierIsCharge(last)?'الإضافة على حساب المورد':'التسديد'} بنجاح</div><h2>{last.party}</h2><span>وصل #{receiptNumber(last)}</span><b>{money(Math.abs(last.sourceSubtotal??last.total),last.sourceCurrency)} <small>{unit(last.sourceCurrency)}</small></b><p>{supplierIsCharge(last)?'أُضيف المبلغ إلى حساب المورد دون خصم من القاصة.':'خُصم التسديد من قاصة '+unit(last.cashCurrency)+' لصاحب الوصل.'}</p>{last.afterBalance!=null&&<div className="supplierSavedBalance">رصيد المورد بعد الحفظ <strong>{money(last.afterBalance,last.accountCurrency)} {unit(last.accountCurrency)}</strong></div>}<ReportActions enabled html={html} filename={doc.title+'-'+receiptNumber(last)}/><button className="uiButton primary" onClick={()=>{setHistoryId(last.id);setHistoryOpen(true);}}>تعديل أو حذف هذا التسديد</button><button className="reportButton download" disabled={loading||saving} onClick={newMovement}>{initial?'رجوع للكشف':'حركة جديدة'}</button></section>:
  <form className="supplierMovementForm" onSubmit={save}><div className="accountFilterPanel"><fieldset disabled={saving||!!pending.current}>
  <div className="supplierDirection" role="group" aria-label="اتجاه حركة المورد"><button type="button" disabled={!!initial} className={!charge?'active cash':''} aria-pressed={!charge} onClick={()=>setDirection('cash')}><ReportIcon name="download"/><span><b>تسديد للمورد</b><small>ينقص الدين ويخصم من القاصة</small></span></button><button type="button" disabled={!!initial} className={charge?'active charge':''} aria-pressed={charge} onClick={()=>setDirection('charge')}><ReportIcon name="document"/><span><b>إضافة على حساب المورد</b><small>تزيد المستحق بدون خصم نقدي</small></span></button></div>
- <label>المورد<PartySearch rows={suppliers} value={party} onChange={setParty} placeholder="ابحث عن المورد بالاسم أو الهاتف…"/></label>
+ <label>المورد<PartySearch rows={suppliers} value={supplier?.name||''} onChange={setParty} placeholder="ابحث عن المورد بالاسم أو الهاتف…"/></label>
  {account&&<div className="supplierCurrentBalances"><div><span>رصيد المورد · عملة الحساب {account.currency}</span><b>{money(account.balance,account.currency)} <small>{unit(account.currency)}</small></b></div><div><span>قاصة {account.cashOwnerName}</span><b>{money(wallet,currency)} <small>{unit(currency)}</small></b></div></div>}{loading&&<p role="status">جاري تحميل الحساب…</p>}
  <div className="fxFormGrid"><label>عملة {charge?'الإضافة':'التسديد'}<select aria-label="عملة حركة المورد" disabled={!!initial&&initial.cash} value={currency} onChange={e=>setCurrency(e.target.value)}><option value="IQD">دينار عراقي IQD</option><option value="USD">دولار أمريكي USD</option></select></label><label className="paymentAmountField">{charge?'المبلغ المضاف':'مبلغ التسديد'} · {unit(currency)}<div className="paymentAmountControl"><MoneyInput currency={currency} aria-label="مبلغ حركة المورد" value={amount} onChange={setAmount} required/>{!charge&&<button type="button" className="paymentFillAll" disabled={!account||loading||!cashFill} onClick={()=>setAmount(cashFill)} title="تعبئة كامل رصيد القاصة بعملة التسديد المختارة">كامل مبلغ القاصة</button>}</div></label><label>الصرف المثبّت · د.ع لكل دولار<input aria-label="صرف حركة المورد" inputMode="decimal" value={rate} disabled={!canEditRate} onChange={e=>setRate(e.target.value)} required/></label>{charge&&<label>سبب الإضافة<select aria-label="سبب إضافة حساب المورد" value={reason} onChange={e=>setReason(e.target.value)}>{reasons.map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>}</div>
  <p className="fxNotice">عملة حساب المورد <b>{account?.currency||'—'}</b> · 100 دولار = {money(Number(rate)*100)} د.ع. يُحفظ الصرف مع الوصل.</p><label>{charge?'تفاصيل الإضافة · مطلوبة':'ملاحظات التسديد'}<textarea aria-label="ملاحظات حركة المورد" required={charge} value={note} onChange={e=>setNote(e.target.value)} maxLength={2000}/></label>

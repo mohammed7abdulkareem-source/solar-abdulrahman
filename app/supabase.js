@@ -11,7 +11,7 @@ import {requestPasswordSession} from './password-login.mjs';
 import {createRefreshFetch} from './auth-refresh-fetch.mjs';
 import {cashBalanceSnapshot} from './cash-read-balances.mjs';
 import {cloudSnapshotAccess} from './cloud-snapshot-access.mjs';
-import {canManageQuotes} from './access-utils.mjs';
+import {canAccessSupplier,canManageQuotes} from './access-utils.mjs';
 import {usesPersonalSalePrices} from './inventory-valuation.mjs';
 import {salesAuthorizationKey} from './sales-read-scope.mjs';
 
@@ -86,7 +86,7 @@ function visibleProductCost(row){
 
 const mapProduct=r=>({id:r.id,companyQty:r.companyQty,bookQty:Number(r.bookQty??r.qty??0),reservedQty:Number(r.reservedQty||0),stockRevision:r.stockRevision,code:r.code,name:r.name,brand:r.brands?.name||'',brandId:r.brand_id,category:r.category||'',qty:Number(r.qty||0),...(r.personalPriceBasis?{personalPriceBasis:true}:{}),cost:visibleProductCost(r),bookCost:r.personalPriceBasis?visibleProductCost(r):Number(r.bookCost??r.cost??0),costBasis:r.cost_basis||{},costingRevision:Number(r.costing_revision||0)});
 const mapCustomer=r=>({id:r.id,name:r.name,phone:r.phone||'',customerType:r.customer_type==='wholesale'?'جملة - بيع جملة':'مفرد - منظومات',ownerId:r.owner_id||null});
-const mapSupplier=r=>({id:r.id,name:r.name,phone:r.phone||'',accountCurrency:r.account_currency||'IQD',currencyRevision:Number(r.currency_revision||0)});
+const mapSupplier=r=>({id:r.id,adminOnly:r.admin_only===true,name:r.name,phone:r.phone||'',accountCurrency:r.account_currency||'IQD',currencyRevision:Number(r.currency_revision||0)});
 const mapTx=(r,items=[])=>({id:r.id,...(r.personalCostHidden?{personalCostHidden:true}:{}),...(r.kind==='sale'?{expensesOnCustomer:saleExpensesOnCustomer(r)}:{}),warehouseId:r.warehouse_id,warehouseName:r.warehouse_name,invoiceAccount:r.invoice_account||null,profitSettlementId:r.profit_settlement_id||null,profitSupplierSettlementId:r.profit_supplier_settlement_id||null,profitSupplierOwnerId:r.profit_supplier_owner_id||null,warehouseQrToken:r.warehouse_qr_token||null,warehouseStatus:r.warehouse_status||'pending',warehouseRevision:Number(r.warehouse_revision||0),warehousePreparedAt:r.warehouse_prepared_at||null,warranty:r.warranty||{enabled:false},warrantyToken:r.warranty_token||null,warrantyRevision:Number(r.warranty_revision||0),cashPurpose:r.cash_purpose||null,receiptNo:r.receipt_no,sourceCurrency:r.source_currency||'IQD',exchangeRate:Number(r.exchange_rate||1),sourceSubtotal:r.source_subtotal==null?null:Number(r.source_subtotal),fxPricing:!!r.fx_pricing,pricingRevision:Number(r.pricing_revision||0),systemMarkupPercent:r.system_min_profit_percent==null?null:Number(r.system_min_profit_percent),systemPricingRevision:r.system_pricing_revision==null?null:Number(r.system_pricing_revision),accountCurrency:r.account_currency||'IQD',accountAmount:Number(r.account_amount||0),accountRevision:Number(r.account_revision||0),marketRate:Number(r.market_rate||1),cashCurrency:r.cash_currency||'IQD',cashAmount:Number(r.cash_amount||0),fxAccounted:!!r.fx_accounted,systemInvoiceId:r.system_invoice_id??null,kind:r.kind,party:r.party_name||'',partyId:r.party_id,createdBy:r.created_by||null,installerId:r.installer_id||null,installDate:r.install_date||'',installTime:r.install_time||'',customerPhone:r.customer_phone||'',customerAddress:r.customer_address||'',installationStatus:r.installation_status||'none',installationCompletedAt:r.installation_completed_at||null,installationClosedAt:r.installation_closed_at||null,installationExpenses:Number(r.installation_expenses||0),installationExpenseNotes:r.installation_expense_notes||'',cashboxUserId:r.cashbox_user_id||null,capitalEffect:!!r.capital_effect,total:Number(r.total||0),subtotal:Number(r.subtotal||0),expenses:Number(r.expenses||0),cost:r.personalCostHidden&&r.cost==null?null:Number(r.cost||0),profit:r.personalCostHidden&&r.profit==null?null:Number(r.profit||0),cash:!!r.cash,notes:r.notes||'',mode:r.payment_mode||'',date:r.created_at,items:items.map(i=>({id:i.product_id,name:i.product_name,brand:i.brand_name||'',category:i.category||'',qty:Number(i.qty||0),...(i.personalCostHidden?{personalCostHidden:true}:{}),...(i.personalPriceBasis?{personalPriceBasis:true}:{}),price:i.personalCostHidden&&i.price==null?null:Number(i.price||0),cost:i.personalCostHidden&&i.cost==null?null:Number(i.cost||0),landedCost:i.personalCostHidden?null:Number(i.landed_cost||0),sourcePrice:r.kind==='purchase'&&i.personalCostHidden?null:r.kind==='purchase'?purchaseUnitPrice(i,r.source_currency,r.exchange_rate):i.source_price==null?null:Number(i.source_price),costBasis:i.cost_basis||{}}))});
 
 const loadSnapshot=createLatestLoader(async userId=>{
@@ -101,7 +101,7 @@ const loadSnapshot=createLatestLoader(async userId=>{
   access.catalog?supabase.rpc('solar_inventory',{action:'catalog'}):empty,
   access.customers?allRows('customers','id,name,phone,customer_type,owner_id'):empty,
   access.purchaseSupplierLookupOnly?allPages(()=>supabase.rpc('solar_purchase_suppliers')):
-   access.suppliers?allRows('suppliers','id,name,phone,account_currency,currency_revision'):empty,
+   access.suppliers?allRows('suppliers','id,name,phone,account_currency,currency_revision,admin_only'):empty,
   access.transactions?allRows('transactions',transactionColumns,kindFilter(access.transactionKinds)):empty,
   access.items&&!personal?allRows('transaction_items',access.itemKinds?'*,receipt:transactions!inner(kind)':'*',
    access.itemKinds?{column:'receipt.kind',values:access.itemKinds}:null):empty,
@@ -122,9 +122,9 @@ const loadSnapshot=createLatestLoader(async userId=>{
  })):p.data.map(mapProduct);
  const entries=ce.data.map(r=>({id:'cash:'+r.id,systemCash:true,kind:r.entry_type,cash:true,cashDelta:Number(r.delta),total:Math.abs(Number(r.delta)),cashboxUserId:r.owner_id,createdBy:r.owner_id,notes:r.notes||'',date:r.created_at,jobId:r.job_id}));
  const contactsByCreator=new Map(contacts.data.map(r=>[r.id,{creatorName:r.creatorName,creatorPhone:r.creatorPhone}]));
- const transactions=[...t.data,...receipts.data];
+ const transactions=[...t.data,...receipts.data].filter(row=>!['purchase','supplier_payment'].includes(row.kind)||canAccessSupplier(profile,row));
  const byInvoice=new Map();for(const item of refreshMaterialBrands([...ti.data,...(receipts.items||[])],p.data)){const list=byInvoice.get(item.transaction_id)||[];list.push(item);byInvoice.set(item.transaction_id,list);}
- return {userId,authorizationKey,cashBalances,brands:b.data.map(x=>({id:x.id,name:x.name})),products,customers:c.data.map(mapCustomer),suppliers:s.data.map(mapSupplier),tx:[...transactions.map(x=>({...mapTx(x,byInvoice.get(x.id)||[]),...(contactsByCreator.get(x.created_by||x.cashbox_user_id)||{})})),...entries,...fxCloudRows(fx.data)].sort((a,b)=>new Date(a.date)-new Date(b.date))};
+ return {userId,authorizationKey,cashBalances,brands:b.data.map(x=>({id:x.id,name:x.name})),products,customers:c.data.map(mapCustomer),suppliers:s.data.filter(row=>canAccessSupplier(profile,row)).map(mapSupplier),tx:[...transactions.map(x=>({...mapTx(x,byInvoice.get(x.id)||[]),...(contactsByCreator.get(x.created_by||x.cashbox_user_id)||{})})),...entries,...fxCloudRows(fx.data)].sort((a,b)=>new Date(a.date)-new Date(b.date))};
 });
 export async function loadCloud(options={}){
  const {data,error}=await supabase.auth.getSession();if(error)throw error;
