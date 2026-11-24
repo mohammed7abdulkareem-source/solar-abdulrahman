@@ -98,7 +98,7 @@ export function reportPages(sheet,doc){
      if(!fits())throw new Error('ملخص الجدول أطول من صفحة PDF');
     }
    }
-  }else if(source.nodeType===1&&source.querySelector('table')){
+  }else if(source.nodeType===1&&(source.hasAttribute('data-pdf-flow')||source.querySelector('table'))){
    for(const child of source.childNodes)flow(child,[...ancestors,source]);
   }else appendBlock(source,ancestors);
  };

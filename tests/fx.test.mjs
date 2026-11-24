@@ -12,4 +12,7 @@ assert.equal(usdBalance(tx,'a'),500);assert.equal(usdBalance(tx,'b'),100);assert
 assert.equal(capitalAccounts(tx,[{id:1,name:'مورد'}],true).total,750000,'Use book ledger without counting raw invoices twice');
 assert.equal(rows.filter(r=>r.kind==='fx_gain').reduce((s,r)=>s+r.total,0),50000);
 const doc=supplierDocument({kind:'supplier_payment',sourceCurrency:'USD',sourceSubtotal:500,marketRate:1400,accountCurrency:'USD',accountAmount:500,cashCurrency:'USD',cashAmount:500,total:700000,cash:true,date:'2026-10-17',party:'مورد'});
-assert.equal(doc.total,'500 $');assert.ok(doc.body.includes('1,400 د.ع لكل دولار'));assert.ok(doc.body.includes('عملة حساب المورد: USD'));
+const receiptText=doc.body.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+assert.equal(doc.total,'500 $');
+assert.match(receiptText,/1,400 د\.ع لكل دولار/);
+assert.match(receiptText,/عملة حساب المورد:\s*USD/);

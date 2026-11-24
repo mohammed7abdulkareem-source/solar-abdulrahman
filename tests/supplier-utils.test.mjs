@@ -48,3 +48,37 @@ test('non-cash supplier additions increase debt and print as additions, not cash
  const ledger=supplierLedger([...rows,charge],supplier);assert.equal(ledger.balance,21100);
  const doc=supplierDocument(charge);assert.equal(doc.title,'وصل إضافة على حساب مورد');assert.match(doc.total,/20,000/);assert.ok(doc.body.includes('غير نقدية'));assert.ok(doc.body.includes('لا تخصم من القاصة'));assert.ok(doc.body.includes('21,100'));
 });
+
+test('supplier voucher pairs the cash paid, account credit and balances with their own currencies',()=>{
+ const doc=supplierDocument({kind:'supplier_payment',id:17,receiptNo:52,party:'شركة المثال',date:'2026-11-24',
+  cash:true,cashAmount:3243000,cashCurrency:'IQD',sourceSubtotal:1907.65,sourceCurrency:'USD',
+  total:3243000,accountCurrency:'USD',accountAmount:1907.65,marketRate:1700,
+  beforeBalance:1817625.97,afterBalance:1815718.32});
+ const text=doc.body.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+ assert.equal(doc.total,'3,243,000 د.ع');
+ assert.match(text,/المدفوع من القاصة\s+3,243,000 د\.ع/);
+ assert.match(text,/المبلغ بعملة حساب المورد\s+1,907\.65 \$/);
+ assert.match(text,/1,700 د\.ع لكل دولار/);
+ assert.match(text,/1,817,625\.97 \$/);
+ assert.match(text,/1,815,718\.32 \$/);
+});
+
+test('legacy IQD totals do not become foreign cash or foreign account amounts',()=>{
+ const doc=supplierDocument({kind:'supplier_payment',id:15,receiptNo:9,cash:true,sourceCurrency:'USD',
+  accountCurrency:'USD',marketRate:1700,total:85000,party:'مورد قديم'});
+ const text=doc.body.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+ assert.equal(doc.total,'85,000 د.ع');
+ assert.doesNotMatch(text,/85,000 \$/);
+ assert.doesNotMatch(doc.body,/class="svBalances"/);
+});
+
+test('same-currency payment prints a recorded zero and an advance without a conversion panel',()=>{
+ const doc=supplierDocument({kind:'supplier_payment',id:16,receiptNo:10,cash:true,cashCurrency:'USD',
+  cashAmount:50,sourceCurrency:'USD',sourceSubtotal:50,accountCurrency:'USD',accountAmount:50,
+  total:85000,marketRate:1700,beforeBalance:0,afterBalance:-50});
+ const text=doc.body.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ');
+ assert.equal(doc.total,'50 $');
+ assert.doesNotMatch(doc.body,/class="svConversion"/);
+ assert.match(text,/الرصيد قبل الحركة\s+0 \$/);
+ assert.match(text,/الرصيد بعد التسديد\s+-50 \$/);
+});
