@@ -1,7 +1,7 @@
 import {escapeHtml as e} from './supplier-utils.mjs';
 import {formatMoney as money,currencyUnit as unit} from './money-format.mjs';
 import {cashKind} from './cash-utils.mjs';
-import {cashDate,paymentMode,transferStatus} from './cash-movement-utils.mjs';
+import {cashDate,paymentMode,cashTransferDocumentLines} from './cash-movement-utils.mjs';
 
 export const statementDate=value=>value?value.split('-').reverse().join('/'):'—';
 export function cashStatementDetails(r){
@@ -14,15 +14,17 @@ export function cashStatementDetails(r){
  if(r.warehouse_name)parts.push('المخزن: '+r.warehouse_name);
  if(r.payment_mode)parts.push('طريقة الدفع: '+paymentMode(r.payment_mode));
  if(r.current_expenses!=null)parts.push('مصاريف التنصيب المعتمدة حاليًا: '+money(r.current_expenses)+' د.ع');
- if(r.actor_name)parts.push('المسجل: '+r.actor_name);
- if(r.sender_name||r.recipient_name)parts.push('من '+(r.sender_name||'—')+' إلى '+(r.recipient_name||'—')+' · '+transferStatus(r.transfer_status));
- if(r.transfer_amount!=null)parts.push('مبلغ التسليم: '+money(r.transfer_amount)+' د.ع · المصروف: '+money(r.transfer_expense||0)+' د.ع');
+ if(r.actor_name&&r.actor_name!==r.transfer?.decidedBy)parts.push('المسجل: '+r.actor_name);
+ const transfer=r.transfer||r.sender_name||r.recipient_name||r.transfer_status||r.transfer_amount!=null
+  ?{sender:r.sender_name,recipient:r.recipient_name,status:r.transfer_status,
+    amount:r.transfer_amount,expense:r.transfer_expense,...r.transfer}:null;
+ parts.push(...cashTransferDocumentLines(r.kind,transfer));
  if(r.source_currency==='USD')parts.push('أصل الحركة: '+money(r.source_amount,'USD')+' $ · الصرف المثبت: '+money(r.rate)+' د.ع');
  return parts;
 }
 export function cashStatementNotes(r){
  if(r.receiptRestricted)return 'أثر حسابي';
- return [...new Set([r.note,r.transfer_note,r.expense_note,r.reconciliation?.note].filter(Boolean))].join('\n');
+ return [...new Set([r.note,r.transfer?.note,r.transfer_note,r.transfer?.expenseNote,r.expense_note,r.reconciliation?.note].filter(Boolean))].join('\n');
 }
 // Keep long notes complete without making a single PDF row taller than a page.
 export const cashStatementNoteParts=r=>{const chars=Array.from(cashStatementNotes(r)||'—');return Array.from({length:Math.ceil(chars.length/260)},(_,i)=>chars.slice(i*260,(i+1)*260).join(''));};
@@ -35,8 +37,9 @@ export function cashStatementSummary(data){
  return '<div class="cashStatementSummaries">'+cashStatementCurrencyTotals(data).map(g=>'<section class="cashStatementSummary" data-currency="'+g.currency+'"><h3>'+cashStatementCurrencyName(g.currency)+'</h3><div>'+[['opening','الرصيد الافتتاحي'],['incoming','إجمالي الداخل'],['outgoing','إجمالي الخارج'],['closing','الرصيد الختامي']].map(([key,label])=>'<div class="'+key+'"><span>'+label+'</span><strong class="'+(Number(g[key])<0||key==='outgoing'?'negative':'')+'"><bdi>'+e(money(g[key],g.currency))+'</bdi> <small>'+e(unit(g.currency))+'</small></strong></div>').join('')+'</div></section>').join('')+'</div>';
 }
 export function cashStatementTable(g){
- const u=unit(g.currency),amount=v=>e(money(v,g.currency)),label=v=>'<bdi class="'+(money(v,g.currency).length>15?'cashStatementLongNumber':'')+'">'+amount(v)+'</bdi>';
- return '<table class="cashStatementTable" data-pdf-paginate><colgroup><col style="width:13%"><col style="width:27%"><col style="width:18%"><col style="width:14%"><col style="width:14%"><col style="width:14%"></colgroup><thead><tr><th colspan="6" class="cashStatementGroup">قاصة '+e(g.ownerName)+' · '+e(cashStatementCurrencyName(g.currency))+'</th></tr><tr><th>التاريخ</th><th>نوع الحركة والتفاصيل</th><th>الملاحظات</th><th>داخل</th><th>خارج</th><th>الرصيد بعد الحركة</th></tr></thead><tbody><tr class="cashStatementOpening"><td colspan="5">الرصيد السابق قبل بداية الفترة</td><td>'+label(g.opening)+'</td></tr>'+(g.rows||[]).map(r=>(!r.receiptRestricted&&r.reconciliation?.mode==='zero'?'<tr class="cashStatementReset"><td colspan="6">تصفير القاصة · '+e(cashDate(r.created_at))+' · وصل #'+e(r.reconciliation.receiptNo||r.receipt_no||'—')+'</td></tr>':'')+'<tr data-movement-id="'+e(r.id)+'"><td>'+e(cashDate(r.created_at))+'</td><td><strong>'+e(cashStatementKind(r))+'</strong>'+cashStatementDetails(r).map(d=>'<div>'+e(d)+'</div>').join('')+'</td><td class="cashStatementNotes">'+e(cashStatementNoteParts(r)[0])+'</td><td class="cashStatementIn">'+label(Math.max(0,Number(r.delta)))+'</td><td class="cashStatementOut">'+label(Math.max(0,-Number(r.delta)))+'</td><td class="'+(Number(r.balance)<0?'cashStatementOut':'')+'">'+label(r.balance)+'</td></tr>'+cashStatementNoteParts(r).slice(1).map(part=>'<tr data-note-for="'+e(r.id)+'"><td>تكملة الملاحظات</td><td colspan="5" class="cashStatementNotes">'+e(part)+'</td></tr>').join('')).join('')+(!(g.rows||[]).length?'<tr><td colspan="6">لا توجد حركات خلال الفترة</td></tr>':'')+'<tr class="cashStatementClosing"><td colspan="3">المجاميع ورصيد نهاية الفترة · '+e(u)+'</td><td class="cashStatementIn">'+label(g.incoming)+'</td><td class="cashStatementOut">'+label(g.outgoing)+'</td><td>'+label(g.closing)+'</td></tr></tbody></table>';
+ const u=unit(g.currency),label=v=>v==null?'—':'<bdi class="'+(money(v,g.currency).length>15?'cashStatementLongNumber':'')+'">'+e(money(v,g.currency))+'</bdi>';
+ const balance=r=>r.reconciliation?.['after'+g.currency]??r.balance;
+ return '<table class="cashStatementTable" data-pdf-paginate><colgroup><col style="width:13%"><col style="width:27%"><col style="width:18%"><col style="width:14%"><col style="width:14%"><col style="width:14%"></colgroup><thead><tr><th colspan="6" class="cashStatementGroup">قاصة '+e(g.ownerName)+' · '+e(cashStatementCurrencyName(g.currency))+'</th></tr><tr><th>التاريخ</th><th>نوع الحركة والتفاصيل</th><th>الملاحظات</th><th>داخل</th><th>خارج</th><th>الرصيد بعد الحركة</th></tr></thead><tbody><tr class="cashStatementOpening"><td colspan="5">الرصيد السابق قبل بداية الفترة</td><td>'+label(g.opening)+'</td></tr>'+(g.rows||[]).map(r=>(!r.receiptRestricted&&r.reconciliation?.mode==='zero'?'<tr class="cashStatementReset"><td colspan="6">تصفير القاصة · '+e(cashDate(r.created_at))+' · وصل #'+e(r.reconciliation.receiptNo||r.receipt_no||'—')+'</td></tr>':'')+'<tr data-movement-id="'+e(r.id)+'"><td>'+e(cashDate(r.created_at))+'</td><td><strong>'+e(cashStatementKind(r))+'</strong>'+cashStatementDetails(r).map(d=>'<div>'+e(d)+'</div>').join('')+'</td><td class="cashStatementNotes">'+e(cashStatementNoteParts(r)[0])+'</td><td class="cashStatementIn">'+label(Math.max(0,Number(r.delta)))+'</td><td class="cashStatementOut">'+label(Math.max(0,-Number(r.delta)))+'</td><td class="cashStatementBalance '+(Number(balance(r))<0?'cashStatementOut':'')+'">'+label(balance(r))+'</td></tr>'+cashStatementNoteParts(r).slice(1).map(part=>'<tr data-note-for="'+e(r.id)+'"><td>تكملة الملاحظات</td><td colspan="5" class="cashStatementNotes">'+e(part)+'</td></tr>').join('')).join('')+(!(g.rows||[]).length?'<tr><td colspan="6">لا توجد حركات خلال الفترة</td></tr>':'')+'<tr class="cashStatementClosing"><td colspan="3">المجاميع ورصيد نهاية الفترة · '+e(u)+'</td><td class="cashStatementIn">'+label(g.incoming)+'</td><td class="cashStatementOut">'+label(g.outgoing)+'</td><td>'+label(g.closing)+'</td></tr></tbody></table>';
 }
 export function cashStatementDocument(data,a4){
  const title='كشف صندوق حسب الفترة',range=statementDate(data.from)+' — '+statementDate(data.to);

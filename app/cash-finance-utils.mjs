@@ -7,7 +7,7 @@ export const cashTypeOptions=cashTypes.map(k=>[k,cashKind(k)]);
 export const matchesCashType=(row,type='all')=>type==='all'||(cashGroups[type]?cashGroups[type].includes(row.kind):row.kind===type||(type==='expense'&&row.kind==='cash_expense'));
 export function cashVisibleMovement(row){
  if(!row.receiptRestricted)return row;
- return {id:row.id,receiptRestricted:true,kind:row.kind,currency:row.currency,delta:row.delta,balance:row.balance,created_at:row.created_at,ownerName:'قاصتك',party:'',note:'أثر حسابي',receipt_no:null};
+ return {id:row.id,receiptRestricted:true,kind:row.kind,currency:row.currency,delta:row.delta,balance:row.balance,ownerBalance:row.ownerBalance,created_at:row.created_at,ownerName:'قاصتك',party:'',note:'أثر حسابي',receipt_no:null};
 }
 export function cashPage(data,type='all',offset=0,limit=50){
  if(type==='all')return {...data,rows:data.rows.map(cashVisibleMovement)};

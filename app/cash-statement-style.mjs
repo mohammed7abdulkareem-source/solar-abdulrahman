@@ -9,6 +9,7 @@ export const cashStatementStyle=`
 .cashStatementTable tr:nth-child(even) td{background:#f1f4f6}
 .cashStatementTable .cashStatementIn,.cashStatementTable .cashStatementIn bdi{color:#08785a!important;font-weight:700!important}
 .cashStatementTable .cashStatementOut,.cashStatementTable .cashStatementOut bdi{color:#b42326!important;font-weight:700!important}
+.cashStatementTable .cashStatementBalance{font-weight:700;background:#edf5f3}
 .cashStatementTable .cashStatementOpening td{background:#eaf3fc!important;font-weight:700!important}
 .cashStatementTable .cashStatementClosing td{background:#e2f4ec!important;font-weight:700!important}
 .cashStatementTable .cashStatementReset td{background:#fff1c7!important;border-block:2px solid #c98b0b!important;color:#744705!important;font-weight:700!important}
